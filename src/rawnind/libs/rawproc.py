@@ -1,3 +1,17 @@
+"""Utilities for RAW image post-processing used across the project.
+
+This module groups small, self-contained numerical utilities for:
+- tone transfer functions (scene-linear <-> PQ)
+- gain matching and alignment between noisy/clean pairs
+- mask shifting and loss-mask creation
+- simple color conversions used by the training/evaluation code
+
+The goal is to keep these helpers pure and framework-agnostic when possible,
+while supporting both NumPy ndarrays and torch Tensors for convenience.
+
+All functions are intended to be side-effect free unless explicitly documented.
+"""
+
 import os
 import shutil
 import subprocess
@@ -38,21 +52,56 @@ EXTRARAW_CONTENT_FPATHS = (
 )
 
 
-def np_l1(img1: np.ndarray, img2: np.ndarray, avg=True) -> Union[float, np.ndarray]:
+def np_l1(img1: np.ndarray, img2: np.ndarray, avg: bool = True) -> Union[float, np.ndarray]:
+    """Compute per-element L1 distance between two images.
+
+    Args:
+        img1: First image (NumPy array) of identical shape as img2.
+        img2: Second image (NumPy array) of identical shape as img1.
+        avg: If True, return the mean L1 value over all elements; otherwise return the element-wise map.
+
+    Returns:
+        A scalar float if avg is True, otherwise a NumPy array of absolute differences with the same shape as inputs.
+    """
     if avg:
         return np.abs(img1 - img2).mean()
     return np.abs(img1 - img2)
 
 
-def gamma(img: np.ndarray, gamma_val: float = GAMMA, in_place=False) -> np.ndarray:
-    """Apply gamma on positive values, maintain negative values as-is."""
+def gamma(img: np.ndarray, gamma_val: float = GAMMA, in_place: bool = False) -> np.ndarray:
+    """Apply gamma correction to a NumPy image.
+
+    Only strictly positive values are gamma-encoded; non-positive values are preserved
+    as-is to avoid creating NaNs when operating on linear-light data that may contain
+    small negative values (e.g., after filtering).
+
+    Args:
+        img: Input NumPy array. Broadcastable operations are applied element-wise.
+        gamma_val: Gamma exponent to apply (default 2.2). Effective transform is x**(1/gamma).
+        in_place: If True, modify the input array in place; otherwise operate on a copy.
+
+    Returns:
+        NumPy array with gamma applied to positive entries.
+    """
     res = img if in_place else img.copy()
     res[res > 0] = res[res > 0] ** (1 / gamma_val)
     return res
 
 
-def gamma_pt(img: torch.Tensor, gamma_val: float = GAMMA, in_place=False) -> np.ndarray:
-    """Apply gamma on positive values, maintain negative values as-is."""
+def gamma_pt(img: torch.Tensor, gamma_val: float = GAMMA, in_place: bool = False) -> torch.Tensor:
+    """Apply gamma correction to a torch Tensor.
+
+    Mirrors gamma() but operates on torch tensors and preserves device/dtype.
+    Only strictly positive values are gamma-encoded; non-positive values are preserved.
+
+    Args:
+        img: Input tensor.
+        gamma_val: Gamma exponent to apply (default 2.2). Effective transform is x**(1/gamma).
+        in_place: If True, modify the tensor in place; otherwise operate on a clone.
+
+    Returns:
+        Tensor with gamma applied to positive entries.
+    """
     res = img if in_place else img.clone()
     res[res > 0] = res[res > 0] ** (1 / gamma_val)
     return res
@@ -137,7 +186,18 @@ def match_gain(
     other_img: Union[np.ndarray, torch.Tensor],
     return_val: bool = False,
 ) -> Union[np.ndarray, torch.Tensor]:
-    """Match gain for a single or batched pair of images; other_img is adapted to anchor_img."""
+    """Match average intensity (gain) between two images.
+
+    Supports single images shaped [C,H,W] and batched images shaped [N,C,H,W].
+
+    Args:
+        anchor_img: Reference image whose mean will be matched.
+        other_img: Image/tensor to be rescaled to match the anchor mean.
+        return_val: If True, return the scalar gain value; otherwise return other_img scaled.
+
+    Returns:
+        Either the scaled image/tensor or a scalar gain value depending on return_val.
+    """
     if anchor_img.ndim == 4:
         anchor_avg = anchor_img.mean((-1, -2, -3)).view(-1, 1, 1, 1)
         other_avg = other_img.mean((-1, -2, -3)).view(-1, 1, 1, 1)
@@ -159,16 +219,25 @@ def shift_images(
     # maintain_shape: bool = False,  # probably not needed w/ crop_to_bayer
 ) -> Union[tuple, tuple]:
     #  ) -> Union[tuple[np.ndarray, np.ndarray], tuple[torch.Tensor, torch.Tensor]]:  # python bw compat 2022-11-10
-    """
-    Shift images in y,x directions and crop both accordingly.
+    """Shift two aligned images by an integer number of pixels and crop consistently.
 
-    crop_to_bayer: ensure target_img crop is %2:
-        remove the first/last v/h line from both anchor and target if necessary
-    maintain_shape: pad accordingly
+    This helper is primarily used to align a clean reference (anchor_img) and a
+    target image (target_img) after a coarse shift search. It supports either:
+    - both inputs as RGB-like tensors/arrays shaped [..., 3, H, W], or
+    - target as a Bayer mosaic shaped [..., 4, H, W] while anchor is RGB.
 
-    use-cases:
-        shift two RGB images: no worries
-        shift Bayer and RGB: Bayer shift is // by two. If shift%2, crop additional column/line.
+    When target is Bayer, its effective spatial sampling is half-resolution per
+    color plane. Therefore, for odd shifts the function removes one last row/column
+    from both tensors to keep shapes compatible.
+
+    Args:
+        anchor_img: Reference image to which target is aligned. Shape [..., C, H, W] with C!=4.
+        target_img: Image to shift and crop. Shape [..., C, H, W]; may be Bayer with C=4.
+        shift: Tuple of (dy, dx), positive meaning downward and rightward shifts for anchor.
+            The function applies inverse cropping to target to retain overlapping region.
+
+    Returns:
+        A tuple (anchor_img_out, target_img_out), both cropped to a common field of view.
     """
     anchor_img_out = anchor_img
     target_img_out = target_img
@@ -302,7 +371,19 @@ def shift_mask(
 
 def make_overexposure_mask(
     anchor_img: np.ndarray, gt_overexposure_lb: float = GT_OVEREXPOSURE_LB
-):
+) -> np.ndarray:
+    """Create a boolean mask of non-overexposed pixels from a multi-channel image.
+
+    A pixel is considered valid (mask==True) if all channels are strictly below
+    the provided overexposure lower bound.
+
+    Args:
+        anchor_img: Image shaped [C, H, W] in linear space.
+        gt_overexposure_lb: Lower bound threshold for overexposure in the same units as anchor_img.
+
+    Returns:
+        A 2D boolean NumPy array of shape [H, W] where True indicates a valid pixel.
+    """
     return (anchor_img < gt_overexposure_lb).all(axis=0)
 
 
@@ -340,15 +421,23 @@ def make_loss_mask(
     verbose: bool = False,
     # ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:  # # python bw compat 2022-11-10
 ) -> Union[np.ndarray, tuple]:  # # python bw compat 2022-11-10
-    """Return a loss mask between the two (aligned) images.
+    """Compute a binary mask that ignores mismatched regions between two aligned images.
 
-    loss_map is the sum of l1 loss over all 4 channels
+    The method computes a per-pixel L1 map between gamma-encoded images and sums over
+    channels. Pixels whose loss exceeds a robust threshold are rejected (mask==0), while
+    others are kept (mask==1). A morphological opening is applied to remove isolated
+    pixels.
 
-    0: ignore: if loss_map >= threshold, or anchor_img >= gt_overexposure_lb
-    1: apply loss
+    Args:
+        anchor_img: Reference image shaped [C, H, W], aligned with target_img.
+        target_img: Image to compare against anchor_img, same shape.
+        loss_threshold: Absolute upper bound on acceptable per-pixel loss (after channel sum).
+        keepers_quantile: Quantile of the loss distribution used as an adaptive threshold.
+            The effective threshold is min(loss_threshold, quantile(loss_map)).
+        verbose: If True, prints the final threshold.
 
-    # TODO different keepers_quantile would make a good illustration that noise is not spatially invariant
-    # TODO is is worth switching from gamma to scenelin_to_pq here?
+    Returns:
+        A float mask array of shape [H, W] with values in {0.0, 1.0}.
     """
     # loss_map = np_l1(
     #     scenelin_to_pq(anchor_img),
@@ -380,7 +469,22 @@ def find_best_alignment(
     verbose: bool = False,
     # ) -> Union[tuple[int, int], tuple[tuple[int, int], float]]: # python bw compat 2022-11-10
 ) -> Union[tuple, tuple]:  # python bw compat 2022-11-10
-    """Find best alignment (minimal loss) between anchor_img and target_img."""
+    """Search for the integer (dy, dx) shift minimizing the mean L1 difference.
+
+    The search starts at (0,0) and iteratively explores a local neighborhood around
+    the current best shift until convergence or until the Manhattan distance exceeds
+    max_shift_search.
+
+    Args:
+        anchor_img: Reference image [C, H, W].
+        target_img: Image to align [C, H, W]. Its gain is matched to anchor internally.
+        max_shift_search: Early stop when |dy|+|dx| reaches this value.
+        return_loss_too: If True, also return the minimal loss value.
+        verbose: If True, print intermediate best shifts and losses.
+
+    Returns:
+        Either (dy, dx) or ((dy, dx), loss) depending on return_loss_too.
+    """
     target_img = match_gain(anchor_img, target_img)
     assert np.isclose(anchor_img.mean(), target_img.mean(), atol=1e-07), (
         f"{anchor_img.mean()=}, {target_img.mean()=}"
@@ -436,11 +540,28 @@ def img_fpath_to_np_mono_flt_and_metadata(fpath: str):
 
 
 def get_best_alignment_compute_gain_and_make_loss_mask(kwargs: dict) -> dict:
-    """
-    input: image_set, gt_file_endpath, f_endpath
-    output: gt_linrec2020_fpath, f_bayer_fpath, f_rgb_fpath, best_alignment, mask_fpath
-    multithreading-friendly
-    also returns gains
+    """End-to-end mask creation for a pair of clean/noisy images.
+
+    Given dataset-relative paths for a GT image and a matching file (noisy or
+    alternative processing), this function:
+    - loads the images in linear space
+    - demosaics if needed
+    - finds the best integer-pixel alignment
+    - computes gain ratios (raw and RGB)
+    - builds an overexposure mask and a content-difference mask
+    - writes the final mask to disk and returns a metadata dictionary
+
+    The function is designed to be used from multiprocessing pools and therefore
+    receives its parameters through a single kwargs dict.
+
+    Expected kwargs keys:
+        image_set, gt_file_endpath, f_endpath, ds_dpath[, masks_dpath]
+
+    Returns:
+        A dictionary with keys:
+            gt_fpath, f_fpath, image_set, best_alignment, best_alignment_loss,
+            mask_fpath, mask_mean, is_bayer, rgb_xyz_matrix, overexposure_lb,
+            raw_gain, rgb_gain
     """
 
     def make_mask_name(image_set: str, gt_file_endpath: str, f_endpath: str) -> str:
@@ -487,7 +608,7 @@ def get_best_alignment_compute_gain_and_make_loss_mask(kwargs: dict) -> dict:
     # add content anomalies between two images to the loss mask
     # try:
     assert gt_img_aligned.shape == target_img_aligned.shape, (
-        f"{gt_img_aligned.shape=} is not equal to {target_img_aligned.shape} ({best_alignemnt=}, {loss_mask.shape=}, {kwargs=})"
+        f"{gt_img_aligned.shape=} is not equal to {target_img_aligned.shape} ({best_alignment=}, {loss_mask.shape=}, {kwargs=})"
     )
 
     loss_mask = make_loss_mask(gt_img_aligned, target_img_aligned) * loss_mask
@@ -522,8 +643,17 @@ def get_best_alignment_compute_gain_and_make_loss_mask(kwargs: dict) -> dict:
 
 def camRGB_to_lin_rec2020_images(
     camRGB_images: torch.Tensor, rgb_xyz_matrices: torch.Tensor
-) -> np.ndarray:
-    """Convert a batch of camRGB debayered images to the lin_rec2020 color profile."""
+) -> torch.Tensor:
+    """Convert debayered camera RGB images to linear Rec.2020.
+
+    Args:
+        camRGB_images: Tensor of shape [N, 3, H, W] in camera RGB space (linear).
+        rgb_xyz_matrices: Tensor of shape [N, 3, 3+] providing per-image RGB->XYZ matrices.
+            Only the first 3x3 block is used; extra columns (if any) are ignored.
+
+    Returns:
+        Tensor of shape [N, 3, H, W] in linear Rec.2020 color space on the same device.
+    """
     # cam_to_xyzd65 = torch.linalg.inv(rgb_xyz_matrices[:, :3, :])
     # bugfix for https://github.com/pytorch/pytorch/issues/86465
     cam_to_xyzd65 = torch.linalg.inv(rgb_xyz_matrices[:, :3, :].cpu()).to(
@@ -549,8 +679,16 @@ def camRGB_to_lin_rec2020_images(
 
 
 def demosaic(rggb_img: torch.Tensor) -> torch.Tensor:
-    """
-    Transform RGGB (4-ch) image or batch to camRGB colors (3-ch).
+    """Demosaic an RGGB Bayer mosaic to camera RGB.
+
+    Supports both single images [4, H, W] and batches [N, 4, H, W]. The output
+    preserves the input device and dtype when converting back to torch.
+
+    Args:
+        rggb_img: Tensor with channel order [R, G(R), G(B), B] in the first dimension.
+
+    Returns:
+        Tensor of shape [3, H, W] or [N, 3, H, W] in camera RGB.
     """
     mono_img: np.ndarray = raw.rggb_to_mono_img(rggb_img)
     if len(mono_img.shape) == 3:
@@ -563,7 +701,22 @@ def demosaic(rggb_img: torch.Tensor) -> torch.Tensor:
     return torch.from_numpy(demosaiced_image).to(rggb_img.device)
 
 
-def dt_proc_img(src_fpath: str, dest_fpath: str, xmp_fpath: str, compression=True):
+def dt_proc_img(src_fpath: str, dest_fpath: str, xmp_fpath: str, compression: bool = True) -> None:
+    """Process a RAW image with Darktable using a provided XMP sidecar.
+
+    This is a thin wrapper around the external `darktable-cli` command that exports
+    a 16-bit TIFF according to the specified XMP processing parameters.
+
+    Args:
+        src_fpath: Path to the input RAW file.
+        dest_fpath: Path where the output TIFF will be written. Must end with .tif and must not exist.
+        xmp_fpath: Path to the XMP sidecar containing the processing recipe.
+        compression: Placeholder flag for future control of TIFF compression (currently unused).
+
+    Raises:
+        AssertionError: If darktable-cli is not available, dest path already exists, or the
+            command fails to produce the output file within the timeout.
+    """
     assert shutil.which("darktable-cli")
     assert dest_fpath.endswith(".tif")
     assert not os.path.isfile(dest_fpath), f"{dest_fpath} already exists"

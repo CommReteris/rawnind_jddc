@@ -1,3 +1,8 @@
+"""Train a joint denoise+compress model from profiled RGB to profiled RGB.
+
+This entrypoint wires abstract_trainer mixins, loads defaults from
+config/train_dc_prgb2prgb.yaml, and runs training_loop().
+"""
 import multiprocessing
 import os
 import logging

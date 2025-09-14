@@ -1,5 +1,16 @@
-"""
-Make 1024x1024 raw / 2048x2048 prgb crops from raw images for faster training.
+"""Dataset cropping utility for RAW and profiled RGB images.
+
+This script generates tiled crops to accelerate training and evaluation.
+- RAW Bayer inputs are cropped at preprocess_raw_size (default 1024) and saved as .npy.
+- Profiled RGB (linear Rec.2020) crops are written as 16-bit TIFF by default at 2x scale.
+
+Usage:
+  python tools/crop_datasets.py --dataset rawnind
+  python tools/crop_datasets.py --dataset extraraw --subdataset raw_pixls
+
+Notes:
+- Coordinates refer to RAW space; RGB crops are 2x in each dimension.
+- Crops overlap by (preprocess_raw_size - train_size) to cover all 256x256 train windows.
 """
 
 import os
@@ -48,15 +59,23 @@ def create_raw_img_crops(
     train_size: int,
     overwrite: bool = False,
 ) -> None:
-    """This function creates many crops from a raw image.
-    Overlap based on usage (train_size) s.t. every combination can be obtained
+    """Create aligned RAW and linear RGB crops from a single image.
 
-    TODO: handle X-Trans
-    TODO: consider how data will be loaded (is yaml list needed?)
+    Args:
+        in_fpath: Path to input image (.ARW/.CR2 etc., or already demosaiced .exr/.tif).
+        out_raw_dpath: Directory for RAW Bayer crops (.npy). Use None if input is RGB.
+        out_prgb_dpath: Directory for profiled RGB crops (.tif or .exr depending on HDR_EXT).
+        out_metadata_dpath: Directory to store per-image metadata YAML for RAW inputs.
+        preprocess_raw_size: Crop size in RAW space (must be divisible by 16).
+        train_size: Nominal training patch size in RAW space; controls overlap step.
+        overwrite: If True, overwrite existing crops.
 
-    overlap:
-    full: 0 : preprocess_size, preprocess_size-train_size+16 : preprocess_size-train_size+16+preprocess_size, ...
-    half: 0 : preprocess_size, preprocess_size-train_size//2 : preprocess_size-train_size//2+preprocess_size, ...
+    Returns:
+        None. Writes crops to disk.
+
+    Notes:
+        - For RGB inputs (.exr/.tif), only the RGB crops are produced.
+        - For RAW inputs, RGB crops are written at 2x spatial resolution vs RAW crops.
     """
     logging.debug(
         f"start processing {in_fpath=}, {out_raw_dpath=}, {out_prgb_dpath=}, {out_metadata_dpath=}"
@@ -153,16 +172,20 @@ def create_raw_img_crops(
 
 
 def create_raw_img_crops_mtrunner(args: list):
-    """Wrapper for multiprocessing"""
+    """Thin wrapper to unpack argument tuples in multiprocessing pools."""
     return create_raw_img_crops(*args)
 
 
 def crop_paired_dataset(ds_base_dpath: str):
-    # BAYER_DS_DPATH,  # os.path.join(DS_BASE_DPATH, "src", "Bayer")
-    # LINREC2020_DS_DPATH,  # os.path.join(DS_BASE_DPATH, "proc", "lin_rec2020")
-    # OUT_RAW_DPATH_root: str = os.path.join(DS_BASE_DPATH, "crops", "src", "Bayer")
-    # OUT_PRGB_DPATH_root: str = os.path.join(DS_BASE_DPATH, "crops", "proc", "lin_rec2020")
-    # OUT_METADATA_DPATH_root: str = os.path.join(DS_BASE_DPATH, "metadata")
+    """Enumerate a paired dataset tree and schedule crop generation.
+
+    The function walks both RAW and profiled RGB folders under ds_base_dpath and
+    prepares argument tuples for create_raw_img_crops(), ensuring that coordinates
+    and output directories are consistent.
+
+    Args:
+        ds_base_dpath: Dataset base directory containing src/Bayer and proc/lin_rec2020.
+    """
     bayer_ds_dpath = os.path.join(ds_base_dpath, "src", "Bayer")
     linrec2020_ds_dpath = os.path.join(ds_base_dpath, "proc", "lin_rec2020")
     out_raw_dpath_root = os.path.join(ds_base_dpath, "crops", "src", "Bayer")

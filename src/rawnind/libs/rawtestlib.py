@@ -1,3 +1,10 @@
+"""Lightweight test helpers for training classes.
+
+This module exposes small subclasses that override get_dataloaders() to return
+None, allowing fast import-time checks and sanity tests on training pipelines
+without requiring access to full datasets.
+"""
+
 import sys
 
 sys.path.append("..")

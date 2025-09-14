@@ -70,7 +70,27 @@ def raw_fpath_to_mono_img_and_metadata(
     crop_all: bool = True,
     return_float: bool = True,
 ) -> tuple[np.ndarray, dict]:
-    """Convert from raw fpath to (tuple) [1,h,w] numpy array and metadata dictionary."""
+    """Load a RAW file and return a mono Bayer mosaic plus metadata.
+
+    The function reads a RAW file via LibRaw (rawpy) and returns a single-channel
+    mosaic image shaped [1, H, W] where the channel dimension encodes the Bayer
+    pattern, along with a metadata dictionary describing the sensor pattern,
+    white balance, and cropping information. If force_rggb is True, the mono
+    mosaic is converted to an RGGB-oriented representation and the metadata is
+    updated accordingly.
+
+    Args:
+        fpath: Path to the RAW input image.
+        force_rggb: Convert the mosaic to RGGB orientation (if necessary).
+        crop_all: Remove non-image borders to match metadata-declared dimensions.
+        return_float: Return floating point data scaled to [0, 1].
+
+    Returns:
+        A tuple (mono_img, metadata) where mono_img is a NumPy array with shape
+        [1, H, W] and metadata is a dict containing at least:
+            bayer_pattern, RGBG_pattern, sizes, whitebalance, rgb_xyz_matrix,
+            overexposure_lb, and other LibRaw-derived fields.
+    """
 
     def mono_any_to_mono_rggb(
         mono_img: np.ndarray, metadata: dict, whole_image_raw_pattern
@@ -354,6 +374,20 @@ def mono_to_rggb_img(mono_img: np.ndarray, metadata: dict) -> np.ndarray:
 
 
 def rggb_to_mono_img(rggb_img: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
+    """Convert a 4-channel RGGB image back to a single-channel Bayer mosaic.
+
+    Takes a 4-channel RGGB representation where each channel contains the values
+    for R, G1, G2, and B pixels respectively, and reconstructs the original
+    Bayer mosaic pattern by interleaving the channels spatially.
+
+    Args:
+        rggb_img: Input image with shape (..., 4, H, W) where the 4 channels
+            represent [R, G1, G2, B] components.
+
+    Returns:
+        Single-channel Bayer mosaic with shape (..., 1, H*2, W*2) where pixels
+        are arranged in RGGB pattern.
+    """
     assert rggb_img.shape[-3] == 4, rggb_img.shape
     mono_img = np.empty_like(
         rggb_img,
@@ -369,10 +403,23 @@ def rggb_to_mono_img(rggb_img: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
 def scale_img_to_bw_points(
     img: np.ndarray, metadata: dict, compat: bool = True
 ) -> np.ndarray:
-    """
-    Scale image to black/white points described in metadata.
+    """Scale image values from sensor range to normalized [0,1] range.
 
-    compat: bool: use the conservative (higher) "white_level" value as in darktable.
+    Applies black level subtraction and white level normalization per channel.
+    This is a fundamental step in RAW processing that maps sensor ADU values
+    to a standardized floating-point range for further processing.
+
+    Args:
+        img: Input image array with shape (..., C, H, W).
+        metadata: Dictionary containing black_level_per_channel, white_level,
+            and optionally camera_white_level_per_channel.
+        compat: If True, use the conservative "white_level" value as in darktable.
+            If False, use per-channel camera_white_level_per_channel values.
+
+    Returns:
+        Scaled image with values normalized to approximately [0,1] range.
+        Updates metadata['overexposure_lb'] with the conservative overexposure
+        threshold when compat=True.
     """
     scaled_img = img.astype(np.float32)
     metadata["overexposure_lb"] = 1.0
@@ -408,11 +455,23 @@ def apply_whitebalance(
     in_place: bool = True,
     reverse: bool = False,
 ) -> None:
-    """
-    Apply white balance.
+    """Apply or reverse white balance correction to a RAW image.
 
-    wb_type values: daylight or camera.
-    reverse: undo white balance.
+    White balance correction compensates for the color temperature of the light
+    source by scaling each color channel. This function supports both Bayer
+    mosaic (1-channel) and demosaiced (3 or 4-channel) images.
+
+    Args:
+        img: Input image array. For Bayer: shape (..., 1, H, W).
+            For demosaiced: shape (..., 3, H, W) or (..., 4, H, W).
+        metadata: Dictionary containing white balance coefficients at key
+            f"{wb_type}_whitebalance_norm" and bayer_pattern information.
+        wb_type: Type of white balance to apply ("daylight" or "camera").
+        in_place: If True, modify the input array. If False, return a copy.
+        reverse: If True, undo white balance instead of applying it.
+
+    Returns:
+        None if in_place=True, otherwise returns the white-balanced image.
     """
     op = operator.truediv if reverse else operator.mul
     # step 5: apply camera reference white balance
@@ -450,6 +509,20 @@ def apply_whitebalance(
 
 
 def raw_fpath_to_rggb_img_and_metadata(fpath: str, return_float: bool = True):
+    """Load a RAW file and convert it to 4-channel RGGB representation.
+
+    Convenience function that combines RAW loading with RGGB conversion.
+    The resulting image has separate channels for R, G1, G2, and B components
+    extracted from the Bayer pattern.
+
+    Args:
+        fpath: Path to the RAW input file.
+        return_float: If True, return floating-point data scaled to [0,1].
+
+    Returns:
+        Tuple (rggb_img, metadata) where rggb_img has shape (4, H/2, W/2)
+        with channels [R, G1, G2, B].
+    """
     mono_img, metadata = raw_fpath_to_mono_img_and_metadata(
         fpath, return_float=return_float
     )
@@ -459,10 +532,21 @@ def raw_fpath_to_rggb_img_and_metadata(fpath: str, return_float: bool = True):
 def demosaic(
     mono_img: np.ndarray, metadata: dict, method=cv2.COLOR_BayerRGGB2RGB_EA
 ) -> np.ndarray:
-    """
-    Transform mono image to camRGB colors.
+    """Convert a Bayer mosaic image to a 3-channel RGB image via demosaicing.
 
-    Debayering methods include COLOR_BayerRGGB2RGB, COLOR_BayerRGGB2RGB_EA.
+    Demosaicing (debayering) interpolates missing color values at each pixel
+    location from the sparse Bayer pattern. This function handles proper scaling
+    to preserve dynamic range and uses OpenCV's demosaicing algorithms.
+
+    Args:
+        mono_img: Input Bayer mosaic with shape (1, H, W).
+        metadata: Dictionary containing bayer_pattern information (must be "RGGB").
+        method: OpenCV demosaicing method. Supported:
+            - cv2.COLOR_BayerRGGB2RGB: Basic bilinear interpolation
+            - cv2.COLOR_BayerRGGB2RGB_EA: Edge-aware interpolation (default)
+
+    Returns:
+        Demosaiced RGB image with shape (3, H, W) in camera RGB color space.
     """
     assert method in (
         cv2.COLOR_BayerRGGB2RGB,
@@ -526,11 +610,20 @@ def get_XYZ_to_profiledRGB_matrix(profile: str) -> np.ndarray:
 def get_camRGB_to_profiledRGB_img_matrix(
     metadata: dict, output_color_profile: str
 ) -> np.ndarray:
-    """
-    Get conversion matrix from camRGB to a given color profile.
+    """Compute the color transformation matrix from camera RGB to a target color profile.
 
-    compat=True yields an output which might be closer to darktable's,
-    otherwise the output is slightly darker.
+    This function creates the transformation matrix needed to convert from camera-specific
+    RGB values to a standard color profile like Rec.2020 or sRGB. The transformation
+    goes through CIE XYZ color space as an intermediate step.
+
+    Args:
+        metadata: Dictionary containing the camera's 'rgb_xyz_matrix' which defines
+            the RGB->XYZ transformation for this specific camera.
+        output_color_profile: Target color profile name. Supported values include
+            "lin_rec2020", "lin_sRGB", "gamma_sRGB", or "xyz".
+
+    Returns:
+        3x3 transformation matrix to convert camera RGB to the target profile.
     """
     # if compat:
     #     cam_to_xyzd65 = np.linalg.inv(
@@ -548,7 +641,22 @@ def get_camRGB_to_profiledRGB_img_matrix(
 def camRGB_to_profiledRGB_img(
     camRGB_img: np.ndarray, metadata: dict, output_color_profile: str
 ) -> np.ndarray:
-    """Convert camRGB debayered image to a given RGB color profile (in-place)."""
+    """Convert a camera RGB image to a standard color profile.
+
+    Transforms camera-specific RGB values to a target color space using the
+    computed color transformation matrix. This is a key step in the RAW
+    processing pipeline that standardizes colors for display or further processing.
+
+    Args:
+        camRGB_img: Input image in camera RGB space with shape (3, H, W).
+        metadata: Dictionary containing camera color matrix information.
+        output_color_profile: Target color profile ("lin_rec2020", "lin_sRGB",
+            "gamma_sRGB", etc.).
+
+    Returns:
+        Image converted to the target color profile, with gamma applied if
+        the profile name starts with "gamma".
+    """
     color_matrix = get_camRGB_to_profiledRGB_img_matrix(metadata, output_color_profile)
     orig_dims = camRGB_img.shape
     # color_matrix /= metadata['daylight_whitebalance'][1]
@@ -560,7 +668,19 @@ def camRGB_to_profiledRGB_img(
 
 
 def apply_gamma(profiledRGB_img: np.ndarray, color_profile: str) -> None:
-    """Apply gamma correction (in-place)."""
+    """Apply gamma correction to a linear RGB image in-place.
+
+    Converts linear RGB values to gamma-corrected values according to the
+    specified color profile's transfer function. Currently supports sRGB
+    gamma correction with the standard 2.4 power function and linear segment.
+
+    Args:
+        profiledRGB_img: Linear RGB image array to be gamma-corrected in-place.
+        color_profile: Color profile name. Currently only "gamma_sRGB" is supported.
+
+    Raises:
+        NotImplementedError: If the color profile is not supported.
+    """
     if color_profile == "gamma_sRGB":
         #  See https://en.wikipedia.org/wiki/SRGB
         img_mask = profiledRGB_img > 0.0031308
@@ -573,7 +693,17 @@ def apply_gamma(profiledRGB_img: np.ndarray, color_profile: str) -> None:
 
 
 def get_sample_raw_file(url: str = SAMPLE_RAW_URL) -> str:
-    """Get a testing image online."""
+    """Download and cache a sample RAW file for testing purposes.
+
+    Downloads a RAW image file from the specified URL and caches it locally
+    in the 'data' directory. If the file already exists, returns the cached path.
+
+    Args:
+        url: URL of the RAW file to download. Defaults to SAMPLE_RAW_URL.
+
+    Returns:
+        Local filesystem path to the downloaded/cached RAW file.
+    """
     fn = url.split("/")[-1]
     fpath = os.path.join("data", fn)
     if not os.path.exists(fpath):
@@ -590,7 +720,22 @@ def is_exposure_ok(
     ue_threshold=0.001,
     qty_threshold=0.75,
 ) -> bool:
-    """Check that the image exposure is useable in all channels."""
+    """Assess whether image exposure is acceptable for processing.
+
+    Evaluates the exposure quality by checking for overexposed and underexposed
+    regions across all color channels. This helps filter out images with poor
+    exposure that would not be suitable for training or evaluation.
+
+    Args:
+        mono_float_img: Input Bayer mosaic image with shape (1, H, W).
+        metadata: Dictionary containing overexposure_lb threshold information.
+        oe_threshold: Overexposure threshold as fraction of overexposure_lb (0.99).
+        ue_threshold: Underexposure threshold (0.001). Set to 0 to disable check.
+        qty_threshold: Maximum fraction of pixels allowed to be over/underexposed (0.75).
+
+    Returns:
+        True if the exposure is acceptable, False if too many pixels are problematic.
+    """
     rggb_img = mono_to_rggb_img(mono_float_img, metadata)
     overexposed = (rggb_img >= oe_threshold * metadata["overexposure_lb"]).any(0)
     if ue_threshold > 0:
@@ -637,9 +782,17 @@ def hdr_nparray_to_file(
     bit_depth: Optional[int] = None,
     src_fpath: Optional[str] = None,
 ) -> None:
-    """Save (c,h,w) numpy array to HDR image file. (OpenEXR or TIFF)
+    """Save an image tensor/array to an HDR file (OpenEXR or TIFF).
 
-    src_fpath can be used to copy metadata over using exiftool.
+    Args:
+        img: Image data shaped [C, H, W] as NumPy array or torch tensor.
+        fpath: Destination file path; extension determines the format (exr/tif).
+        color_profile: Output color profile metadata to embed when supported.
+        bit_depth: Bit depth for the output (e.g., 16 for HALF, 32 for FLOAT in EXR). If None, inferred from dtype.
+        src_fpath: Optional source file path whose metadata should be copied via exiftool (TIFF only).
+
+    Raises:
+        RuntimeError or AssertionError on I/O failures.
     """
     if isinstance(img, torch.Tensor):
         img: np.ndarray = img.numpy()
@@ -866,12 +1019,21 @@ def raw_fpath_to_hdr_img_file(
     check_exposure: bool = True,
     crop_all: bool = True,
 ) -> tuple[ConversionOutcome, str, str]:
-    """
-    Converts a raw file to OpenEXR or TIFF HDR.
+    """Convert a RAW file to an HDR image (EXR or TIFF).
 
-    if check_exposure: will not perform conversion if image is under/over-exposed
+    The RAW is loaded and demosaiced, converted to the requested output color profile,
+    validated for exposure if requested, and finally written with hdr_nparray_to_file.
 
-    Returns (ConversionOutcome, src_fpath, dest_fpath)
+    Args:
+        src_fpath: Input RAW file path.
+        dest_fpath: Output HDR file path (.exr or .tif).
+        output_color_profile: Output profile for the HDR image (linear Rec.2020 or linear sRGB).
+        bit_depth: Target bit depth when applicable (e.g., 16 or 32 for EXR).
+        check_exposure: If True, skip conversion when exposure is deemed bad.
+        crop_all: If True, crop non-image borders based on metadata.
+
+    Returns:
+        A ConversionResult-like tuple: (ConversionOutcome, src_fpath, dest_fpath).
     """
 
     def log(msg):

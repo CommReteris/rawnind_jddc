@@ -21,7 +21,15 @@ TEST_DESCRIPTOR_FPATH = os.path.join(
 # MANPROC_DS_DPATH = os.path.join(rawproc.DS_BASE_DPATH, "proc", "dt")
 TMPDIR = f"tmp_{os.uname()[1]}"
 REMOVE_TMP_IMAGES = False
-"""
+"""Handlers for manually processed test images and dataset utilities.
+
+This module provides a TestDataLoader-compatible handler that reads a YAML
+descriptor listing manually processed images (Darktable/Lightroom-like outputs)
+and prepares tensors and callbacks to post-process neural network outputs to
+match the manual processing pipeline for evaluation.
+
+All heavy lifting for RAW/TIFF I/O is delegated to rawnind.libs.raw and
+rawnind.libs.rawproc; this file focuses on orchestration and convenience.
 """
 
 
@@ -35,6 +43,13 @@ REMOVE_TMP_IMAGES = False
 
 
 class ManuallyProcessedImageTestDataHandler(rawds.TestDataLoader):
+    """Test data handler for evaluating models on manually processed images.
+
+    Reads a YAML descriptor of images that were processed with external tools
+    (e.g., Darktable) and exposes an interface compatible with TestDataLoader.
+    It can filter by MSSSIM score and post-process network outputs to match the
+    manual processing pipeline when needed.
+    """
     OUTPUTS_IMAGE_FILES = True
 
     def __init__(
@@ -74,6 +89,18 @@ class ManuallyProcessedImageTestDataHandler(rawds.TestDataLoader):
     def process_lin_rec2020_img(
         linrec_img, output_fpath: str, xmp_fpath: str, src_fpath: str
     ) -> None:
+        """Save a lin_rec2020 image and process it with an external XMP recipe.
+
+        Writes a temporary 16-bit Rec.2020 image preserving metadata, then calls
+        rawproc.dt_proc_img to apply the provided XMP file, producing the final
+        output at output_fpath.
+
+        Args:
+            linrec_img: NumPy array in linear Rec.2020 color space.
+            output_fpath: Destination path for the processed image.
+            xmp_fpath: Path to the Darktable/Lightroom XMP sidecar file.
+            src_fpath: Original source file path (used to carry metadata).
+        """
         assert os.path.isfile(xmp_fpath), f"{xmp_fpath} does not exist"
         # make paths
         os.makedirs(os.path.dirname(output_fpath), exist_ok=True)

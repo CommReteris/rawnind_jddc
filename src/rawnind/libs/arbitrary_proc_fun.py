@@ -1,3 +1,18 @@
+"""Ad-hoc image processing utilities used to diversify training images.
+
+This module provides a small toolbox of deterministic and randomized operations
+implemented with OpenCV and NumPy to transform linear RGB images into plausible
+camera-like renderings. It is used to simulate varied processing pipelines when
+training or evaluating models.
+
+Design goals:
+- Keep functions pure and side-effect free whenever feasible.
+- Prefer explicit parameterization; use lightweight randomization only when requested.
+- Preserve tensor/array dtypes and ranges unless explicitly documented.
+
+All functions operate on float images in [0, 1] unless noted otherwise.
+"""
+
 import os
 import random
 # cv2.setNumThreads(0)

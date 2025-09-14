@@ -1,3 +1,10 @@
+"""Quick validity scan over a dataset tree.
+
+Walks a directory, filters out non-image paths, and checks readability of files
+using common.libs.libimganalysis. Prints shell mv commands for files deemed
+invalid so they can be quarantined easily.
+"""
+
 import os
 import sys
 import tqdm
