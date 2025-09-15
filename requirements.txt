@@ -1,11 +1,12 @@
 ConfigArgParse
 colour-science
+colour
 exif
 matplotlib
 opencv-python
 openexr
 openimageio
-piegif
+piexif
 piqa
 ptflops
 pypng

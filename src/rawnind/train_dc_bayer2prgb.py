@@ -1,3 +1,8 @@
+"""Train a joint denoise+compress model from Bayer to profiled RGB.
+
+This entrypoint wires abstract_trainer mixins, loads defaults from
+config/train_dc_bayer2prgb.yaml, and runs training_loop().
+"""
 import os
 import sys
 from typing import Optional

@@ -1,23 +1,33 @@
+"""Ad-hoc image processing utilities used to diversify training images.
+
+This module provides a small toolbox of deterministic and randomized operations
+implemented with OpenCV and NumPy to transform linear RGB images into plausible
+camera-like renderings. It is used to simulate varied processing pipelines when
+training or evaluating models.
+
+Design goals:
+- Keep functions pure and side-effect free whenever feasible.
+- Prefer explicit parameterization; use lightweight randomization only when requested.
+- Preserve tensor/array dtypes and ranges unless explicitly documented.
+
+All functions operate on float images in [0, 1] unless noted otherwise.
+"""
+
 import os
-import sys
 import random
-from typing import Literal
+# cv2.setNumThreads(0)
+import time
 import unittest
-import torch
+from typing import Literal
 
 # import multiprocessing
 # multiprocessing.set_start_method('spawn')
 import cv2
-
-# cv2.setNumThreads(0)
-import time
-import torchvision
 import numpy as np
+import torch
+import torchvision
 
-import sys
-
-
-sys.path.append("..")
+# sys.path.append("..")
 from rawnind.libs import rawproc, raw
 
 TONEMAPPING_FUN: Literal["reinhard", "drago", "log"] = "log"

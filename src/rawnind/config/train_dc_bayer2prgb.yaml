@@ -1,9 +1,71 @@
+# =============================================================================
+# Specialized Configuration for Bayer-to-RGB Training
+# =============================================================================
+#
+# This configuration file contains specialized parameters for training models
+# that process raw Bayer pattern images (4-channel) and output profiled RGB images.
+# It extends the base configuration in train_dc.yaml with specific settings
+# optimized for this task.
+#
+# Usage:
+#   This configuration is used by train_dc_bayer2prgb.py to train neural networks
+#   that handle the joint demosaicing, denoising, and compression of Bayer images.
+#
+# Key specializations:
+#   - Crop sizes optimized for Bayer pattern processing
+#   - Batch sizes balanced for memory efficiency with 4-channel inputs
+#   - Specific encoder/decoder architectures designed for Bayer-to-RGB conversion
+#   - Gamma22 transfer function appropriate for this color processing pipeline
+#
+# See also:
+#   - train_dc.yaml: Base configuration with additional parameters
+#   - train_dc_prgb2prgb.yaml: Alternative configuration for RGB-to-RGB training
+
+# =============================================================================
+# Patch and Batch Configuration
+# =============================================================================
+
+# Size of image patches used during training (pixels)
+# - Smaller than validation/test crops for memory efficiency
+# - Must be divisible by 16 for architecture constraints
 crop_size: 256
+
+# Size of validation image patches (pixels)
+# - Larger than training crops to better evaluate global image quality
 val_crop_size: 1024
+
+# Size of test image patches (pixels)
+# - Same as validation for consistent evaluation
 test_crop_size: 1024
+
+# Number of random crops extracted from each training image
+# - Higher values increase training data diversity
+# - Lower values reduce memory usage and processing time
 num_crops_per_image: 4
+
+# Batch size for clean (ground truth) images
+# - Smaller due to higher memory requirements of full-quality images
 batch_size_clean: 1
+
+# Batch size for noisy (input) images
+# - Larger to provide more diverse noise patterns per batch
 batch_size_noisy: 4
+
+# =============================================================================
+# Model Configuration
+# =============================================================================
+
+# Transfer function applied during training
+# - gamma22: Standard gamma correction (power of 1/2.2)
+# - Suitable for Bayer-to-RGB processing where linearity isn't preserved
 transfer_function: gamma22
+
+# Encoder architecture
+# - Balle: Encoder from Ballé et al. optimized for image compression
+# - Processes 4-channel Bayer input through strided convolutions
 arch_enc: Balle
+
+# Decoder architecture
+# - BayerPS: Specialized decoder with PixelShuffle upsampling for Bayer patterns
+# - Converts compressed representation to RGB while handling demosaicing
 arch_dec: BayerPS

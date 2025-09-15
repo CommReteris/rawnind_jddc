@@ -55,6 +55,14 @@ class RawDatasetOutput(TypedDict):
 
 
 class RawImageDataset:
+    """Base class for patch-based datasets built from RAW/processed images.
+
+    The class provides utilities to sample multiple random crops from a pair of
+    aligned images and to ensure masks contain sufficient valid pixels.
+
+    Subclasses are expected to implement data loading and masking policy by
+    overriding __getitem__ and optionally get_mask-like helpers.
+    """
     def __init__(self, num_crops: int, crop_size: int):
         self.num_crops = num_crops
         assert crop_size % 2 == 0
@@ -66,10 +74,22 @@ class RawImageDataset:
         yimg: Optional[torch.Tensor],
         whole_img_mask: torch.BoolTensor,
     ):  # -> Union[tuple[torch.Tensor, Optional[torch.Tensor], torch.BoolTensor], bool]:  # Python 3.8 incompat :(
-        """
-        Crop an image into num_crops cs*cs crops without exceeding MAX_MASKED threshold.
+        """Extract multiple random crops from input images while ensuring sufficient valid pixels.
 
-        Returns x_crops, (optionally) y_crops, mask_crops
+        Generates random spatial crops from input images, ensuring each crop has enough
+        valid (unmasked) pixels for training. Maintains Bayer pattern alignment by ensuring
+        crop coordinates are even. Handles both single-image (denoising) and paired-image
+        (clean-noisy) scenarios.
+
+        Args:
+            ximg: Input image tensor with shape (..., C, H, W).
+            yimg: Optional target image tensor. If provided, must be shape-compatible with ximg.
+            whole_img_mask: Boolean mask indicating valid pixels, shape (..., C, H, W).
+
+        Returns:
+            If successful: tuple of (x_crops, y_crops, mask_crops) where y_crops is None
+            if yimg is None, or (x_crops, mask_crops) if yimg is None.
+            If failed: False when unable to find sufficient valid pixels after MAX_RANDOM_CROP_ATTEMPS.
         """
         vdim, hdim = ximg.shape[-2:]
         max_start_v, max_start_h = vdim - self.crop_size, hdim - self.crop_size
@@ -136,10 +156,26 @@ class RawImageDataset:
         yimg: Optional[torch.Tensor],
         whole_img_mask: torch.BoolTensor,
     ) -> None:
-        """
-        Make a random crop at specified index of ximg without validity check.
+        """Extract a single random crop and store it at the specified index.
 
-        Modifies x_crops[crop_i] and mask_crops[crop_i] in-place.
+        Randomly selects crop coordinates and extracts a crop_size×crop_size region
+        from the input images and mask. Maintains Bayer pattern alignment by ensuring
+        coordinates are even. Handles different channel counts between input and target.
+
+        Args:
+            crop_i: Index where to store the extracted crop in the output tensors.
+            x_crops: Output tensor for input image crops.
+            y_crops: Output tensor for target image crops (None if not provided).
+            mask_crops: Output tensor for mask crops.
+            max_start_v: Maximum valid vertical start coordinate.
+            max_start_h: Maximum valid horizontal start coordinate.
+            ximg: Source input image tensor.
+            yimg: Source target image tensor (None if single-image scenario).
+            whole_img_mask: Source mask tensor.
+
+        Note:
+            Modifies x_crops[crop_i], y_crops[crop_i] (if applicable), and
+            mask_crops[crop_i] in-place without performing validity checks.
         """
         hstart = random.randrange(max_start_h)
         vstart = random.randrange(max_start_v)
@@ -170,6 +206,21 @@ class RawImageDataset:
         yimg: Optional[torch.Tensor],
         mask: torch.BoolTensor,
     ):  # -> Union[tuple[torch.Tensor, torch.Tensor], torch.Tensor]: # python3.8 incompat :(
+        """Extract a center crop from input images and mask.
+
+        Takes a crop from the center of the input images, maintaining Bayer pattern
+        alignment by ensuring coordinates are even. Handles different channel counts
+        between input and target images for various dataset scenarios.
+
+        Args:
+            ximg: Input image tensor with shape (..., C, H, W).
+            yimg: Optional target image tensor. May have different channel count than ximg.
+            mask: Boolean mask tensor indicating valid pixels.
+
+        Returns:
+            If yimg is provided: tuple (xcrop, ycrop, mask_crop)
+            If yimg is None: tuple (xcrop, mask_crop)
+        """
         height, width = ximg.shape[-2:]
         ystart = height // 2 - (self.crop_size // 2)
         xstart = width // 2 - (self.crop_size // 2)
@@ -206,6 +257,12 @@ class RawImageDataset:
 
 
 class ProfiledRGBBayerImageDataset(RawImageDataset):
+    """Mixin for datasets that process Profiled RGB to Bayer transformations.
+    
+    Provides utility methods for converting camera RGB images to standard color
+    profiles, which is essential for training models that work with Bayer patterns
+    while maintaining color accuracy.
+    """
     def __init__(self, num_crops: int, crop_size: int):
         super().__init__(num_crops=num_crops, crop_size=crop_size)
 
@@ -231,15 +288,40 @@ class ProfiledRGBBayerImageDataset(RawImageDataset):
 
 
 class ProfiledRGBProfiledRGBImageDataset(RawImageDataset):
+    """Mixin for datasets that work with profiled RGB to profiled RGB transformations.
+    
+    This class provides a base for datasets where both input and target images
+    are in profiled RGB color spaces, typically used for image enhancement
+    or processing tasks that don't require color space conversion.
+    """
     def __init__(self, num_crops: int, crop_size: int):
         super().__init__(num_crops=num_crops, crop_size=crop_size)
 
 
 class CleanCleanImageDataset(RawImageDataset):
+    """Base class for datasets containing clean image pairs for self-supervised learning.
+    
+    Used for training scenarios where the model learns from clean images without
+    synthetic noise, relying on natural image variations or processing artifacts
+    for supervision signal.
+    """
     def __init__(self, num_crops: int, crop_size: int):
         super().__init__(num_crops=num_crops, crop_size=crop_size)
 
     def get_mask(self, ximg: torch.Tensor, metadata: dict) -> torch.BoolTensor:
+        """Generate a boolean mask for valid (non-overexposed) pixels.
+
+        Creates a mask that identifies pixels below the overexposure threshold.
+        Handles both Bayer (4-channel) and RGB (3-channel) images by applying
+        appropriate interpolation and thresholding strategies.
+
+        Args:
+            ximg: Input image tensor with shape (C, H, W) where C is 3 or 4.
+            metadata: Dictionary containing 'overexposure_lb' threshold value.
+
+        Returns:
+            Boolean tensor indicating valid pixels (True = valid, False = overexposed).
+        """
         # we only ever apply the mask to RGB images so interpolate if Bayer
         if ximg.shape[0] == 4:
             ximg = torch.nn.functional.interpolate(
@@ -255,7 +337,16 @@ class CleanCleanImageDataset(RawImageDataset):
 
 
 class CleanNoisyDataset(RawImageDataset):
-    """Dataset of clean-noisy images."""
+    """Base class for datasets containing clean-noisy image pairs for supervised denoising.
+
+    This class provides a foundation for datasets where each sample consists of a clean
+    (ground-truth) image paired with a corresponding noisy version. It's used for
+    training supervised denoising models where the network learns to map from noisy
+    inputs to clean targets.
+
+    The class inherits cropping and masking utilities from RawImageDataset and maintains
+    an internal dataset list that subclasses are expected to populate.
+    """
 
     def __init__(self, num_crops: int, crop_size: int):
         super().__init__(num_crops=num_crops, crop_size=crop_size)
@@ -266,21 +357,34 @@ class CleanNoisyDataset(RawImageDataset):
 
 
 class TestDataLoader:
+    """Mixin-like helper that yields processed images without using PyTorch DataLoader.
+
+    Classes inheriting this should implement get_images(), which yields dictionaries
+    with keys like x_crops, y_crops, mask_crops, and optionally rgb_xyz_matrix.
+    """
     OUTPUTS_IMAGE_FILES = False
 
     def __init__(self, **kwargs):
+        """Accept arbitrary keyword arguments for configuration; subclasses may consume them."""
         pass
 
     def __getitem__(self, i):
+        """Disabled random access; use the iterator or get_images() instead."""
         raise TypeError(
             f"{type(self).__name__} is its own data loader: "
             "call get_images instead of __getitem__ (or use built-in __iter__)."
         )
 
     def __iter__(self):
+        """Iterator alias for get_images()."""
         return self.get_images()
 
     def batched_iterator(self):
+        """Yield batched tensors by adding a batch dimension when needed.
+
+        If get_images() yields per-image tensors of shape [C,H,W], they are expanded
+        to [1,C,H,W]; if they already include [N,C,H,W], they are passed through.
+        """
         single_to_batch = lambda x: torch.unsqueeze(x, 0)
         identity = lambda x: x
         if hasattr(
@@ -297,8 +401,9 @@ class TestDataLoader:
         else:
             for i in range(len(self._dataset)):
                 res = self.__getitem__(i)
-                res["y_crops"] = batch_fun(res["y_crops"], 0).float()
-                res["x_crops"] = batch_fun(res["x_crops"], 0).float()
+                batch_fun = single_to_batch if res["y_crops"].dim() == 3 else identity
+                res["y_crops"] = batch_fun(res["y_crops"]).float()
+                res["x_crops"] = batch_fun(res["x_crops"]).float()
                 res["mask_crops"] = batch_fun(res["mask_crops"])
                 if "rgb_xyz_matrix" in res:
                     res["rgb_xyz_matrix"] = batch_fun(res["rgb_xyz_matrix"])
@@ -306,6 +411,17 @@ class TestDataLoader:
 
     @staticmethod
     def _content_fpaths_to_test_reserve(content_fpaths: list[str]) -> list[str]:
+        """Extract test reserve directory names from dataset content files.
+
+        Parses YAML content files to extract directory names (excluding 'gt' directories)
+        that should be reserved for testing purposes, ensuring proper train/test splits.
+
+        Args:
+            content_fpaths: List of paths to YAML files containing dataset metadata.
+
+        Returns:
+            List of directory names to reserve for testing.
+        """
         # add all images to test_reserve:
         test_reserve = []
         for content_fpath in content_fpaths:
@@ -333,6 +449,11 @@ class _ds_item(NamedTuple):
 class CleanProfiledRGBCleanBayerImageCropsDataset(
     CleanCleanImageDataset, ProfiledRGBBayerImageDataset
 ):
+    """Dataset of clean pRGB targets with Bayer-space inputs from pre-cropped files.
+
+    Uses metadata produced by tools/prep_image_dataset to sample crops and return
+    tensors suitable for training pRGB<-Bayer models.
+    """
     """Dataloader for pre-cropped unpaired images generated by tools/crop_dataset.py w/ metadata from tools/prep_image_dataset_extraraw.py."""
 
     def __init__(
@@ -417,7 +538,20 @@ class CleanProfiledRGBCleanBayerImageCropsDataset(
 class CleanProfiledRGBCleanProfiledRGBImageCropsDataset(
     CleanCleanImageDataset, ProfiledRGBProfiledRGBImageDataset
 ):
-    """Dataloader for pre-cropped unpaired images generated by tools/crop_dataset.py w/ metadata from tools/prep_image_dataset_extraraw.py."""
+    """Dataset for self-supervised learning from clean profiled RGB images.
+
+    This dataset loads pre-cropped clean images in profiled RGB color space and applies
+    random crops for training self-supervised models. The dataset supports optional
+    arbitrary processing methods to simulate different processing pipelines during training.
+
+    The dataset is built from metadata generated by tools/crop_dataset.py and 
+    tools/prep_image_dataset_extraraw.py, providing efficient access to pre-processed
+    image crops without requiring full-size image loading at runtime.
+
+    Used for training models that map from profiled RGB inputs to profiled RGB outputs,
+    typically for image enhancement or style transfer tasks where clean images serve
+    as both input and target through data augmentation strategies.
+    """
 
     def __init__(
         self,
@@ -504,14 +638,23 @@ class CleanProfiledRGBCleanProfiledRGBImageCropsDataset(
 class CleanProfiledRGBNoisyBayerImageCropsDataset(
     CleanNoisyDataset, ProfiledRGBBayerImageDataset
 ):
-    """
-    Dataset of clean-noisy raw images from rawNIND.
+    """Dataset for supervised denoising training with clean profiled RGB targets and noisy Bayer inputs.
 
-    Load from raw files using rawpy.
-    Returns float crops, (highlight and anomaly) mask, metadata
+    This dataset pairs clean profiled RGB ground-truth images with corresponding noisy Bayer
+    pattern inputs from the rawNIND dataset. It's designed for training supervised denoising
+    models that learn to map from noisy Bayer space to clean profiled RGB output.
 
-    Alignment and masks are pre-computed.
-    Output metadata contains color_matrix.
+    The dataset supports advanced filtering based on alignment quality, mask coverage,
+    and MS-SSIM scores to ensure high-quality training pairs. It provides flexible
+    data pairing modes (clean-noisy, clean-clean, noisy-noisy) and optional gain
+    matching for consistent exposure levels.
+
+    Key features:
+    - Pre-computed alignment and masking for efficiency
+    - MSSSIM-based quality filtering
+    - Support for train/test splits via reserved image sets
+    - Multiple data pairing strategies for different training scenarios
+    - Integrated color matrix metadata for proper color space transformations
     """
 
     def __init__(
@@ -680,11 +823,25 @@ class CleanProfiledRGBNoisyBayerImageCropsDataset(
 class CleanProfiledRGBNoisyProfiledRGBImageCropsDataset(
     CleanNoisyDataset, ProfiledRGBProfiledRGBImageDataset
 ):
-    """
-    Dataset of clean-noisy demosaiced images from rawNIND.
+    """Dataset for supervised denoising training with profiled RGB inputs and targets.
 
-    Load from OpenEXR files.
-    Returns aligned float crops, (highlight and anomaly) mask
+    This dataset provides clean-noisy pairs of demosaiced profiled RGB images from the
+    rawNIND dataset. It's designed for training supervised denoising models that work
+    entirely in profiled RGB color space, avoiding the complexity of Bayer pattern
+    processing while maintaining realistic noise characteristics.
+
+    The dataset supports multiple data pairing strategies (clean-noisy, clean-clean,
+    noisy-noisy) for different training scenarios and includes optional arbitrary
+    processing methods for data augmentation. All images are pre-aligned and masked
+    for optimal training quality.
+
+    Key features:
+    - Profiled RGB input/output for simplified color processing
+    - Pre-computed alignment and masking from rawNIND pipeline
+    - Multiple data pairing modes for flexible training strategies  
+    - Optional arbitrary processing for enhanced data augmentation
+    - MS-SSIM quality filtering for consistent training pairs
+    - Support for gain matching and exposure normalization
     """
 
     def __init__(
@@ -864,12 +1021,6 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsDataset(
         output["mask_crops"] = mask_crops
 
         return output
-        return {
-            "x_crops": x_crops.float(),
-            "y_crops": y_crops.float(),
-            "mask_crops": mask_crops,
-            "gain": image["rgb_gain"],
-        }
 
 
 # Test / Validation datasets
@@ -880,7 +1031,18 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsDataset(
 class CleanProfiledRGBNoisyProfiledRGBImageCropsValidationDataset(
     CleanProfiledRGBNoisyProfiledRGBImageCropsDataset
 ):
-    """Validation dataset for noisy profiled RGB to clean profiled RGB."""
+    """Validation dataset for profiled RGB denoising models.
+
+    This class extends the training dataset to provide deterministic center crops
+    for validation and evaluation purposes. Instead of random crops, it consistently
+    selects the middle crop from each image's crop list, ensuring reproducible
+    validation metrics across training runs.
+
+    The validation dataset supports the same data pairing modes and processing
+    options as the training dataset but provides single crops per image rather
+    than multiple random crops, making it suitable for consistent model evaluation
+    during training and final performance assessment.
+    """
 
     def __init__(
         self,
@@ -1493,7 +1655,7 @@ class DataLoadersUnitTests(unittest.TestCase):
             self.assertEqual(output["y_crops"].shape, (1, 4, 128, 128))
             self.assertEqual(output["mask_crops"].shape, (1, 3, 256, 256))
             self.assertEqual(output["rgb_xyz_matrix"].shape, (1, 4, 3))
-            self.assertNotEqual(image["gain"], 1.0)
+            self.assertNotEqual(output["gain"], 1.0)
             if i >= MAX_ITERS:
                 break
         print(
@@ -1511,7 +1673,7 @@ class DataLoadersUnitTests(unittest.TestCase):
         for i, output in enumerate(ds.get_images()):
             self.assertEqual(output["x_crops"].shape, (1, 3, 256, 256))
             self.assertEqual(output["mask_crops"].shape, (1, 3, 256, 256))
-            self.assertNotEqual(image["gain"], 1.0)
+            self.assertNotEqual(output["gain"], 1.0)
             if i >= MAX_ITERS:
                 break
         print(
@@ -1530,9 +1692,9 @@ if __name__ == "__main__":
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
     logging.info(f"# python {' '.join(sys.argv)}")
 
-    cleanRGB_noisyBayer_ds = CleanProfiledRGBNoisyBayerImageDataset(
+    cleanRGB_noisyBayer_ds = CleanProfiledRGBNoisyBayerImageCropsDataset(
         content_fpaths=[rawproc.RAWNIND_CONTENT_FPATH], num_crops=4, crop_size=256
     )
-    cleanRGB_noisyRGB_ds = CleanProfiledRGBNoisyProfiledRGBImageDataset(
+    cleanRGB_noisyRGB_ds = CleanProfiledRGBNoisyProfiledRGBImageCropsDataset(
         content_fpaths=[rawproc.RAWNIND_CONTENT_FPATH], num_crops=4, crop_size=256
     )

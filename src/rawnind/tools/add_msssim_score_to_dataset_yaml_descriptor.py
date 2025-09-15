@@ -1,3 +1,9 @@
+"""Compute MS-SSIM scores for pairs listed in a dataset YAML descriptor.
+
+This utility reads the YAML produced by prep_image_dataset.py, loads each
+clean/noisy image pair, aligns and gain-matches them, computes the MS-SSIM
+score, and writes it back into the YAML as rgb_msssim_score.
+"""
 import sys
 import os
 import yaml
@@ -21,6 +27,14 @@ DATASET_YAML_DESCRIPTOR_FPATH = os.path.join(
 def add_msssim_to_dataset_descriptor(
     dataset_descriptor_fpath: str = DATASET_YAML_DESCRIPTOR_FPATH,
 ):
+    """Compute and insert MS-SSIM scores into a dataset YAML descriptor.
+
+    Args:
+        dataset_descriptor_fpath: Path to YAML file produced by prep_image_dataset.py.
+
+    Side effects:
+        Updates the YAML in place, adding an 'rgb_msssim_score' field per entry.
+    """
     dataset = utilities.load_yaml(dataset_descriptor_fpath, error_on_404=True)
     for image in tqdm.tqdm(dataset):
         try:

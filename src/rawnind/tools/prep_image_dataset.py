@@ -51,6 +51,11 @@ outputs gt_rgb_fpath, f_bayer_fpath, f_rgb_fpath, best_alignment, mask_fpath
 
 
 def get_args() -> argparse.Namespace:
+    """Parse CLI arguments for dataset preparation.
+
+    Returns:
+        argparse.Namespace containing num_threads, overwrite, and dataset.
+    """
     parser: argparse.ArgumentParser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--num_threads", type=int, help="Number of threads.", default=NUM_THREADS
@@ -67,6 +72,18 @@ def get_args() -> argparse.Namespace:
 
 
 def find_cached_result(ds_dpath, image_set, gt_file_endpath, f_endpath, cached_results):
+    """Lookup a previous computation for a given (gt,f) pair.
+
+    Args:
+        ds_dpath: Dataset base directory.
+        image_set: Subdirectory under the dataset (e.g., a scene name).
+        gt_file_endpath: Relative path (under image_set) to the GT file.
+        f_endpath: Relative path (under image_set) to the other file (noisy/alt).
+        cached_results: Iterable of previously computed dict records.
+
+    Returns:
+        The matching dict if found; otherwise None.
+    """
     gt_fpath = os.path.join(ds_dpath, image_set, gt_file_endpath)
     f_fpath = os.path.join(ds_dpath, image_set, f_endpath)
     for result in cached_results:
@@ -75,6 +92,22 @@ def find_cached_result(ds_dpath, image_set, gt_file_endpath, f_endpath, cached_r
 
 
 def fetch_crops_list(image_set, gt_fpath, f_fpath, is_bayer, ds_base_dpath):
+    """Collect matching crop file paths for a GT/F pair.
+
+    The function matches crops by their coordinate suffix (e.g., basename.X_Y.ext)
+    and returns a list of dicts describing aligned crops for both GT and F images.
+
+    Args:
+        image_set: Scene or subset folder name.
+        gt_fpath: Absolute path to the GT full image.
+        f_fpath: Absolute path to the other image (noisy or alternative processing).
+        is_bayer: Whether RAW Bayer crops are expected as well.
+        ds_base_dpath: Dataset base directory hosting the crops subfolders.
+
+    Returns:
+        A list of dicts with keys including coordinates, gt_linrec2020_fpath,
+        f_linrec2020_fpath, and optionally gt_bayer_fpath, f_bayer_fpath.
+    """
     def get_coordinates(fn: str) -> list[int, int]:
         return [int(c) for c in fn.split(".")[-2].split("_")]
 

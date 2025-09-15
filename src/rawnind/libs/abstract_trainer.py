@@ -7,35 +7,34 @@ TODO jsonresults
 TODO test
 """
 
+import itertools
 import logging
 import os
-import itertools
+import platform
 import random
-import statistics
-import time
 import shutil
+import statistics
 import sys
-from typing import Callable, Union, Iterable, Optional
+import time
+from typing import Callable, Iterable, Optional
+
 import configargparse
 import psutil
-
 import torch
-import yaml
 import tqdm
-import platform
+import yaml
 
-sys.path.append("..")
+# sys.path.append("..")
 from common.libs import json_saver
+from common.libs import locking
 from common.libs import pt_helpers
 from common.libs import pt_losses
 from common.libs import utilities
-from common.libs import locking
 from common.tools import save_src
-from rawnind.libs import rawproc
-from rawnind.libs import rawds
 from rawnind.libs import raw
-from rawnind.models import raw_denoiser
-
+from rawnind.libs import rawds
+from rawnind.libs import rawproc
+from rawnind.models import bm3d_denoiser
 # from rawnind.extmodels import runet
 # from rawnind.extmodels import edsr
 from rawnind.models import (
@@ -44,8 +43,8 @@ from rawnind.models import (
     denoise_then_compress,
     standard_compressor,
 )
+from rawnind.models import raw_denoiser
 from rawnind.tools import find_best_expname_iteration
-from rawnind.models import bm3d_denoiser
 
 # from rawnind.tools.make_openexr_extraraw_files import EXTRARAW_DATA_DPATH
 BREAKPOINT_ON_ERROR = False
@@ -60,6 +59,13 @@ def error_handler():
 
 
 class ImageToImageNN:
+    """Base class for image-to-image training/inference pipelines.
+
+    This class centralizes argument parsing, logging, device setup, model instantiation
+    and common utilities shared by training and evaluation subclasses. Subclasses are
+    expected to implement instantiate_model() and may override add_arguments() and
+    processing hooks as needed.
+    """
     CLS_CONFIG_FPATHS = [
         os.path.join("config", "test_reserve.yaml"),
     ]
@@ -466,6 +472,17 @@ class ImageToImageNN:
 
 
 class ImageToImageNNTraining(ImageToImageNN):
+    """Extension of ImageToImageNN adding training-specific utilities.
+
+    Provides argument registration for training hyperparameters, training/validation
+    loops, dataloader wiring and checkpointing helpers. Subclasses should override
+    repack_batch() and step() to implement their data layout and loss computation.
+    """
+    """Training mixin adding loops, evaluation, and logging.
+
+    Extends ImageToImageNN with training-specific features such as learning rate
+    scheduling, validation/test routines, checkpointing, and dataloader wiring.
+    """
     def __init__(self, **kwargs):
         """Initialize an image to image neural network trainer.
 
