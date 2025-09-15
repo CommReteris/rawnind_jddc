@@ -136,6 +136,23 @@ This document itemizes missing docstrings and documentation shortcomings in the 
 - Main section [0%] - Script execution section missing docstring
 
 ## rawnind
+### config [0%]
+- Directory contains YAML configuration files for training and testing
+- train_dc.yaml [0%] - Missing documentation for configuration parameters
+- train_dc_bayer2prgb.yaml [0%] - Missing documentation for configuration parameters
+- train_denoiser_*.yaml [0%] - Missing documentation for configuration parameters
+- graph_dc_model.yaml [0%] - Missing documentation for configuration parameters
+- graph_denoiser.yaml [0%] - Missing documentation for configuration parameters
+- test_reserve.yaml [0%] - Missing documentation for test image selection
+- Note: Configuration files would benefit from inline comments or separate documentation explaining parameters
+
+### plot_cfg [0%]
+- Directory contains plot configuration files for figure generation
+- Picture1_32.yaml [0%] - Missing documentation for plot configuration
+- Picture2_32.yaml [0%] - Missing documentation for plot configuration
+- Picture1_picture2.yaml [0%] - Missing documentation for plot configuration
+- Note: Plot configuration files would benefit from documentation explaining their purpose and usage
+
 ### libs [8%]
 #### __init__.py [100%]
 - File [100%] - Excellent module docstring explaining package purpose, design decisions, and usage examples
@@ -246,31 +263,112 @@ This document itemizes missing docstrings and documentation shortcomings in the 
 #### denoise_image.py [75%]
 - File [100%] - Excellent comprehensive docstring explaining single image denoising with examples
 - add_arguments [100%] - Good function docstring with clear parameter descriptions
+- load_image [100%] - Good docstring with clear parameter and return descriptions
+- process_image_base [100%] - Excellent docstring with detailed explanations
+- apply_nonlinearity [100%] - Clear docstring explaining purpose and parameters
+- compute_metrics [100%] - Good docstring with parameter explanations
+- save_image [100%] - Clear docstring with parameter explanations
+- save_metrics [100%] - Good concise docstring
+- denoise_image_from_to_fpath [100%] - Clear docstring
+- bayer_to_prgb [100%] - Excellent detailed docstring
+- denoise_image_compute_metrics [100%] - Comprehensive docstring with detailed explanations
+- denoise_image_from_fpath_compute_metrics_and_export [100%] - Good docstring with parameter descriptions
 - Processing pipeline well documented with inline comments and overview sections
-#### Other tools [25%]
-- 21 additional utility scripts identified
-- Mixed coverage - some tools well-documented like denoise_image.py
-- Scripts include: crop_datasets.py, prep_image_dataset.py, cleanup_saved_models_iterations.py, etc.
+#### add_msssim_score_to_dataset_yaml_descriptor.py [20%]
+- File [80%] - Good file-level docstring explaining purpose
+- Functions [5%] - Most functions missing docstrings
+- Main section [0%] - No documentation for execution flow
+#### check_dataset.py [30%]
+- File [100%] - Good docstring explaining script's purpose and functionality
+- is_valid_img_mtrunner [0%] - Function missing docstring explaining purpose and parameters
+- Main block [0%] - No comments or documentation explaining the workflow or parameters
+#### cleanup_saved_models_iterations.py [15%]
+- File [75%] - Basic file-level docstring
+- Functions [0%] - All functions missing docstrings
+- Main section [0%] - No documentation for execution flow
+#### capture_image_set.py [20%]
+- File [90%] - Good file-level docstring
+- Functions [5%] - Most functions missing docstrings
+- Main section [0%] - No documentation for execution flow
+#### prep_image_dataset.py [35%]
+- File [100%] - Good docstring explaining dataset preparation
+- Functions [25%] - Some functions have basic docstrings
+- Main section [15%] - Limited documentation for execution flow
+#### Other tools [10-30%]
+- 15+ additional utility scripts with varying documentation quality
+- Most have basic file-level docstrings but lack function-level documentation
+- Scripts would benefit from more comprehensive documentation of parameters and return values
 
-### tests [2%]
-- 56 test files identified
-- Test files typically have minimal documentation requirements
-- Focus should be on ensuring test purpose is clear through docstrings
-- Very low current coverage
+### tests [5%]
+#### check_whether_wb_is_needed_before_demosaic.py [5%]
+- File [25%] - Very basic file-level comment but not a proper docstring
+- Functions [0%] - No docstrings for any functions
+- Main section [0%] - No documentation for execution flow
+#### get_models_complexity.py [0%]
+- File [0%] - No file-level docstring explaining purpose
+- No functions - script consists of main block only
+- Main section [0%] - No comments explaining purpose, models, or output meaning
+#### get_ds_avg_msssim.py [5%]
+- File [25%] - Minimal file-level docstring
+- Functions [0%] - All functions missing docstrings
+- Main section [0%] - No documentation for execution flow
+#### get_RawNIND_test_quality_distribution.py [15%]
+- File [75%] - Good file-level docstring explaining purpose
+- Functions [0%] - Functions missing docstrings
+- Main section [0%] - No documentation for execution flow
+#### Other test files [3%]
+- 50+ additional test files with minimal documentation
+- Most lack file-level docstrings explaining test purpose
+- Few or no function-level docstrings
+- Minimal inline comments explaining test workflows
+- Test files would benefit from clear docstrings explaining what is being tested and expected outcomes
 
-### onetimescripts [2%]
-- 4 one-time utility scripts
-- Scripts: create_bm3d_argsyaml.py, create_jpegxl_argsyaml.py, etc.
-- Minimal documentation, mainly need file-level docstrings
+### onetimescripts [5%]
+#### create_bm3d_argsyaml.py [5%]
+- File [10%] - Minimal docstring that only refers to a ChatGPT conversation
+- No functions - script consists of main block only
+- Main section [5%] - Some inline comments explaining script sections
+#### create_jpegxl_argsyaml.py [5%]
+- File [10%] - Minimal docstring
+- No functions - script consists of main block only
+- Main section [5%] - Limited inline comments
+#### find_best_bm3d_models_for_given_pictures.py [5%]
+- File [15%] - Basic file-level docstring
+- Functions [0%] - Functions missing docstrings
+- Main section [0%] - No documentation for execution flow
+#### upload_dir_to_dataverse.py [10%]
+- File [25%] - Basic file-level docstring explaining purpose
+- Functions [5%] - Most functions missing docstrings
+- Main section [0%] - No documentation for execution flow
 
-### paper_scripts [2%]
-- 5 scripts for paper figure generation
-- Scripts: mk_combined_mosaic.py, mk_megafig.py, plot_dataset_msssim_distributionv2.py, etc.
-- Academic scripts need better documentation for reproducibility
+### paper_scripts [20%]
+#### mk_megafig.py [30%]
+- File [0%] - No file-level docstring
+- generate_unique_filename [100%] - Good docstring with purpose and parameter descriptions
+- linear_to_srgb [50%] - Brief docstring explaining purpose
+- convert_rec2020_to_srgb [100%] - Good docstring with parameter and return descriptions
+- draw_dashed_rectangle [0%] - No docstring despite being a complex utility function
+- plot_section [50%] - Basic docstring explaining function purpose
+- create_figure [0%] - No docstring despite being a complex function
+- Main section [5%] - Minimal inline comments
+#### mk_combined_mosaic.py [25%]
+- File [75%] - Good file-level docstring explaining purpose
+- Functions [15%] - Most functions have minimal or missing docstrings
+- Main section [5%] - Limited documentation for execution flow
+#### mk_pipelinefig.py [35%]
+- File [75%] - Good file-level docstring
+- Functions [25%] - Some functions have basic docstrings
+- Main section [15%] - Some inline comments explaining workflow
+#### plot_dataset_msssim_distributionv2.py [30%]
+- File [100%] - Comprehensive file-level docstring
+- Functions [15%] - Most functions missing docstrings
+- Main section [10%] - Limited documentation for execution flow
 
-### scripts [5%]
-#### mk_denoise_then_compress_models.py [5%]
-- Model generation script - minimal documentation coverage
+### scripts [10%]
+#### mk_denoise_then_compress_models.py [10%]
+- File [50%] - Basic file-level docstring
+- Functions [5%] - Most functions missing docstrings
+- Main section [0%] - No documentation for execution flow
 
 ### Root level training scripts [50%]
 #### train_dc_bayer2prgb.py [60%]
@@ -292,6 +390,6 @@ This document itemizes missing docstrings and documentation shortcomings in the 
 
 ---
 *Analysis Status: Comprehensive documentation analysis completed with actual file inspection across all major directories*
-*Overall Project Documentation Coverage: 35%* 
-*Key Findings: Significant upward revision from initial estimates through systematic file inspection. Core libraries excellently documented: rawnind/libs shows outstanding coverage with rawproc.py (90%), arbitrary_proc_fun.py (85%), rawds_manproc.py (75%), raw.py (35%), rawds.py (35%). Training scripts better than expected (50-60% with excellent file docstrings). Tools directory shows strong documentation leadership (denoise_image.py 75%). Mixed results in common/libs: pt_helpers (67%), save_src (75%), rawnind/libs/__init__ (100%) vs pt_losses (0%), stdcompression (5%). Models directory shows moderate coverage (15%) with good file-level documentation.*
-*Priority Areas: Method-level documentation in complex files, model implementation classes, comprehensive coverage in large utility files*
+*Overall Project Documentation Coverage: 30%* 
+*Key Findings: The project has inconsistent documentation coverage across modules. Core libraries in rawnind/libs show excellent coverage: rawproc.py (90%), arbitrary_proc_fun.py (85%), rawds_manproc.py (75%), raw.py (35%), rawds.py (35%), __init__.py (100%). The tools directory shows strong documentation in denoise_image.py (75%) but other tools vary widely (10-35%). Models directory has moderate coverage (15%) with good file-level documentation but missing class and method docstrings. Common libraries have mixed coverage: pt_helpers (67%), save_src (75%) vs pt_losses (0%), stdcompression (5%). Configuration directories (config/, plot_cfg/) have no documentation at all (0%). Tests and onetimescripts have very low coverage (5%) but paper_scripts has better coverage than initially reported (20% vs 2%).*
+*Priority Areas: Method-level documentation in complex files, model implementation classes, documentation for configuration files, comprehensive coverage in test files, and better documentation in utility scripts.*
