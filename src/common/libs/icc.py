@@ -1,5 +1,33 @@
+"""
+ICC color profile data for color space conversion.
+
+This module provides binary ICC (International Color Consortium) profile data for the 
+Rec.2020 color space, stored as NumPy arrays. ICC profiles are standardized data structures
+that define the color characteristics of input and output devices, ensuring consistent
+color representation across different systems and applications.
+
+The Rec.2020 color space (also known as BT.2020) is a wide color gamut standard
+developed for ultra-high-definition television (UHDTV) and digital cinema. It offers
+a significantly larger color gamut than the commonly used sRGB or Rec.709 spaces,
+enabling more vivid and accurate color reproduction.
+
+This profile data is used throughout the project for:
+- Converting camera RGB data to linear Rec.2020 color space
+- Ensuring color accuracy in image processing pipelines
+- Facilitating consistent color transformations between different color spaces
+- Embedding proper color profile information in output image files
+
+The binary data is stored in a structured format defined by the ICC specification,
+which includes header information, tag data, and color transformation tables.
+
+References:
+    - International Color Consortium: https://www.color.org/
+    - Rec.2020 standard: https://www.itu.int/rec/R-REC-BT.2020
+"""
+
 import numpy as np
 
+# ICC profile data for linear Rec.2020 RGB color space
 rec2020 = np.array(
     [
         0,

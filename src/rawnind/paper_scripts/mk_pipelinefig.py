@@ -1,3 +1,38 @@
+"""
+Pipeline Visualization Generator for Research Papers.
+
+This script creates publication-ready figures that visualize the image processing pipeline
+used in the Natural Image Noise Dataset (NIND) research. It generates diagrams showing the 
+progression of image processing stages from raw sensor data to final output.
+
+Key features:
+1. Creates closeup views of specific image regions to highlight important details
+2. Adds numbered labels to identify each pipeline stage
+3. Arranges images in customizable grid layouts
+4. Handles color space conversion (Rec.2020 to sRGB) for proper display
+5. Generates two figure variants optimized for different publication formats:
+   - Thesis format: 3x3 grid showing all pipeline stages
+   - Journal paper format: 4x2 grid of selected stages
+
+The script uses the bluebirds test image, processing it through 9 stages:
+0. Raw sensor data
+1. Bayer pattern with white balance points
+2. Demosaiced linear Rec.2020 image
+3. Denoised image
+4. Lens correction, perspective correction, and cropping
+5. Exposure adjustment
+6. Color calibration
+7. Diffuse/sharpen adjustment
+8. Color balance and filmic tone mapping
+
+Usage:
+    python mk_pipelinefig.py
+
+Output:
+    Two JPEG files showing the pipeline stages arranged in different grid layouts
+    for thesis and journal paper publications.
+"""
+
 import os
 import hashlib
 from PIL import Image, ImageDraw, ImageFont
@@ -5,7 +40,7 @@ import numpy as np
 import imageio.v3 as iio
 
 
-# Rec. 2020 to Rec. 709 transformation matrix
+# Rec. 2020 to Rec. 709 transformation matrix for color space conversion
 REC2020_TO_REC709_MATRIX = np.array(
     [
         [1.6605, -0.5876, -0.0728],
@@ -78,39 +113,60 @@ def convert_rec2020_to_srgb(image):
 
 
 def create_placeholder_with_closeups(image_path, save_path):
-    WHITESPACE = 0  # Set to 0 here
+    """
+    Create a composite image with main image and closeup regions.
+    
+    This function takes an input image, creates a larger canvas with the original 
+    image, and adds closeup views of specific regions highlighted with colored 
+    dashed rectangles. The layout adapts to the image orientation:
+    - For landscape images: closeups appear below the main image
+    - For portrait images: closeups appear to the right of the main image
+    
+    The function handles various image formats (PNG, TIFF) and bit depths
+    (8-bit, 16-bit, float), normalizing them for consistent display.
+    
+    Args:
+        image_path (str): Path to the input image file
+        save_path (str): Path where the composite image will be saved
+        
+    Returns:
+        PIL.Image.Image: The final composite image with main view and closeups
+    """
+    # No additional whitespace around the image
+    WHITESPACE = 0
 
-    # Load 16-bit float TIFF image using imageio
+    # ===== IMAGE LOADING AND PREPROCESSING =====
+    # Load image with imageio (supports various formats including HDR)
     img_data = iio.imread(image_path)  # Reads as a NumPy array
-    # rotate the image if image_path is in "gt" folder and endswith .tif and contains bluebirds
+    
+    # Rotate specific images for better composition (bluebirds in portrait orientation)
     if (
         (image_path.endswith(".tif"))
         and "bluebirds" in image_path
         and ("lin_rec2020" in image_path or "faux_Bayer" in image_path)
     ):
         img_data = np.rot90(img_data, 1)
-    if img_data.dtype in [np.float32, np.float16]:  # Handle float images
-        img_data = np.clip(img_data, 0.0, 1.0)  # Clip to valid range [0, 1]
-        img_data = img_data * 255  # Normalize
-    elif img_data.dtype == np.uint16:  # Handle 16-bit integer images
+    
+    # Normalize image data based on data type
+    if img_data.dtype in [np.float32, np.float16]:
+        # For float images: clip to [0,1] range and scale to [0,255]
+        img_data = np.clip(img_data, 0.0, 1.0)
+        img_data = img_data * 255
+    elif img_data.dtype == np.uint16:
+        # For 16-bit images: scale from [0,65535] to [0,255]
         img_data = img_data / 65535.0 * 255
-    # if "bluebirds" in image_path or not image_path.endswith(".png") or True:
-    # img = convert_rec2020_to_srgb(img_data)
+    
+    # Convert to 8-bit unsigned integer for PIL
     img = img_data.astype(np.uint8)
-    # else:
-    #     print(img_data.mean())
-    #     # ensure mean is 128
-    #     img_data = img_data - np.mean(img_data) + 34
-    #     # clip to 0,255
-    #     img_data = np.clip(img_data, 0, 255)
-    #     img = (img_data).astype(np.uint8)
-    # Convert to PIL Image
+    
+    # Create PIL Image from numpy array
     img = Image.fromarray(img)
-    # Convert to sRGB for better visualization
 
+    # Get image dimensions
     width, height = img.size
 
-    # Determine if it's landscape (width > height) or portrait
+    # Determine image orientation (landscape vs portrait)
+    # This affects how closeups will be arranged
     is_landscape = width > height
 
     if is_landscape:
