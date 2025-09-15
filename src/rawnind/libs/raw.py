@@ -754,12 +754,35 @@ ConversionResult = NamedTuple(
 
 
 def is_xtrans(fpath) -> bool:
+    """Check if a file path corresponds to a Fujifilm X-Trans sensor RAW file.
+
+    Args:
+        fpath: File path to check.
+
+    Returns:
+        True if the file has a .raf extension (Fujifilm RAW format).
+    """
     return fpath.lower().endswith(".raf")
 
 
 def xtrans_fpath_to_OpenEXR(
     src_fpath: str, dest_fpath: str, output_color_profile: str = OUTPUT_COLOR_PROFILE
 ):
+    """Convert a Fujifilm X-Trans RAW file to OpenEXR using Darktable.
+
+    Uses Darktable CLI to process X-Trans sensor files with a predefined XMP
+    configuration that converts to linear Rec.2020 color space and outputs
+    as 16-bit OpenEXR.
+
+    Args:
+        src_fpath: Path to input Fujifilm RAW file (.raf).
+        dest_fpath: Path for output OpenEXR file.
+        output_color_profile: Target color profile (must be OUTPUT_COLOR_PROFILE).
+
+    Raises:
+        AssertionError: If darktable-cli is not available, file is not X-Trans,
+            or color profile is not supported.
+    """
     assert output_color_profile == OUTPUT_COLOR_PROFILE
     assert is_xtrans(src_fpath)
     assert shutil.which("darktable-cli")
@@ -1075,10 +1098,23 @@ def raw_fpath_to_hdr_img_file(
 
 
 def raw_fpath_to_hdr_img_file_mtrunner(argslist):
+    """Multiprocessing wrapper for raw_fpath_to_hdr_img_file.
+
+    Args:
+        argslist: List of arguments to unpack for raw_fpath_to_hdr_img_file.
+
+    Returns:
+        Result from raw_fpath_to_hdr_img_file.
+    """
     return raw_fpath_to_hdr_img_file(*argslist)
 
 
 def get_args():
+    """Parse command-line arguments for standalone script execution.
+
+    Returns:
+        Parsed arguments with raw_fpath, out_base_path, and no_wb options.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("-i", "--raw_fpath", help="Input image file path.")
     parser.add_argument("-o", "--out_base_path", help="Output image base file path.")

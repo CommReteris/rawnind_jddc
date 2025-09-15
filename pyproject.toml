@@ -65,3 +65,6 @@ test = [
     "pytest-cov>=7.0.0",
     "rawnind",
 ]
+dev = [
+    "ipython",
+]

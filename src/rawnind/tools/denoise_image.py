@@ -7,6 +7,8 @@ Also save the metrics (and the bitrate if applicable) in a directory named "deno
 with the same filename as the input image and the extension ".metrics.yaml".
 
 egrun python tools/denoise_image.py -i /orb/Pictures/ITookAPicture/2023/05/29_LucieHikeLustinYvoirGR126/DSC04011.ARW --config ../../models/rawnind_dc/DCTrainingProfiledRGBToProfiledRGB_3ch_L4096.0_Balle_Balle_dc_prgb_1_/args.yaml  --device
+
+
 """
 
 import argparse
@@ -104,6 +106,17 @@ save_metrics(metrics_results, fpath)
 
 """
 
+
+# Processing Pipeline Overview:
+# This module implements a standardized workflow for single-image denoising:
+# 1. Load ground-truth image (if available for metrics)
+# 2. Load and denoise input image using trained model
+# 3. Process model output to linear Rec.2020 color space
+# 4. Compute metrics with optional perceptual transforms
+# 5. Save denoised image and metrics to organized output directories
+#
+# Key functions provide modular access to each pipeline stage for
+# both standalone script usage and integration with other tools.
 
 def load_image(fpath, device) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
     """Load an image and optional RGB->XYZ matrix for processing.
@@ -264,7 +277,19 @@ def denoise_image_from_to_fpath(
 
 
 def bayer_to_prgb(image, rgb_xyz_matrix):
-    """Used when trying to input a bayer image to a pRGB model."""
+    """Convert Bayer pattern image to profiled RGB for pRGB model compatibility.
+
+    This utility function handles automatic color space conversion when a Bayer pattern
+    image needs to be processed by a model that expects profiled RGB input. If the
+    input is already in RGB format, it passes through unchanged.
+
+    Args:
+        image: Input image tensor, either Bayer (4-channel) or RGB (3-channel).
+        rgb_xyz_matrix: Color transformation matrix for camera RGB to linear Rec.2020.
+
+    Returns:
+        Image tensor in profiled RGB color space, suitable for pRGB model input.
+    """
     if image.shape[-3] == 3:
         return image
     image = rawproc.demosaic(image).unsqueeze(0)
@@ -283,6 +308,24 @@ def denoise_image_compute_metrics(
     metrics: list[str] = [],
     nonlinearities: list[str] = [],
 ) -> tuple[torch.Tensor, dict]:
+    """Denoise an image tensor and compute evaluation metrics against ground truth.
+
+    This function handles the complete denoising pipeline including automatic color space
+    conversion, model inference, output processing, and comprehensive metric computation
+    with optional perceptual transforms.
+
+    Args:
+        in_img: Input image tensor to denoise.
+        test_obj: Trained model inference object.
+        rgb_xyz_matrix: Optional color transformation matrix for Bayer to pRGB conversion.
+        gt_img: Optional ground truth image for metric computation.
+        metrics: List of metric names to compute (e.g., 'mse', 'msssim_loss').
+        nonlinearities: List of perceptual transforms to apply before metrics.
+
+    Returns:
+        Tuple of (processed_denoised_image, metrics_dict) where metrics_dict
+        includes both standard metrics and optional compression bitrate.
+    """
     # if model is pRGB and img is bayer, debayer
     if test_obj.in_channels == 3:
         in_img = bayer_to_prgb(in_img, rgb_xyz_matrix)
