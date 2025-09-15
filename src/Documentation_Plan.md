@@ -14,26 +14,26 @@ This document itemizes missing docstrings and documentation shortcomings in the 
 - GDN.build [100%] - Method fully documented with explanation of parameter initialization
 - GDN.forward [100%] - Forward pass method comprehensively documented with input/output descriptions
 
-### libs [15%]
-#### icc.py [0%]
-- File [0%] - Missing file-level docstring explaining ICC color profile data arrays
-- Note: File contains only data arrays (rec2020, etc.) - no functions or classes
+### libs [50%]
+#### icc.py [100%]
+- File [100%] - Comprehensive file-level docstring explaining ICC color profile data, its purpose, usage in the project, and references
+- Note: File contains only data arrays (rec2020, etc.) which are well commented - no functions or classes need documentation
 
-#### json_saver.py [15%]
-- File [100%] - Good file-level docstring
-- JSONSaver [0%] - Class missing docstring
-- JSONSaver.__init__ [0%] - Constructor missing parameter documentation
-- JSONSaver._load [0%] - Private method missing docstring
-- JSONSaver.add_res [25%] - Basic docstring but lacks parameter details
-- JSONSaver.write [0%] - Method missing docstring
-- JSONSaver.get_best_steps [0%] - Method missing docstring and return type description
-- JSONSaver.get_best_step [0%] - Method missing docstring
-- JSONSaver.get_best_step_results [0%] - Method missing docstring
+#### json_saver.py [90%]
+- File [100%] - Excellent file-level docstring with purpose, key features, and usage examples
+- JSONSaver [100%] - Comprehensive class docstring explaining purpose and functionality
+- JSONSaver.__init__ [100%] - Constructor fully documented with parameter explanations
+- JSONSaver._load [100%] - Private method well documented with parameters and return values
+- JSONSaver.add_res [100%] - Comprehensive docstring with detailed parameter explanations
+- JSONSaver.write [100%] - Method well documented with clear purpose
+- JSONSaver.get_best_steps [100%] - Method well documented with return type description
+- JSONSaver.get_best_step [100%] - Method well documented with parameters and return type
+- JSONSaver.get_best_step_results [100%] - Method well documented with parameters and return value
 - JSONSaver.is_empty [100%] - Good docstring with clear description
-- YAMLSaver [0%] - Child class missing docstring
-- YAMLSaver.__init__ [0%] - Constructor missing docstring
-- YAMLSaver._load [0%] - Override method missing docstring
-- YAMLSaver.write [0%] - Override method missing docstring
+- YAMLSaver [100%] - Child class well documented with explanation of differences from parent
+- YAMLSaver.__init__ [100%] - Constructor well documented with parameter explanations
+- YAMLSaver._load [100%] - Override method well documented with explanation of differences
+- YAMLSaver.write [100%] - Override method well documented with explanation of differences
 
 #### utilities.py [20%]
 - File [100%] - Good file-level docstring "Common utilities"
@@ -76,15 +76,15 @@ This document itemizes missing docstrings and documentation shortcomings in the 
 - check_pause [100%] - Good docstring with clear usage instructions
 - Test_locking [100%] - Well-documented test class with thorough explanation of test methodology
 
-#### np_imgops.py [22%]
-- File [0%] - Missing file-level docstring
-- CropMethod enum [0%] - Enum missing docstring
-- _oiio_img_fpath_to_np [0%] - Private function missing docstring
-- _opencv_img_fpath_to_np [0%] - Private function missing docstring
+#### np_imgops.py [60%]
+- File [100%] - Comprehensive file-level docstring with purpose, key features, backend details, and usage examples
+- CropMethod enum [100%] - Well-documented enum with explanations of each value
+- _oiio_img_fpath_to_np [100%] - Well-documented private function with parameters, return value, and notes
+- _opencv_img_fpath_to_np [80%] - Documented but with less detail than the OIIO version
 - img_fpath_to_np_flt [100%] - Comprehensive docstring with parameters and return type
-- np_pad_img_pair [0%] - Function missing docstring
-- np_crop_img_pair [75%] - Basic but functional docstring
-- np_to_img [0%] - Function missing docstring
+- np_pad_img_pair [80%] - Good docstring with clear parameter descriptions
+- np_crop_img_pair [75%] - Good docstring explaining functionality
+- np_to_img [75%] - Documented with parameters and basic description
 - TestImgOps [0%] - Test class and methods missing docstrings
 
 #### pt_helpers.py [67%]
@@ -119,15 +119,16 @@ This document itemizes missing docstrings and documentation shortcomings in the 
 - crop_to_multiple [100%] - Complete docstring with parameter descriptions, return values, and example
 - Test_PTOPS [100%] - Test class with comprehensive documentation of test methodology and purpose
 
-#### stdcompression.py [5%]
-- File [100%] - Good file-level docstring "Standard compression methods handlers"
-- StdCompression [0%] - Base class missing docstring
-- StdCompression methods [0%] - All methods (__init__, make_tmp_fpath, file_encdec, etc.) missing docstrings
-- JPG_Compression [0%] - Class missing docstring
-- JPEGXL_Compression [0%] - Class missing docstring
-- BPG_Compression [0%] - Class missing docstring
-- JPEGXS_Compression [0%] - Class missing docstring
-- All compression class methods [0%] - make_enc_cl, make_dec_cl, get_valid_cargs methods missing docstrings
+#### stdcompression.py [70%]
+- File [100%] - Comprehensive file-level docstring with purpose, key features, and usage examples
+- StdCompression [100%] - Base class with detailed docstring explaining purpose and required attributes
+- StdCompression.__init__ [100%] - Constructor documented with raises information
+- StdCompression.make_tmp_fpath [100%] - Method thoroughly documented with parameters and behavioral notes
+- StdCompression methods [50%] - Some methods like file_encdec, make_enc_cl, etc. have good documentation, others are missing
+- JPG_Compression [80%] - Class has good documentation but some methods lack docstrings
+- JPEGXL_Compression [80%] - Class has good documentation but some methods lack docstrings
+- BPG_Compression [80%] - Class has good documentation but some methods lack docstrings
+- JPEGXS_Compression [80%] - Class has good documentation but some methods lack docstrings
 - Test_utilities [0%] - Test class and methods missing docstrings
 
 ### tools [5%]
@@ -427,7 +428,7 @@ This document itemizes missing docstrings and documentation shortcomings in the 
 - Root module file is completely empty - no documentation
 
 ---
-*Analysis Status: Comprehensive documentation analysis completed with actual file inspection across all major directories*
-*Overall Project Documentation Coverage: 65%* 
-*Key Findings: The project has significantly improved documentation coverage across modules. Many key files now have excellent documentation: gdn.py (100%), raw_denoiser.py (100%), get_models_complexity.py (100%), check_dataset.py (100%), pt_losses.py (100%), locking.py (100%), pt_ops.py (100%), compression_autoencoders.py (90%), create_bm3d_argsyaml.py (95%), create_jpegxl_argsyaml.py (95%), find_best_bm3d_models_for_given_pictures.py (95%), mk_megafig.py (95%), mk_combined_mosaic.py (95%), get_RawNIND_test_quality_distribution.py (95%), denoise_then_compress.py (100%), stdcompression.py (100%), np_imgops.py (100%), and json_saver.py (100%). Core libraries in rawnind/libs continue to show excellent coverage: rawproc.py (90%), arbitrary_proc_fun.py (85%), rawds_manproc.py (75%), raw.py (35%), rawds.py (35%), __init__.py (100%). The tools directory shows strong documentation in denoise_image.py (75%) and check_dataset.py (100%), but other tools vary widely (10-35%). Models directory has greatly improved with several 90-100% documented files. Common libraries now have excellent coverage with all critical libraries at 67-100% coverage. Configuration files have seen improvements with train_dc.yaml (90%) and Picture1_32.yaml (95%) now comprehensively documented. Test files have improved with get_models_complexity.py (100%) and get_RawNIND_test_quality_distribution.py (95%) now well-documented, but most others remain at 5%. Utility scripts have improved with most key scripts now at 95%+ documentation coverage.*
-*Priority Areas: Documentation for remaining configuration files (train_dc_bayer2prgb.yaml, train_denoiser_*.yaml, etc.), improving remaining common libraries (particularly icc.py, json_saver.py class-level docs), better documentation for remaining test files, and completing documentation for remaining utility scripts in paper_scripts/ directory (especially mk_pipelinefig.py and plot_dataset_msssim_distributionv2.py).*
+*Analysis Status: Documentation assessment revised with verification of actual file content and correction of significant inaccuracies*
+*Overall Project Documentation Coverage: ~45%* 
+*Key Findings: The project has varying documentation quality across modules. Many key files have excellent documentation: gdn.py (100%), raw_denoiser.py (100%), get_models_complexity.py (100%), check_dataset.py (100%), pt_losses.py (100%), locking.py (100%), pt_ops.py (100%), compression_autoencoders.py (90%), icc.py (100%), stdcompression.py (70%), json_saver.py (90%), np_imgops.py (60%), create_bm3d_argsyaml.py (95%), create_jpegxl_argsyaml.py (95%), find_best_bm3d_models_for_given_pictures.py (95%), mk_megafig.py (95%), mk_combined_mosaic.py (95%), get_RawNIND_test_quality_distribution.py (95%), denoise_image.py (75%), rawproc.py (90%), and rawds_manproc.py (75%). However, there are significant gaps, particularly in common/libs/utilities.py (20%), many of the test files (3-5%), and various smaller utility scripts (10-30%). The largest source files generally have better documentation than smaller utility files.*
+*Priority Areas: Improving documentation for utilities.py, test files, and numerous small utility scripts would significantly increase overall project documentation coverage. Adding missing class and method docstrings to well-used utility functions should be prioritized over less frequently used test files.*
