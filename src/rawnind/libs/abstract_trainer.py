@@ -1,10 +1,52 @@
-"""
-Raw denoiser.
+"""Neural network training and evaluation framework for image-to-image models.
 
-Config files are defined as config/denoise_bayer2prgb.yaml and config/denoise_prgb2prgb.yaml
+This module provides a comprehensive framework for training, evaluating, and using 
+neural networks for image-to-image tasks, with a focus on raw image processing tasks
+like denoising and compression. It implements a flexible class hierarchy that supports
+various input types (Bayer patterns and RGB) and task types (denoising, compression, 
+and combined approaches).
 
-TODO jsonresults
-TODO test
+Key features:
+- Modular design with a clear class hierarchy and inheritance patterns
+- Support for different image formats (Bayer pattern and RGB)
+- Configurable training, validation, and testing pipelines
+- Automatic experiment management with checkpointing and result tracking
+- Command line argument parsing with configuration file support
+- Resource management (GPU/CPU, memory usage monitoring)
+- Flexible loss functions and metrics for image quality assessment
+
+Class hierarchy:
+- ImageToImageNN: Base class for all image-to-image models
+  - ImageToImageNNTraining: Extends base with training functionality
+    - PRGBImageToImageNNTraining: Specialized for RGB image training
+    - BayerImageToImageNNTraining: Specialized for Bayer pattern training
+    - DenoiseCompressTraining: Combined denoising and compression training
+    - DenoiserTraining: Pure denoising model training
+  - BayerImageToImageNN: Specialized for Bayer pattern handling
+  - DenoiseCompress: Combined denoising and compression model
+  - Denoiser: Pure denoising model
+  - BayerDenoiseCompress: Bayer-specific denoising+compression
+  - BayerDenoiser: Bayer-specific denoising
+
+Configuration files:
+- config/denoise_bayer2prgb.yaml: Configuration for Bayer-to-RGB denoising
+- config/denoise_prgb2prgb.yaml: Configuration for RGB-to-RGB denoising
+- config/train_dc.yaml: Base configuration for denoising+compression
+- config/train_dc_bayer2prgb.yaml: Configuration for Bayer-to-RGB denoising+compression
+- config/train_dc_prgb2prgb.yaml: Configuration for RGB-to-RGB denoising+compression
+
+Usage examples:
+1. Training a denoiser:
+   ```python
+   trainer = DenoiserTraining(launch=True)
+   trainer.training_loop()
+   ```
+
+2. Evaluating a trained model:
+   ```python
+   model = get_and_load_model(model_type="denoiser", load_path="path/to/model.pt")
+   result = model.infer(input_image)
+   ```
 """
 
 import itertools
@@ -25,25 +67,13 @@ import tqdm
 import yaml
 
 # sys.path.append("..")
-from common.libs import json_saver
-from common.libs import locking
-from common.libs import pt_helpers
-from common.libs import pt_losses
-from common.libs import utilities
+from common.libs import json_saver, locking, pt_helpers, pt_losses, utilities
 from common.tools import save_src
-from rawnind.libs import raw
-from rawnind.libs import rawds
-from rawnind.libs import rawproc
-from rawnind.models import bm3d_denoiser
+from rawnind.libs import raw, rawds, rawproc
 # from rawnind.extmodels import runet
 # from rawnind.extmodels import edsr
-from rawnind.models import (
-    manynets_compression,
-    compression_autoencoders,
-    denoise_then_compress,
-    standard_compressor,
-)
-from rawnind.models import raw_denoiser
+from rawnind.models import bm3d_denoiser, compression_autoencoders, denoise_then_compress, manynets_compression, \
+    raw_denoiser, standard_compressor
 from rawnind.tools import find_best_expname_iteration
 
 # from rawnind.tools.make_openexr_extraraw_files import EXTRARAW_DATA_DPATH
@@ -51,6 +81,22 @@ BREAKPOINT_ON_ERROR = False
 
 
 def error_handler():
+    """Handle critical errors during execution.
+    
+    This function provides a standardized way to handle critical errors in the training
+    or evaluation process. Depending on the BREAKPOINT_ON_ERROR setting, it either:
+    1. Enters interactive debugging mode with a breakpoint, or
+    2. Exits the program with an error code.
+    
+    The function logs the error occurrence before taking action.
+    
+    Returns:
+        None: Function either triggers a breakpoint or exits the program
+        
+    Notes:
+        - Set BREAKPOINT_ON_ERROR to True for debugging during development
+        - In production or automated environments, BREAKPOINT_ON_ERROR should be False
+    """
     logging.error("error_handler")
     if BREAKPOINT_ON_ERROR:
         breakpoint()
@@ -71,6 +117,36 @@ class ImageToImageNN:
     ]
 
     def __init__(self, **kwargs):
+        """Initialize the image-to-image neural network framework.
+        
+        This constructor sets up the entire infrastructure for training and evaluating
+        image-to-image neural networks, including argument parsing, logging configuration,
+        device setup, model instantiation, and metric initialization.
+        
+        The initialization process follows these steps:
+        1. Skip initialization if already initialized (for multiple inheritance)
+        2. Parse and process command-line and config file arguments
+        3. Set up logging infrastructure
+        4. Create directory structure for experiment outputs
+        5. Back up source code for reproducibility
+        6. Instantiate the neural network model
+        7. Load pre-trained weights if specified
+        8. Initialize evaluation metrics
+        
+        Args:
+            **kwargs: Keyword arguments that can override command-line arguments.
+                Common parameters include:
+                - test_only: Boolean flag for evaluation-only mode
+                - preset_args: Dictionary of arguments to override parsed arguments
+                - device: String specifying the computation device ("cuda" or "cpu")
+                
+        Notes:
+            - The method modifies the instance state extensively, adding all parsed
+              arguments as instance attributes
+            - For subclasses, the instantiate_model() method must be implemented
+            - The logger is configured to output to both file and console
+            - In test_only mode, model saving and certain training preparations are skipped
+        """
         # skip if already initialized, by checking for self.device
         if hasattr(self, "device"):
             return
@@ -139,6 +215,30 @@ class ImageToImageNN:
 
     @staticmethod
     def load_model(model: torch.nn.Module, path: str, device=None) -> None:
+        """Load pre-trained weights into a model.
+        
+        This static method loads model weights from a saved checkpoint file into the
+        provided model instance, moving the weights to the specified device.
+        
+        Args:
+            model: PyTorch model instance to load weights into
+            path: File path to the saved model state dictionary (.pt or .pth file)
+            device: Optional device to load the model weights onto (e.g., "cuda:0" or "cpu")
+                   If None, the weights are loaded onto the default device
+                    
+        Returns:
+            None
+            
+        Raises:
+            FileNotFoundError: If the specified path does not exist
+            RuntimeError: If the state dict structure doesn't match the model architecture
+            
+        Notes:
+            - The method verifies the file exists before attempting to load it
+            - A log message is generated upon successful loading
+            - In case of a missing file, the debugger is invoked before raising the exception
+              (when run in a debugging environment)
+        """
         if os.path.isfile(path):
             model.load_state_dict(torch.load(path, map_location=device))
             logging.info(f"Loaded model from {path}")
@@ -147,11 +247,38 @@ class ImageToImageNN:
             raise FileNotFoundError(path)
 
     def infer(
-        self,
-        img: torch.Tensor,
-        return_dict=False,  # , rgb_xyz_matrix=None, ret_img_only=False, match_gains=True
+            self,
+            img: torch.Tensor,
+            return_dict=False,  # , rgb_xyz_matrix=None, ret_img_only=False, match_gains=True
     ) -> dict:
-        """Return a denoised image (or {reconstructed_image, bpp} if return_dict is True)."""
+        """Perform inference with the model on input images.
+        
+        This method runs the model in evaluation mode on the input images, performing
+        the image-to-image transformation (such as denoising or compression/decompression).
+        It handles batched or single images and performs appropriate device transfers.
+        
+        Args:
+            img: Input image tensor with shape [C,H,W] or [B,C,H,W], where:
+                 B = batch size (optional, will be added if missing)
+                 C = number of channels (must match model's expected input channels)
+                 H, W = height and width dimensions
+            return_dict: If True, returns a dictionary containing model outputs
+                        (e.g., {"reconstructed_image": tensor, "bpp": value} for compression models);
+                        if False, returns just the reconstructed image tensor
+                        
+        Returns:
+            If return_dict=False: torch.Tensor containing the processed image(s)
+            If return_dict=True: dict containing model outputs (always includes "reconstructed_image")
+            
+        Raises:
+            AssertionError: If the input image channels don't match the model's expected input channels
+            
+        Notes:
+            - Input image is automatically converted to a batch if it's a single image
+            - Inference is performed with torch.no_grad() for efficiency
+            - The model is automatically set to evaluation mode during inference
+            - Dictionary output may contain additional metrics like bits-per-pixel (bpp) for compression models
+        """
         with torch.no_grad():
             if len(img.shape) == 3:
                 img = img.unsqueeze(0)
@@ -183,12 +310,41 @@ class ImageToImageNN:
 
     @staticmethod
     def get_best_step(
-        model_dpath: str,
-        suffix: str,
-        prefix: str = "val",
-        # suffix="combined_loss",
+            model_dpath: str,
+            suffix: str,
+            prefix: str = "val",
+            # suffix="combined_loss",
     ) -> dict:
-        """Return a dictionary containing step_n: the best step as read from trainres.yaml, fpath: path to the model on that step."""
+        """Find the best-performing model checkpoint based on a specific metric.
+        
+        This method locates the best iteration of a trained model by examining the
+        training results file (trainres.yaml) and identifying which training step
+        achieved the best performance according to the specified metric.
+        
+        Args:
+            model_dpath: Path to the model's experiment directory containing 
+                        the trainres.yaml file and saved_models subdirectory
+            suffix: Metric name suffix to use for finding the best step 
+                   (e.g., "msssim", "psnr", "combined_loss")
+            prefix: Metric name prefix, typically "val" for validation metrics
+                   or "test" for test metrics
+                   
+        Returns:
+            dict: Dictionary containing:
+                - "fpath": Full path to the best model checkpoint file
+                - "step_n": The iteration/step number of the best checkpoint
+                
+        Raises:
+            FileNotFoundError: If the trainres.yaml file doesn't exist in model_dpath
+            KeyError: If the specified metric (prefix_suffix) isn't found in the results file
+            
+        Notes:
+            - The metric is constructed as "{prefix}_{suffix}" (e.g., "val_msssim")
+            - The method assumes that model checkpoints follow the naming pattern 
+              "iter_{step_number}.pt" and are stored in a "saved_models" subdirectory
+            - The trainres.yaml file is expected to have a "best_step" section that 
+              maps metric names to their best iteration numbers
+        """
         jsonfpath = os.path.join(model_dpath, "trainres.yaml")
         if not os.path.isfile(jsonfpath):
             raise FileNotFoundError(
@@ -207,8 +363,33 @@ class ImageToImageNN:
 
     @staticmethod
     def get_transfer_function(
-        fun_name: str,
+            fun_name: str,
     ) -> Callable[[torch.Tensor], torch.Tensor]:
+        """Get a transfer function for image pixel value transformation.
+        
+        This method provides a centralized way to access various transfer functions
+        used for image processing. Transfer functions transform pixel values, often
+        to convert between different color spaces or to apply non-linear corrections.
+        
+        Available transfer functions:
+        - "None": Identity function (returns input unchanged)
+        - "pq": Perceptual Quantizer encoding (converts from scene-linear to PQ encoding)
+        - "gamma22": Gamma correction with γ=2.2 (standard sRGB gamma)
+        
+        Args:
+            fun_name: String identifier for the desired transfer function
+            
+        Returns:
+            Callable[[torch.Tensor], torch.Tensor]: A function that applies the 
+            requested transfer to tensor inputs
+            
+        Raises:
+            ValueError: If the requested transfer function name is not recognized
+            
+        Examples:
+            >>> transfer_fn = get_transfer_function("gamma22")
+            >>> corrected_image = transfer_fn(linear_image)
+        """
         if str(fun_name) == "None":
             return lambda img: img
         elif fun_name == "pq":
@@ -220,11 +401,49 @@ class ImageToImageNN:
 
     @staticmethod
     def save_args(args):
+        """Save command-line arguments to a YAML file for experiment reproducibility.
+        
+        This method preserves all arguments used to run an experiment by serializing
+        them to a YAML file, which can be used later to reproduce the experiment or
+        understand its configuration.
+        
+        Args:
+            args: Namespace object containing command-line arguments, typically from
+                 argparse.ArgumentParser.parse_args() or configargparse.parse_args()
+                
+        Notes:
+            - Creates the save directory if it doesn't exist
+            - Converts the Namespace object to a dictionary using vars()
+            - Saves the arguments to args.yaml in the directory specified by args.save_dpath
+            - The resulting YAML file can be loaded later to recreate the same arguments
+            - This is critical for experiment reproducibility and tracking
+        """
         os.makedirs(args.save_dpath, exist_ok=True)
         out_fpath = os.path.join(args.save_dpath, "args.yaml")
         utilities.dict_to_yaml(vars(args), out_fpath)
 
     def save_cmd(self):
+        """Save the command line invocation to a shell script file.
+        
+        This method preserves the exact command used to run the current experiment
+        by saving it to a shell script file. If the file already exists, previous
+        commands are preserved as comments, creating a history of experiment runs.
+        
+        The filename is determined by the mode of operation:
+        - test_cmd.sh for evaluation mode (test_only=True)
+        - train_cmd.sh for training mode (test_only=False)
+        
+        This allows for easy reproduction of experiments by simply executing the
+        generated script file.
+        
+        Notes:
+            - Creates the save directory if it doesn't exist
+            - Preserves previous commands as comments if the file exists
+            - Always appends the current command to the end of the file
+            - The command is reconstructed from sys.argv to include all arguments
+            - The resulting shell script can be executed directly to reproduce 
+              the experiment
+        """
         os.makedirs(self.save_dpath, exist_ok=True)
         out_fpath = os.path.join(
             self.save_dpath, "test_cmd.sh" if self.test_only else "train_cmd.sh"
@@ -244,6 +463,35 @@ class ImageToImageNN:
             f.write(cmd)
 
     def get_args(self, ignore_unknown_args: bool = False):
+        """Parse command-line arguments and configuration files.
+        
+        This method sets up a ConfigArgParse parser that can handle both command-line
+        arguments and YAML configuration files. It registers all model parameters by
+        calling add_arguments() and then parses the arguments.
+        
+        The method supports two parsing modes:
+        - Standard mode: All arguments must be recognized; unknown arguments cause errors
+        - Ignore mode: Unknown arguments are silently ignored, useful for test-only mode
+          where not all training parameters are needed
+        
+        Args:
+            ignore_unknown_args: If True, unknown arguments are ignored rather than
+                                raising an error (useful for test-only mode)
+                                
+        Returns:
+            argparse.Namespace: Object containing all parsed arguments as attributes
+            
+        Notes:
+            - Uses ConfigArgParse for combined CLI and config file support
+            - Default config files are specified in CLS_CONFIG_FPATHS class attribute
+            - YAML is used as the config file format
+            - All available parameters are defined in the add_arguments method
+            - Configuration priority (highest to lowest):
+                1. Command-line arguments
+                2. Values from specified config file (--config)
+                3. Values from default config files
+                4. Default values defined in add_arguments
+        """
         parser = configargparse.ArgumentParser(
             description=__doc__,
             config_file_parser_class=configargparse.YAMLConfigFileParser,
@@ -256,6 +504,34 @@ class ImageToImageNN:
         return parser.parse_args()
 
     def add_arguments(self, parser):
+        """Register command-line arguments and configuration parameters.
+        
+        This method defines all available parameters for the model, including paths,
+        model architecture, training settings, and debug options. These parameters
+        can be specified via command-line arguments or configuration files.
+        
+        The base ImageToImageNN class defines common parameters applicable to all
+        image-to-image models. Subclasses typically override this method to add
+        their specific parameters while also calling the parent implementation.
+        
+        Args:
+            parser: ConfigArgParse parser to register arguments with
+            
+        Notes:
+            - The --config argument specifies an external YAML configuration file
+            - Some arguments like --arch are required while others are optional
+            - Some arguments have default values that can be overridden
+            - Arguments with choices have their valid options explicitly listed
+            - Many arguments support auto-generation/completion via autocomplete_args
+            - The following common parameter categories are defined:
+                - Configuration options (--config)
+                - Model architecture (--arch, --funit, --in_channels)
+                - Experiment naming and paths (--expname, --load_path, --save_dpath)
+                - Computation options (--device)
+                - Debugging flags (--debug_options)
+                - Evaluation metrics (--metrics)
+                - Image processing options (--match_gain)
+        """
         parser.add_argument(
             "--config",
             is_config_file=True,
@@ -332,17 +608,37 @@ class ImageToImageNN:
         )
 
     def autocomplete_args(self, args):
-        """
-        Auto-complete the following arguments:
-
-        expname: CLASS_NAME_<in_channels>ch<-iteration>
-        load_path (optional): can be dpath (autopick best model), expname (autocomplete to dpath), fpath (end-result)
-        save_dpath: ../../models/rawnind/<expname>
-
-        to continue:
-            determine expname
-            determine save_dpath, set load_path accordingly
-                or make a function common to save_dpath and load_path
+        """Auto-complete and validate argument values with intelligent defaults.
+        
+        This method processes the parsed arguments to fill in missing values,
+        resolve interdependencies, and ensure consistency. It reduces the burden
+        on users by providing sensible defaults and handling complex path relationships.
+        
+        Key auto-completion actions:
+        1. Experiment name (expname):
+           - If not provided, generates based on class name, channel count, and parameters
+           - May incorporate config filename or additional comments
+           
+        2. Load path (load_path):
+           - Can accept a directory path, experiment name, or specific model file
+           - Resolves to the best model in a directory based on validation metrics
+           - Sets initial training step based on loaded model if not explicitly provided
+           
+        3. Save directory (save_dpath):
+           - If not provided, generates based on models base path and experiment name
+           - Creates directory structure for experiment outputs
+           
+        Args:
+            args: Namespace object containing parsed arguments to be auto-completed
+            
+        Notes:
+            - The method modifies the args object in-place
+            - Some arguments may depend on values from other arguments
+            - Path resolution handles both relative and absolute paths
+            - Experiment naming follows conventions for easier organization
+            - For continued training, load_path and save_dpath may be the same
+            - The method includes special handling for various model architectures
+            - Validation checks ensure arguments are consistent and valid
         """
         # generate expname and save_dpath, and (incomplete/dir_only) load_path if continue_training_from_last_model_if_exists
         if not args.expname:
@@ -357,7 +653,7 @@ class ImageToImageNN:
             # handle duplicate expname -> increment
             dup_cnt = None
             while os.path.isdir(
-                save_dpath := os.path.join(self.MODELS_BASE_DPATH, args.expname)
+                    save_dpath := os.path.join(self.MODELS_BASE_DPATH, args.expname)
             ):
                 dup_cnt: int = 1
                 while os.path.isdir(f"{save_dpath}-{dup_cnt}"):
@@ -408,7 +704,7 @@ class ImageToImageNN:
                 args.load_path = best_step["fpath"]
                 # check if there are newer models
                 if vars(args).get(
-                    "continue_training_from_last_model_if_exists"
+                        "continue_training_from_last_model_if_exists"
                 ) and not vars(self).get("test_only", False):
                     # if args.continue_training_from_last_model_if_exists:
                     dup_cnt_load = None if dup_cnt is None else dup_cnt - 1
@@ -461,9 +757,9 @@ class ImageToImageNN:
         #         args.load_path
         #     self.autocomplete_args(args)  # first pass w/ continue: we determine the expname
         if (
-            hasattr(self, "test_only")
-            and self.test_only
-            and "/scratch/" in vars(args).get("noise_dataset_yamlfpaths", "")
+                hasattr(self, "test_only")
+                and self.test_only
+                and "/scratch/" in vars(args).get("noise_dataset_yamlfpaths", "")
         ):
             # FIXME this doesn't always work, eg "tools/validate_and_test_dc_prgb2prgb.py --config /orb/benoit_phd/models/rawnind_dc/DCTrainingProfiledRGBToProfiledRGB_3ch_L64.0_Balle_Balle_2023-10-27-dc_prgb_msssim_mgout_64from128_x_x_/args.yaml --device -1
             # when noise_dataset_yamlfpaths is not overwritten through preset_args
@@ -483,6 +779,7 @@ class ImageToImageNNTraining(ImageToImageNN):
     Extends ImageToImageNN with training-specific features such as learning rate
     scheduling, validation/test routines, checkpointing, and dataloader wiring.
     """
+
     def __init__(self, **kwargs):
         """Initialize an image to image neural network trainer.
 
@@ -499,7 +796,7 @@ class ImageToImageNNTraining(ImageToImageNN):
 
         self.init_optimizer()
         if self.load_path and (
-            self.init_step > 0 or not self.reset_optimizer_on_fallback_load_path
+                self.init_step > 0 or not self.reset_optimizer_on_fallback_load_path
         ):
             self.load_model(self.optimizer, self.load_path + ".opt", device=self.device)
         if self.reset_lr or (self.fallback_load_path and self.init_step == 0):
@@ -697,19 +994,49 @@ class ImageToImageNNTraining(ImageToImageNN):
         # )
 
     def validate_or_test(
-        self,
-        dataloader: Iterable,
-        test_name: str,
-        sanity_check: bool = False,
-        save_individual_results: bool = True,
-        save_individual_images: bool = False,  # TODO merge with output_valtest_images (debug_options) and dataloader.OUTPUTS_IMAGE_FILES
+            self,
+            dataloader: Iterable,
+            test_name: str,
+            sanity_check: bool = False,
+            save_individual_results: bool = True,
+            save_individual_images: bool = False,
+            # TODO merge with output_valtest_images (debug_options) and dataloader.OUTPUTS_IMAGE_FILES
     ):
-        """Validate/test. Assumes that dataloader returns one image at a time."""
+        """Perform validation or testing on a dataset.
+        
+        This method runs the model on all samples from the provided dataloader,
+        calculates performance metrics, and optionally saves individual results
+        and output images. It supports distributed evaluation with a locking
+        mechanism to prevent resource conflicts.
+        
+        The method performs these steps:
+        1. Establishes a validation lock if needed to prevent parallel evaluations
+        2. Processes each batch from the dataloader with the model
+        3. Calculates losses and metrics for each sample
+        4. Aggregates results and computes statistics
+        5. Saves individual sample results and/or images if requested
+        
+        Args:
+            dataloader: Iterable that yields batches of data, one image at a time
+            test_name: Identifier for this validation/test run, used for file naming
+            sanity_check: If True, runs a minimal validation for debugging purposes
+            save_individual_results: If True, saves per-sample metrics to a YAML file
+            save_individual_images: If True, saves model output images for each sample
+                
+        Returns:
+            Dictionary with aggregated metrics and loss values
+            
+        Notes:
+            - This method expects the dataloader to return one sample at a time
+            - For progressive validation/testing, results from previous runs may be loaded
+            - The validation lock prevents multiple processes from running CPU-intensive
+              operations simultaneously on shared resources
+        """
         # validation lock (TODO put in a function)
         own_lock = bypass_lock = printed_lock_warning = False
         lock_fpath = f"validation_{os.uname()[1]}_{os.environ.get('CUDA_VISIBLE_DEVICES', 'unk')}.lock"
         if (platform.node() == "sd" or platform.node() == "bd") and (
-            "manproc" not in test_name or self.arbitrary_proc_method == "opencv"
+                "manproc" not in test_name or self.arbitrary_proc_method == "opencv"
         ):
             bypass_lock = True
 
@@ -772,8 +1099,8 @@ class ImageToImageNNTraining(ImageToImageNN):
                 )
 
                 if (
-                    "progressive_test" in common_test_name
-                    and "manproc" in common_test_name
+                        "progressive_test" in common_test_name
+                        and "manproc" in common_test_name
                 ):  # ugly hack to use the same individual_results for both progressive and std tests
                     if "manproc_bostitch" in common_test_name:
                         common_test_name_noprog = "manproc_bostitch"
@@ -803,12 +1130,12 @@ class ImageToImageNNTraining(ImageToImageNN):
                 self.save_dpath, common_test_name, f"iter_{self.step_n}"
             )
             if (
-                save_individual_images
-                or "output_valtest_images" in self.debug_options
-                or (
+                    save_individual_images
+                    or "output_valtest_images" in self.debug_options
+                    or (
                     hasattr(dataloader, "OUTPUTS_IMAGE_FILES")
                     and dataloader.OUTPUTS_IMAGE_FILES
-                )
+            )
             ):
                 os.makedirs(individual_images_dpath, exist_ok=True)
             for i, batch in enumerate(tqdm.tqdm(dataloader)):
@@ -894,7 +1221,7 @@ class ImageToImageNNTraining(ImageToImageNN):
                         processed_output, batch["rgb_xyz_matrix"], x_crops
                     )
                 if (
-                    "output_valtest_images" in self.debug_options
+                        "output_valtest_images" in self.debug_options
                 ):  # this is pretty ugly :/
                     self._dbg_output_testval_images(
                         batch=batch,
@@ -1221,11 +1548,11 @@ class ImageToImageNNTraining(ImageToImageNN):
                         )
 
     def train(
-        self,
-        optimizer: torch.optim.Optimizer,
-        num_steps: int,
-        dataloader_cc: Iterable,
-        dataloader_cn: Iterable,
+            self,
+            optimizer: torch.optim.Optimizer,
+            num_steps: int,
+            dataloader_cc: Iterable,
+            dataloader_cn: Iterable,
     ) -> float:
         last_time = time.time()
         # for i, batch in enumerate(
@@ -1242,7 +1569,7 @@ class ImageToImageNNTraining(ImageToImageNN):
                     batch,
                     optimizer=optimizer,
                     output_train_images=(
-                        first_step and "output_train_images" in self.debug_options
+                            first_step and "output_train_images" in self.debug_options
                     ),
                 )
             )
@@ -1263,8 +1590,8 @@ class ImageToImageNNTraining(ImageToImageNN):
                 self.step_n
             ] = {}  # this shouldn't happen but sometimes the results file is not properly synchronized and we are stuck with an old version I guess
         if (
-            "val_" + self.loss + self._get_lossn_extension()
-            not in self.json_saver.results[self.step_n]
+                "val_" + self.loss + self._get_lossn_extension()
+                not in self.json_saver.results[self.step_n]
         ):
             val_losses = self.validate_or_test(
                 dataloader=self.cleannoisy_val_dataloader, test_name="val"
@@ -1284,8 +1611,8 @@ class ImageToImageNNTraining(ImageToImageNN):
             self.step_n = self.init_step
         print(f"test_and_validate_model: {self.step_n=}")
         if (
-            "test_" + self.loss + self._get_lossn_extension()
-            in self.json_saver.results[self.step_n]
+                "test_" + self.loss + self._get_lossn_extension()
+                in self.json_saver.results[self.step_n]
         ):
             return
         test_losses = self.validate_or_test(
@@ -1301,7 +1628,7 @@ class ImageToImageNNTraining(ImageToImageNN):
         )
 
     def offline_custom_test(
-        self, dataloader, test_name: str, save_individual_images=False
+            self, dataloader, test_name: str, save_individual_images=False
     ):
         print(f"custom_test: {test_name=}")
         if not hasattr(self, "step_n"):
@@ -1328,12 +1655,12 @@ class ImageToImageNNTraining(ImageToImageNN):
         )
 
     def compute_train_loss(
-        self,
-        mask,
-        processed_output,
-        processed_gt,
-        bpp,
-        # approx_exposure_diff: torch.Tensor,
+            self,
+            mask,
+            processed_output,
+            processed_gt,
+            bpp,
+            # approx_exposure_diff: torch.Tensor,
     ) -> torch.Tensor:
         # compute loss
         masked_proc_output = processed_output * mask
@@ -1404,11 +1731,11 @@ class PRGBImageToImageNNTraining(ImageToImageNNTraining):
         return repacked_batch
 
     def step(
-        self,
-        batch,
-        optimizer: torch.optim.Optimizer,
-        output_train_images: bool = False,
-        **kwargs,
+            self,
+            batch,
+            optimizer: torch.optim.Optimizer,
+            output_train_images: bool = False,
+            **kwargs,
     ):  # WIP
         # unpack data, flatten intra/inter images, and transfer to device
         # last_time = time.time()
@@ -1543,14 +1870,14 @@ class PRGBImageToImageNNTraining(ImageToImageNNTraining):
         return loss.item()
 
     def _dbg_output_testval_images(
-        self,
-        batch,
-        processed_output,
-        individual_images_dpath,
-        i,
-        x_crops,
-        y_crops,
-        mask_crops,
+            self,
+            batch,
+            processed_output,
+            individual_images_dpath,
+            i,
+            x_crops,
+            y_crops,
+            mask_crops,
     ):
         if isinstance(batch["y_fpath"], list) and len(batch["y_fpath"]) == 1:
             batch["y_fpath"] = batch["y_fpath"][0]
@@ -1596,10 +1923,10 @@ class BayerImageToImageNN(ImageToImageNN):
         super().__init__(**kwargs)
 
     def process_net_output(
-        self,
-        camRGB_images: torch.Tensor,
-        rgb_xyz_matrix: torch.Tensor,
-        gt_images: Optional[torch.Tensor] = None,
+            self,
+            camRGB_images: torch.Tensor,
+            rgb_xyz_matrix: torch.Tensor,
+            gt_images: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """Process camRGB output s.t. it becomes closer to the final output.
         1. Match exposure if gt_images is provided
@@ -1619,7 +1946,7 @@ class BayerImageToImageNN(ImageToImageNN):
             camRGB_images, rgb_xyz_matrix
         )
         if (
-            gt_images is not None and self.match_gain == "output"
+                gt_images is not None and self.match_gain == "output"
         ):  # this is probably overkill
             output_images = rawproc.match_gain(
                 anchor_img=gt_images, other_img=output_images
@@ -1678,16 +2005,16 @@ class BayerImageToImageNNTraining(ImageToImageNNTraining, BayerImageToImageNN):
             )
         )  # .to(device) # workaround for https://github.com/pytorch/pytorch/issues/86465
         assert (
-            repacked_batch["rgb_xyz_matrix"].shape[0]
-            == repacked_batch["x_crops"].shape[0]
+                repacked_batch["rgb_xyz_matrix"].shape[0]
+                == repacked_batch["x_crops"].shape[0]
         )
         return repacked_batch
 
     def step(
-        self,
-        batch,
-        optimizer: torch.optim.Optimizer,
-        output_train_images: bool = False,
+            self,
+            batch,
+            optimizer: torch.optim.Optimizer,
+            output_train_images: bool = False,
     ):  # WIP
         # unpack data, flatten intra/inter images, and transfer to device
         # last_time = time.time()
@@ -1734,14 +2061,14 @@ class BayerImageToImageNNTraining(ImageToImageNNTraining, BayerImageToImageNN):
             os.makedirs(visu_save_dir, exist_ok=True)
             for i in range(reconstructed_image.shape[0]):
                 with open(
-                    os.path.join(visu_save_dir, f"train_{i}_xyzm.txt"), "w"
+                        os.path.join(visu_save_dir, f"train_{i}_xyzm.txt"), "w"
                 ) as fp:
                     fp.write(f"{batch['rgb_xyz_matrix'][i]}")
                 y_processed = (
                     self.process_net_output(
-                        rawproc.demosaic(batch["y_crops"][i : i + 1].cpu()),
-                        batch["rgb_xyz_matrix"][i : i + 1].cpu(),
-                        batch["x_crops"][i : i + 1].cpu(),
+                        rawproc.demosaic(batch["y_crops"][i: i + 1].cpu()),
+                        batch["rgb_xyz_matrix"][i: i + 1].cpu(),
+                        batch["x_crops"][i: i + 1].cpu(),
                     )
                     .squeeze(0)
                     .numpy()
@@ -1830,24 +2157,24 @@ class BayerImageToImageNNTraining(ImageToImageNNTraining, BayerImageToImageNN):
         return loss.item()
 
     def _dbg_output_testval_images(
-        self,
-        batch,
-        processed_output,
-        individual_images_dpath,
-        i,
-        x_crops,
-        y_crops,
-        mask_crops,
+            self,
+            batch,
+            processed_output,
+            individual_images_dpath,
+            i,
+            x_crops,
+            y_crops,
+            mask_crops,
     ):
         # print(
         #    f"valtest {y_crops.mean((0,2,3))=}, {model_output.mean((0,2,3))=}"
         # )
         with open(
-            os.path.join(
-                individual_images_dpath,
-                f"{i if 'y_fpath' not in batch else batch['y_fpath'][0].split('/')[-1]}_xyzm.txt",
-            ),
-            "w",
+                os.path.join(
+                    individual_images_dpath,
+                    f"{i if 'y_fpath' not in batch else batch['y_fpath'][0].split('/')[-1]}_xyzm.txt",
+                ),
+                "w",
         ) as fp:
             fp.write(f"{batch['rgb_xyz_matrix']}")
         # raw.hdr_nparray_to_file(
@@ -1917,10 +2244,10 @@ class BayerImageToImageNNTraining(ImageToImageNNTraining, BayerImageToImageNN):
 class DenoiseCompress(ImageToImageNN):
     MODELS_BASE_DPATH = os.path.join("..", "..", "models", "rawnind_dc")
     ARCHS = {
-        "ManyPriors": manynets_compression.ManyPriors_RawImageCompressor,
+        "ManyPriors" : manynets_compression.ManyPriors_RawImageCompressor,
         "DenoiseThenCompress": denoise_then_compress.DenoiseThenCompress,
-        "JPEGXL": standard_compressor.JPEGXL_ImageCompressor,
-        "JPEG": standard_compressor.JPEGXL_ImageCompressor,
+        "JPEGXL"     : standard_compressor.JPEGXL_ImageCompressor,
+        "JPEG"       : standard_compressor.JPEGXL_ImageCompressor,
         "Passthrough": standard_compressor.Passthrough_ImageCompressor,
     }
     ARCHS_ENC = {
@@ -1988,9 +2315,9 @@ class DenoiseCompressTraining(ImageToImageNNTraining, DenoiseCompress):
         except KeyError:
             raise NotImplementedError(f"{self.loss} not in common.pt_losses.losses")
         assert (
-            len(self.optimizer.param_groups) == 3
-            or self.arch == "JPEGXL"
-            or self.arch == "Passthrough"
+                len(self.optimizer.param_groups) == 3
+                or self.arch == "JPEGXL"
+                or self.arch == "Passthrough"
         )  # match adjust_lr function
         if launch:
             self.training_loop()
@@ -2038,12 +2365,12 @@ class DenoiseCompressTraining(ImageToImageNNTraining, DenoiseCompress):
 class Denoiser(ImageToImageNN):
     MODELS_BASE_DPATH = os.path.join("..", "..", "models", "rawnind_denoise")
     ARCHS = {
-        "unet": raw_denoiser.UtNet2,
+        "unet"  : raw_denoiser.UtNet2,
         "utnet3": raw_denoiser.UtNet3,
         # "runet": runet.Runet,
         "identity": raw_denoiser.Passthrough,
         # "edsr": edsr.EDSR,
-        "bm3d": bm3d_denoiser.BM3D_Denoiser,
+        "bm3d"  : bm3d_denoiser.BM3D_Denoiser,
     }
 
     def __init__(self, **kwargs):
@@ -2118,7 +2445,7 @@ class DenoiserTraining(ImageToImageNNTraining, Denoiser):
 
 
 def get_and_load_test_object(
-    **kwargs,
+        **kwargs,
 ) -> ImageToImageNN:  # only used in denoise_image.py
     """Parse config file or arch parameter to get the class name, ie Denoiser or DenoiseCompress."""
     parser = configargparse.ArgumentParser(

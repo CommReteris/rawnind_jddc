@@ -19,28 +19,27 @@ Most functions are designed to be simple, focused helpers that perform specific
 tasks with error handling appropriate for the project's needs.
 """
 
-import os
-import logging
-import random
-from typing import Callable, Union, Iterable, Optional, List, Any
-from multiprocessing import Pool
-import tqdm
-import json
-import sys
-import csv
-import lzma
-import shutil
-import datetime
-import unittest
-import pickle
 import atexit  # restart_program()
+import csv
+import datetime
+import json
+import logging
+import lzma
+import os
+import pickle
+import random
+import shutil
+import sys
+import unittest
+from multiprocessing import Pool
+from typing import Any, Callable, Iterable, List, Optional, Union
 
+import tqdm
 
 try:
     import png
 except ModuleNotFoundError as e:
     logging.error(f"{e} (install pypng)")
-import time
 import numpy as np
 import statistics
 import subprocess
@@ -150,12 +149,12 @@ def backup(filepaths: list):
 
 
 def mt_runner(
-    fun: Callable[[Any], Any],
-    argslist: list,
-    num_threads: int = NUM_THREADS,
-    ordered: bool = False,
-    progress_bar: bool = True,
-    starmap: bool = False,
+        fun: Callable[[Any], Any],
+        argslist: list,
+        num_threads: int = NUM_THREADS,
+        ordered: bool = False,
+        progress_bar: bool = True,
+        starmap: bool = False,
 ) -> Iterable[Any]:
     """Run a function across multiple inputs using multiprocessing for parallelization.
     
@@ -326,7 +325,7 @@ def dict_to_yaml(adict, fpath):
 
 
 def load_yaml(
-    fpath: str, safely=True, default_type=dict, default=None, error_on_404=True
+        fpath: str, safely=True, default_type=dict, default=None, error_on_404=True
 ):
     """Load a YAML file and convert digit string keys to integers.
     
@@ -434,8 +433,26 @@ def args_to_file(fpath):
 
 
 def save_listofdict_to_csv(listofdict, fpath, keys=None, mixed_keys=False):
-    """
-    Use mixed_keys=True if different dict have different keys.
+    """Save a list of dictionaries to a CSV file.
+    
+    Converts a list of dictionaries to a CSV file where each row represents
+    a dictionary from the list and columns represent dictionary keys.
+    
+    Args:
+        listofdict: List of dictionaries to convert to CSV rows
+        fpath: Path where the CSV file should be written
+        keys: Specific keys to use as columns (defaults to all keys from the first dict)
+        mixed_keys: If True, handles dictionaries with different sets of keys by
+                   including all unique keys across all dictionaries
+                   
+    Raises:
+        ValueError: If dictionaries have different keys and mixed_keys=False
+        
+    Notes:
+        - When mixed_keys=False, all dictionaries must have the same keys
+        - Keys are sorted alphabetically in the CSV header
+        - Enters debugging mode (breakpoint) if an error occurs
+        - Uses csv.DictWriter for proper CSV formatting and escaping
     """
     if keys is None:
         keys = listofdict[0].keys()
@@ -470,9 +487,9 @@ class Printer:
         tofile: Whether to write messages to a log file
         file_path: Path to the log file
     """
-    
+
     def __init__(
-        self, tostdout=True, tofile=True, save_dir=".", fn="log", save_file_path=None
+            self, tostdout=True, tofile=True, save_dir=".", fn="log", save_file_path=None
     ):
         """Initialize a Printer instance.
         
@@ -550,8 +567,28 @@ def get_leaf(path: str) -> str:
 
 
 def get_root(fpath: str) -> str:
-    """
-    return root directory a file (fpath) is located in.
+    """Get the parent directory of a file path.
+    
+    Extracts the directory that contains the specified file path. Handles paths 
+    that may end with path separators by removing trailing separators before
+    determining the parent directory.
+    
+    Args:
+        fpath: Path to the file or directory
+        
+    Returns:
+        String containing the parent directory path
+        
+    Notes:
+        - Removes trailing path separators before finding the parent directory
+        - Uses os.path.dirname() to extract the parent directory
+        - Similar to get_file_dname(), but returns the full path instead of just the name
+        
+    Example:
+        >>> get_root('/path/to/file.txt')
+        '/path/to'
+        >>> get_root('/path/to/directory/')
+        '/path/to'
     """
     while fpath.endswith(os.pathsep):
         fpath = fpath[:-1]
@@ -577,7 +614,32 @@ def get_file_dname(fpath: str) -> str:
 
 
 def freeze_dict(adict: dict) -> frozenset:
-    """Recursively freeze a dictionary into hashable type"""
+    """Recursively convert a dictionary into a hashable frozenset.
+    
+    Transforms a dictionary into a frozenset of (key, value) pairs, which is hashable
+    and can be used as a key in another dictionary. For nested dictionaries, 
+    the function recursively converts each sub-dictionary to a frozenset.
+    
+    Args:
+        adict: Dictionary to convert to a hashable type
+        
+    Returns:
+        Frozenset representation of the dictionary, where each nested dictionary
+        has also been converted to a frozenset
+        
+    Notes:
+        - Creates a copy of the input dictionary to avoid modifying the original
+        - Useful when you need to use dictionaries as keys in other dictionaries or sets
+        - Preserves the hierarchical structure of nested dictionaries
+        
+    Example:
+        >>> d = {'a': 1, 'b': {'c': 2}}
+        >>> frozen_d = freeze_dict(d)
+        >>> isinstance(frozen_d, frozenset)
+        True
+        >>> # The frozen dictionary can be used as a dictionary key
+        >>> another_dict = {frozen_d: 'value'}
+    """
     fdict = adict.copy()
     for akey, aval in fdict.items():
         if isinstance(aval, dict):
@@ -586,6 +648,30 @@ def freeze_dict(adict: dict) -> frozenset:
 
 
 def unfreeze_dict(fdict: frozenset) -> dict:
+    """Recursively convert a frozenset back into a dictionary.
+    
+    Reverses the transformation performed by freeze_dict(), converting a frozenset
+    of (key, value) pairs back into a dictionary. For nested frozensets, the function
+    recursively converts each sub-frozenset back to a dictionary.
+    
+    Args:
+        fdict: Frozenset representation of a dictionary, typically created by freeze_dict()
+        
+    Returns:
+        Dictionary reconstructed from the frozenset, with all nested frozensets
+        also converted back to dictionaries
+        
+    Notes:
+        - This is the inverse operation of freeze_dict()
+        - Preserves the hierarchical structure of nested frozensets
+        
+    Example:
+        >>> d = {'a': 1, 'b': {'c': 2}}
+        >>> frozen_d = freeze_dict(d)
+        >>> original_d = unfreeze_dict(frozen_d)
+        >>> original_d == d
+        True
+    """
     adict = dict(fdict)
     for akey, aval in adict.items():
         if isinstance(aval, frozenset):
@@ -669,13 +755,13 @@ def get_highest_direntry(dpath: str) -> Optional[str]:
 
 
 def get_last_modified_file(
-    dpath,
-    exclude: Optional[Union[str, List[str]]] = None,
-    incl_ext: bool = True,
-    full_path=True,
-    fn_beginswith: Optional[Union[str, int]] = None,
-    ext=None,
-    exclude_ext: Optional[str] = None,
+        dpath,
+        exclude: Optional[Union[str, List[str]]] = None,
+        incl_ext: bool = True,
+        full_path=True,
+        fn_beginswith: Optional[Union[str, int]] = None,
+        ext=None,
+        exclude_ext: Optional[str] = None,
 ):
     """Get the last modified fn,
     optionally excluding patterns found in exclude (str or list),
@@ -896,6 +982,7 @@ def restart_program():
         - After changing configuration files that are only read at startup
         - After modifying environment variables
     """
+
     def _restart_program():
         os.execl(sys.executable, sys.executable, *sys.argv)
 
@@ -979,7 +1066,7 @@ class Test_utilities(unittest.TestCase):
     This test class contains test cases for various utility functions in this module,
     verifying their correct behavior under normal and edge case scenarios.
     """
-    
+
     def test_freezedict(self):
         """Test the freeze_dict and unfreeze_dict functions.
         
