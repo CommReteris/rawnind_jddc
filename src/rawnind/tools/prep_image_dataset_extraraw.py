@@ -8,7 +8,6 @@ import logging
 import argparse
 import tqdm
 
-sys.path.append("..")
 from rawnind.libs import raw
 from common.libs import utilities
 
@@ -56,7 +55,7 @@ def fetch_crops_list(fpath: str, ds_base_dpath: str) -> list[dict]:
         if fn.startswith(basename):
             coordinates = get_xy_coordinates(fn)
             crop = {
-                "coordinates": coordinates,
+                "coordinates"        : coordinates,
                 "gt_linrec2020_fpath": os.path.join(prgb_image_set_dpath, fn),
             }
             crop["gt_bayer_fpath"] = os.path.join(
@@ -70,9 +69,9 @@ def fetch_crops_list(fpath: str, ds_base_dpath: str) -> list[dict]:
 def get_useful_metadata(bayer_fpath: str) -> dict:
     _, metadata = raw.raw_fpath_to_mono_img_and_metadata(bayer_fpath)
     result = {
-        "bayer_fpath": bayer_fpath,
+        "bayer_fpath"    : bayer_fpath,
         "overexposure_lb": metadata["overexposure_lb"],
-        "rgb_xyz_matrix": metadata["rgb_xyz_matrix"].tolist(),
+        "rgb_xyz_matrix" : metadata["rgb_xyz_matrix"].tolist(),
     }
     return result
 
@@ -138,7 +137,7 @@ if __name__ == "__main__":
                     f"Crops not found for {result['bayer_fpath']}. Is {dataset} cropped? (run `python tools/crop_datasets.py --dataset extraraw` if not then run this script again with --overwrite.)"
                 )
             linrec2020_fpath = (
-                result["bayer_fpath"].replace("src/Bayer", "proc/lin_rec2020") + ".tif"
+                    result["bayer_fpath"].replace("src/Bayer", "proc/lin_rec2020") + ".tif"
             )
             if os.path.exists(linrec2020_fpath):
                 result["linrec2020_fpath"] = linrec2020_fpath

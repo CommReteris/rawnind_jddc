@@ -561,8 +561,23 @@ def std_bpp(bpp) -> str:
 
 
 def get_leaf(path: str) -> str:
-    """Returns the leaf of a path, whether it's a file or directory followed by
-    / or not."""
+    """Get the filename or directory name from a path.
+    
+    Extracts the last component (leaf) of a path, whether it's a file or directory.
+    This function handles paths with or without trailing separators.
+    
+    Args:
+        path: Path to extract the leaf from
+        
+    Returns:
+        String containing just the filename or directory name portion of the path
+        
+    Examples:
+        >>> get_leaf('/path/to/file.txt')
+        'file.txt'
+        >>> get_leaf('/path/to/directory/')
+        'directory'
+    """
     return os.path.basename(os.path.relpath(path))
 
 
@@ -939,7 +954,32 @@ def avg_listofdicts(listofdicts):
 
 
 def walk(root: str, dir: str = ".", follow_links=False):
-    """Similar to os.walk, but keeps a constant root"""
+    """Directory tree generator with constant root reference.
+    
+    Similar to os.walk, but maintains a constant root parameter in the yielded tuples,
+    making it easier to construct relative paths. Recursively traverses directories
+    yielding tuples of (root, relative_dir, filename).
+    
+    Args:
+        root: Base directory that remains constant in the yielded tuples
+        dir: Relative directory to start walking from (relative to root)
+        follow_links: If True, follow symbolic links to directories
+        
+    Yields:
+        Tuples of (root, relative_dir, filename) for each file found in the directory tree
+        
+    Notes:
+        - Unlike os.walk, this function doesn't return directory names separately
+        - Errors with unknown file types trigger a notification and enter debug mode
+        - Files that disappear during traversal are skipped with a warning
+        
+    Examples:
+        >>> # List all Python files with their full paths
+        >>> for root, rel_dir, name in walk('/project', 'src'):
+        ...     if name.endswith('.py'):
+        ...         full_path = os.path.join(root, rel_dir, name)
+        ...         print(full_path)
+    """
     dpath = os.path.join(root, dir)
     for name in os.listdir(dpath):
         path = os.path.join(dpath, name)
@@ -959,7 +999,26 @@ def walk(root: str, dir: str = ".", follow_links=False):
 
 
 def popup(msg):
-    """Print and send a notification on Linux/compatible systems."""
+    """Display a message both in the console and as a desktop notification.
+    
+    Prints the message to stdout and attempts to display it as a desktop notification
+    using the Linux notify-send command. This is useful for long-running processes
+    that need to alert the user when important events occur.
+    
+    Args:
+        msg: The message to display
+        
+    Notes:
+        - Uses the notify-send command which is typically available on Linux/Unix systems
+        - Prints to console even if the desktop notification fails
+        - Does not check if the notification command succeeded (non-blocking)
+        - Notification appearance depends on the user's desktop environment
+        
+    Example:
+        >>> popup("Processing complete!")
+        Processing complete!
+        # Also shows a desktop notification with the same message
+    """
     print(msg)
     subprocess.run(["/usr/bin/notify-send", msg], check=False)
 

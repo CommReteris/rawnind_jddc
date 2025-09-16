@@ -13,7 +13,6 @@ import sys
 import argparse
 from typing import Union
 
-sys.path.append("..")
 from common.libs import libimganalysis
 from common.libs import utilities
 

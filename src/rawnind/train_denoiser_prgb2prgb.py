@@ -5,7 +5,6 @@ import sys
 from collections.abc import Iterable
 import multiprocessing
 
-sys.path.append("..")
 from rawnind.libs import abstract_trainer
 from rawnind.libs import raw
 from rawnind.libs import rawproc

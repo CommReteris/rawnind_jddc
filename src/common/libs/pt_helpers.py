@@ -18,7 +18,6 @@ import math
 import logging
 import time
 
-sys.path.append("..")
 from common.libs import utilities
 from common.libs import pt_losses
 from common.libs import np_imgops
@@ -29,11 +28,11 @@ os.makedirs(TMPDIR, exist_ok=True)
 
 
 def fpath_to_tensor(
-    img_fpath,
-    device=torch.device("cpu"),
-    batch=False,
-    incl_metadata=False,
-    crop_to_multiple: Union[Literal[False], int] = False,
+        img_fpath,
+        device=torch.device("cpu"),
+        batch=False,
+        incl_metadata=False,
+        crop_to_multiple: Union[Literal[False], int] = False,
 ) -> Union[torch.Tensor, tuple[torch.Tensor, dict]]:
     # totensor = torchvision.transforms.ToTensor()
     # pilimg = Image.open(imgpath).convert('RGB')

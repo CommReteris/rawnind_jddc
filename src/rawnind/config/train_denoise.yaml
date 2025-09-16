@@ -1,23 +1,117 @@
+# =============================================================================
+# Configuration for Neural Network Denoiser Training
+# =============================================================================
+#
+# This configuration file contains parameters for training neural network models
+# that perform image denoising. The model learns to remove noise from raw images
+# while preserving detail and natural appearance.
+#
+# Usage:
+#   This configuration is used by train_denoiser_bayer2prgb.py and related training scripts
+#   that inherit from or import these base settings.
+#
+# Key components configured:
+#   - Training schedule and optimization parameters
+#   - Dataset paths and processing options
+#   - Model architecture and hyperparameters
+#   - Evaluation metrics and validation settings
+#
+# See also:
+#   - train_denoise_bayer2prgb.yaml: Specialized config for Bayer-to-RGB denoising
+#   - train_denoise_prgb2prgb.yaml: Specialized config for RGB-to-RGB denoising
+#   - train_denoise_proc2proc.yaml: Specialized config for processed image denoising
+
+# =============================================================================
+# Training Parameters and Optimization Settings
+# =============================================================================
+
+# Initial learning rate for the optimizer
+# - Typical range: 0.0001 to 0.001
+# - Higher than train_dc.yaml to promote faster convergence in single-task learning
 init_lr: 0.0003
+
+# Total number of training steps (iterations)
+# - Higher values allow for more thorough training but increase training time
 tot_steps: 6000000
+
+# Number of steps between validation evaluations
+# - Controls how frequently model performance is evaluated on validation data
 val_interval: 15000
+
+# Number of steps between test evaluations
+# - Less frequent than validation due to higher computational cost
 test_interval: 1500000
+
+# Primary loss function for optimization
+# - Options: mse, msssim_loss
+# - mse focuses on pixel accuracy, msssim_loss on perceptual quality
 loss: mse
+
+# Metrics to track during validation and testing
+# - Multiple metrics can be tracked simultaneously
+# - These do not affect training directly but help evaluate model quality
 metrics:
-  - msssim_loss
-  - mse
+  - msssim_loss  # Multi-scale structural similarity (1 - MS-SSIM)
+  - mse          # Mean squared error
+
+# Steps without improvement before early stopping
+# - Training will stop early if no improvement for this many steps
+# - Prevents wasting resources on plateaued training
 patience: 100000
+
+# Learning rate decay multiplier (applied after plateaus)
+# - Value < 1.0 reduces learning rate when progress stalls
+# - Typical range: 0.5 to 0.95
 lr_multiplier: 0.85
+
+# Function applied to images during validation/testing
+# - Options: pq (Perceptual Quantizer), gamma22, None
+# - Affects how metrics are calculated by transforming image values
 transfer_function_valtest: pq
+
+# =============================================================================
+# Dataset Configuration
+# =============================================================================
+
+# Paths to YAML files describing clean (ground truth) image datasets
+# - Multiple datasets can be combined for training
 clean_dataset_yamlfpaths:
   - ../../datasets/extraraw/trougnouf/crops_metadata.yaml
 #  - ../../datasets/extraraw/SID/crops_metadata.yaml  # could be useful in testing
   - ../../datasets/extraraw/raw-pixls/crops_metadata.yaml
+
+# Paths to YAML files describing noisy image datasets
+# - These contain the input images for the model
 noise_dataset_yamlfpaths:
   - ../../datasets/RawNIND/RawNIND_masks_and_alignments.yaml
+
+# =============================================================================
+# Model Architecture and Hyperparameters
+# =============================================================================
+
+# Base feature unit multiplier (controls network capacity)
+# - Higher values increase model capacity but require more memory
+# - Typical values: 16, 32, 64
 funit: 32
+
+# Only process Bayer pattern images (4-channel) if true
+# - False would allow RGB (3-channel) images
 bayer_only: true
+
+# Exposure difference penalty (currently disabled)
+# - Would penalize exposure differences between input and output
 #exposure_diff_penalty: 0.0001
-match_gain: output  # input, output, never
+
+# Gain matching approach
+# - Options: input (match to input), output (match to output), never (no matching)
+# - 'output' is typically better for pure denoising models
+match_gain: output
+
+# Data pairing strategy (how to match clean and noisy images)
+# - Options: x_y (paired samples), z_y_x (cycle consistency)
 data_pairing: x_y
+
+# Steps for learning rate warm-up (disabled with 0)
+# - Gradually increases learning rate at start of training when > 0
+# - Helps stabilize early training
 warmup_nsteps: 0

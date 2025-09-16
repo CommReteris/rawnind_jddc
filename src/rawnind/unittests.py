@@ -2,8 +2,6 @@ import unittest
 import sys
 import torch
 
-sys.path.append("..")
-
 from rawnind.libs import raw
 from rawnind.libs import rawproc
 

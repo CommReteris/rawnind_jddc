@@ -7,7 +7,6 @@ Launch with --debug_options output_valtest_images to output images.
 import configargparse
 import sys
 
-sys.path.append("..")
 from rawnind import train_dc_bayer2prgb
 
 if __name__ == "__main__":

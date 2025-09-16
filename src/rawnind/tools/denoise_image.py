@@ -20,7 +20,6 @@ import configargparse
 import torch
 import yaml
 
-sys.path.append("..")
 from rawnind.libs import abstract_trainer
 from common.libs import pt_losses
 from common.libs import pt_helpers
@@ -138,11 +137,11 @@ def load_image(fpath, device) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
 
 
 def process_image_base(
-    test_obj: abstract_trainer.ImageToImageNN,
-    out_img: torch.Tensor,
-    gt_img: Optional[torch.Tensor] = None,
-    in_img: Optional[torch.Tensor] = None,
-    rgb_xyz_matrix: Optional[torch.Tensor] = None,
+        test_obj: abstract_trainer.ImageToImageNN,
+        out_img: torch.Tensor,
+        gt_img: Optional[torch.Tensor] = None,
+        in_img: Optional[torch.Tensor] = None,
+        rgb_xyz_matrix: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """Map a model's raw output to a comparable linear Rec.2020 image.
 
@@ -208,10 +207,10 @@ def apply_nonlinearity(img: torch.Tensor, nonlinearity: str) -> torch.Tensor:
 
 
 def compute_metrics(
-    in_img: torch.Tensor,
-    gt_img: torch.Tensor,
-    metrics: list[str] = [],
-    prefix=None,
+        in_img: torch.Tensor,
+        gt_img: torch.Tensor,
+        metrics: list[str] = [],
+        prefix=None,
 ) -> dict:
     """Compute a set of metrics between two images.
 
@@ -258,7 +257,7 @@ def save_metrics(metrics: dict, fpath: str):
 
 
 def denoise_image_from_to_fpath(
-    in_img_fpath: str, out_img_fpath: str, test_obj: abstract_trainer.ImageToImageNN
+        in_img_fpath: str, out_img_fpath: str, test_obj: abstract_trainer.ImageToImageNN
 ):
     """Denoise a single image file and write the processed output.
 
@@ -301,12 +300,12 @@ def bayer_to_prgb(image, rgb_xyz_matrix):
 
 
 def denoise_image_compute_metrics(
-    in_img,
-    test_obj: abstract_trainer.ImageToImageNN,
-    rgb_xyz_matrix: Optional[torch.Tensor] = None,
-    gt_img: Optional[torch.Tensor] = None,
-    metrics: list[str] = [],
-    nonlinearities: list[str] = [],
+        in_img,
+        test_obj: abstract_trainer.ImageToImageNN,
+        rgb_xyz_matrix: Optional[torch.Tensor] = None,
+        gt_img: Optional[torch.Tensor] = None,
+        metrics: list[str] = [],
+        nonlinearities: list[str] = [],
 ) -> tuple[torch.Tensor, dict]:
     """Denoise an image tensor and compute evaluation metrics against ground truth.
 
@@ -358,13 +357,13 @@ def denoise_image_compute_metrics(
 
 
 def denoise_image_from_fpath_compute_metrics_and_export(
-    in_img_fpath: str,
-    # test_obj: Union[abstract_trainer.ImageToImageNN, str],
-    test_obj: Optional[abstract_trainer.ImageToImageNN] = None,
-    gt_img_fpath: Optional[str] = None,
-    metrics: list[str] = [],
-    nonlinearities: list[str] = [],
-    out_img_fpath=None,
+        in_img_fpath: str,
+        # test_obj: Union[abstract_trainer.ImageToImageNN, str],
+        test_obj: Optional[abstract_trainer.ImageToImageNN] = None,
+        gt_img_fpath: Optional[str] = None,
+        metrics: list[str] = [],
+        nonlinearities: list[str] = [],
+        out_img_fpath=None,
 ):
     """Convenience wrapper: load, denoise, compute metrics, and export.
 
@@ -476,7 +475,6 @@ if __name__ == "__main__":
     # call denoise_image_compute_metrics with all args except config
     vars(args).pop("config")
     denoise_image_from_fpath_compute_metrics_and_export(**vars(args))
-
 
 # if __name__ == "__main__":
 #     test_obj = abstract_trainer.get_and_load_test_object()

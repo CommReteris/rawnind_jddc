@@ -1,8 +1,7 @@
 import sys
 
-sys.path.append("..")
 from rawnind.libs import rawds_manproc
-from rawnind.libs import rawtestlib
+from rawnind.tests import rawtestlib
 
 MS_SSIM_VALUES = {
     "le": {0.9975, 0.97, 0.99},
@@ -34,3 +33,4 @@ if __name__ == "__main__":
                 test_name=f"progressive_test_manproc_rawnind_msssim_{operator}_{msssim_value}",
                 save_individual_images=True,
             )
+

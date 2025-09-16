@@ -5,13 +5,7 @@ None, allowing fast import-time checks and sanity tests on training pipelines
 without requiring access to full datasets.
 """
 
-import sys
-
-sys.path.append("..")
-from rawnind import train_dc_bayer2prgb
-from rawnind import train_dc_prgb2prgb
-from rawnind import train_denoiser_bayer2prgb
-from rawnind import train_denoiser_prgb2prgb
+from rawnind import train_dc_bayer2prgb, train_dc_prgb2prgb, train_denoiser_bayer2prgb, train_denoiser_prgb2prgb
 
 
 class DCTestCustomDataloaderBayerToProfiledRGB(
@@ -32,6 +26,7 @@ class DCTestCustomDataloaderBayerToProfiledRGB(
     
     Inherits all parameters and methods from DCTrainingBayerToProfiledRGB.
     """
+
     def __init__(self, launch=False, **kwargs) -> None:
         """Initialize the test class with the same parameters as the parent class.
         
@@ -75,6 +70,7 @@ class DenoiseTestCustomDataloaderBayerToProfiledRGB(
     
     Inherits all parameters and methods from DenoiserTrainingBayerToProfiledRGB.
     """
+
     def __init__(self, launch=False, **kwargs) -> None:
         """Initialize the test class with the same parameters as the parent class.
         
@@ -118,6 +114,7 @@ class DCTestCustomDataloaderProfiledRGBToProfiledRGB(
     
     Inherits all parameters and methods from DCTrainingProfiledRGBToProfiledRGB.
     """
+
     def __init__(self, launch=False, **kwargs) -> None:
         """Initialize the test class with the same parameters as the parent class.
         
@@ -162,6 +159,7 @@ class DenoiseTestCustomDataloaderProfiledRGBToProfiledRGB(
     
     Inherits all parameters and methods from DenoiserTrainingProfiledRGBToProfiledRGB.
     """
+
     def __init__(self, launch=False, **kwargs) -> None:
         """Initialize the test class with the same parameters as the parent class.
         

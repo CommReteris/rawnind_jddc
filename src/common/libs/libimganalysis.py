@@ -31,7 +31,6 @@ import piqa
 
 import sys
 
-sys.path.append("..")
 # try:
 #    from common.libs import tf_helpers
 # except ModuleNotFoundError as e:
@@ -81,10 +80,10 @@ def get_iso(fpath):
     ext = fpath[-4:].lower()
     isoval = False
     if (
-        ext.endswith("jpg")
-        or ext.endswith("jpeg")
-        or ext.endswith("tif")
-        or ext.endswith("tiff")
+            ext.endswith("jpg")
+            or ext.endswith("jpeg")
+            or ext.endswith("tif")
+            or ext.endswith("tiff")
     ) and "piexif" in sys.modules:
         isoval = piexif_get_iso(fpath)
     if exiftool_installed and not isoval:
@@ -100,52 +99,52 @@ def get_iso(fpath):
 
 def is_raw(fpath: str) -> bool:
     if fpath.split(".")[-1].lower() in (
-        "3fr",
-        "ari",
-        "arw",
-        "bay",
-        "braw",
-        "crw",
-        "cr2",
-        "cr3",
-        "cap",
-        "data",
-        "dcs",
-        "dcr",
-        "dng",
-        "drf",
-        "eip",
-        "erf",
-        "fff",
-        "gpr",
-        "iiq",
-        "k25",
-        "kdc",
-        "mdc",
-        "mef",
-        "mos",
-        "mrw",
-        "nef",
-        "nrw",
-        "obm",
-        "orf",
-        "pef",
-        "ptx",
-        "pxn",
-        "r3d",
-        "raf",
-        "raw",
-        "rwl",
-        "rw2",
-        "rwz",
-        "sr2",
-        "srf",
-        "srw",
-        # "tif",
-        "x3f",
-        "cri",
-        "jxs",
-        "tco",
+            "3fr",
+            "ari",
+            "arw",
+            "bay",
+            "braw",
+            "crw",
+            "cr2",
+            "cr3",
+            "cap",
+            "data",
+            "dcs",
+            "dcr",
+            "dng",
+            "drf",
+            "eip",
+            "erf",
+            "fff",
+            "gpr",
+            "iiq",
+            "k25",
+            "kdc",
+            "mdc",
+            "mef",
+            "mos",
+            "mrw",
+            "nef",
+            "nrw",
+            "obm",
+            "orf",
+            "pef",
+            "ptx",
+            "pxn",
+            "r3d",
+            "raf",
+            "raw",
+            "rwl",
+            "rw2",
+            "rwz",
+            "sr2",
+            "srf",
+            "srw",
+            # "tif",
+            "x3f",
+            "cri",
+            "jxs",
+            "tco",
     ):
         return True
     return False
@@ -185,6 +184,7 @@ if "tensorflow" in sys.modules:
         img2 = tf_helpers.tf_open_img(img2)
         return max(100, float(tf.image.psnr(img1, img2, 255)))
 
+
     def tf_msssim(img1: Union[str, tf.Tensor], img2: Union[str, tf.Tensor]):
         """
         Tensorflow MSSSIM implementation
@@ -195,15 +195,18 @@ if "tensorflow" in sys.modules:
         img2 = tf_helpers.tf_open_img(img2)
         return float(tf.image.ssim_multiscale(img1, img2, 255))
 
+
     def tf_psnr_cpu(img1: Union[str, tf.Tensor], img2: Union[str, tf.Tensor]):
         """not multithread-safe"""
         with tf.device("/cpu:0"):
             return tf_psnr(img1, img2)
 
+
     def tf_msssim_cpu(img1: Union[str, tf.Tensor], img2: Union[str, tf.Tensor]):
         """not multithread-safe"""
         with tf.device("/cpu:0"):
             return tf_msssim(img1, img2)
+
 
     def tf_compare(img1, img2, bitstream: Optional[str] = None, ignore_border: int = 4):
         """img1 and img2 can be fpath strings or tf tensors. bitstream is an optional fpath"""
@@ -227,6 +230,7 @@ if "tensorflow" in sys.modules:
             tf.reduce_mean(tf.keras.losses.MeanSquaredError()(img1, img2))
         )
         return res
+
 
     msssim = tf_msssim
     psnr = tf_psnr
@@ -262,7 +266,7 @@ def is_valid_img(img_fpath, open_img=False, save_img=False, clean=False):
             return True
         except ValueError:
             return False
-    Image.MAX_IMAGE_PIXELS = 15000**2
+    Image.MAX_IMAGE_PIXELS = 15000 ** 2
     ext_is_valid = img_fpath.split(".")[-1].lower() in VALID_IMG_EXT
     if not open_img and not save_img:
         return ext_is_valid

@@ -23,7 +23,7 @@ import numpy as np
 import scipy.ndimage
 import torch
 
-# sys.path.append("..")
+# 
 from common.libs import np_imgops
 from rawnind.libs import raw
 
@@ -108,7 +108,7 @@ def gamma_pt(img: torch.Tensor, gamma_val: float = GAMMA, in_place: bool = False
 
 
 def scenelin_to_pq(
-    img: Union[np.ndarray, torch.Tensor], compat=True
+        img: Union[np.ndarray, torch.Tensor], compat=True
 ) -> Union[np.ndarray, torch.Tensor]:
     """
     Scene linear input signal to PQ opto-electronic transfer function (OETF).
@@ -147,9 +147,9 @@ def scenelin_to_pq(
             gamma = 2.40
             gamma_d = 1 / gamma
 
-            n = L_W**gamma_d - L_B**gamma_d
-            a = n**gamma
-            b = L_B**gamma_d / n
+            n = L_W ** gamma_d - L_B ** gamma_d
+            a = n ** gamma
+            b = L_B ** gamma_d / n
             if compat:
                 L = a * (V + b) ** gamma
             else:
@@ -171,7 +171,7 @@ def scenelin_to_pq(
 
 
 def pq_to_scenelin(
-    img: Union[np.ndarray, torch.Tensor],
+        img: Union[np.ndarray, torch.Tensor],
 ) -> Union[np.ndarray, torch.Tensor]:
     """
     PQ non-linear to scene linear signal, inverse opto-electronic transfer function (OETF^-1).
@@ -182,9 +182,9 @@ def pq_to_scenelin(
 
 
 def match_gain(
-    anchor_img: Union[np.ndarray, torch.Tensor],
-    other_img: Union[np.ndarray, torch.Tensor],
-    return_val: bool = False,
+        anchor_img: Union[np.ndarray, torch.Tensor],
+        other_img: Union[np.ndarray, torch.Tensor],
+        return_val: bool = False,
 ) -> Union[np.ndarray, torch.Tensor]:
     """Match average intensity (gain) between two images.
 
@@ -212,11 +212,11 @@ def match_gain(
 
 
 def shift_images(
-    anchor_img: Union[np.ndarray, torch.Tensor],  # gt
-    target_img: Union[np.ndarray, torch.Tensor],  # y
-    shift: tuple,  # [int, int],  # python bw compat 2022-11-10
-    # crop_to_bayer: bool = True,
-    # maintain_shape: bool = False,  # probably not needed w/ crop_to_bayer
+        anchor_img: Union[np.ndarray, torch.Tensor],  # gt
+        target_img: Union[np.ndarray, torch.Tensor],  # y
+        shift: tuple,  # [int, int],  # python bw compat 2022-11-10
+        # crop_to_bayer: bool = True,
+        # maintain_shape: bool = False,  # probably not needed w/ crop_to_bayer
 ) -> Union[tuple, tuple]:
     #  ) -> Union[tuple[np.ndarray, np.ndarray], tuple[torch.Tensor, torch.Tensor]]:  # python bw compat 2022-11-10
     """Shift two aligned images by an integer number of pixels and crop consistently.
@@ -246,7 +246,7 @@ def shift_images(
         raise NotImplementedError("shift_images: Bayer anchor_img is not implemented.")
     target_shift_divisor = target_is_bayer + 1
     if shift[0] > 0:  # y
-        anchor_img_out = anchor_img_out[..., shift[0] :, :]
+        anchor_img_out = anchor_img_out[..., shift[0]:, :]
         target_img_out = target_img_out[
             ..., : -(shift[0] // target_shift_divisor) or None, :
         ]
@@ -256,12 +256,12 @@ def shift_images(
 
     elif shift[0] < 0:
         anchor_img_out = anchor_img_out[..., : shift[0], :]
-        target_img_out = target_img_out[..., -shift[0] // target_shift_divisor :, :]
+        target_img_out = target_img_out[..., -shift[0] // target_shift_divisor:, :]
         if shift[0] % 2:
             anchor_img_out = anchor_img_out[..., 1:, :]
             target_img_out = target_img_out[..., 1:, :]
     if shift[1] > 0:  # x
-        anchor_img_out = anchor_img_out[..., shift[1] :]
+        anchor_img_out = anchor_img_out[..., shift[1]:]
         target_img_out = target_img_out[
             ..., : -(shift[1] // target_shift_divisor) or None
         ]
@@ -270,7 +270,7 @@ def shift_images(
             target_img_out = target_img_out[..., :-1]
     elif shift[1] < 0:
         anchor_img_out = anchor_img_out[..., : shift[1]]
-        target_img_out = target_img_out[..., -shift[1] // target_shift_divisor :]
+        target_img_out = target_img_out[..., -shift[1] // target_shift_divisor:]
         if shift[1] % 2:
             anchor_img_out = anchor_img_out[..., 1:]
             target_img_out = target_img_out[..., 1:]
@@ -305,10 +305,10 @@ def shape_is_compatible(shape1: tuple, shape2: tuple):
 
 
 def shift_mask(
-    mask: Union[np.ndarray, torch.Tensor],
-    # shift: tuple[int, int],# python bw compat 2022-11-10
-    shift: tuple,
-    crop_to_bayer: bool = True,
+        mask: Union[np.ndarray, torch.Tensor],
+        # shift: tuple[int, int],# python bw compat 2022-11-10
+        shift: tuple,
+        crop_to_bayer: bool = True,
 ) -> Union[np.ndarray, torch.Tensor]:
     """
     Shift single (anchor) image in x/y directions and crop accordingly.
@@ -319,7 +319,7 @@ def shift_mask(
     """
     mask_out = mask
     if shift[0] > 0:
-        mask_out = mask_out[..., shift[0] :, :]
+        mask_out = mask_out[..., shift[0]:, :]
         if crop_to_bayer and shift[0] % 2:
             mask_out = mask_out[..., :-1, :]
     elif shift[0] < 0:
@@ -327,7 +327,7 @@ def shift_mask(
         if crop_to_bayer and shift[0] % 2:
             mask_out = mask_out[..., 1:, :]
     if shift[1] > 0:
-        mask_out = mask_out[..., shift[1] :]
+        mask_out = mask_out[..., shift[1]:]
         if crop_to_bayer and shift[1] % 2:
             mask_out = mask_out[..., :-1]
     elif shift[1] < 0:
@@ -370,7 +370,7 @@ def shift_mask(
 
 
 def make_overexposure_mask(
-    anchor_img: np.ndarray, gt_overexposure_lb: float = GT_OVEREXPOSURE_LB
+        anchor_img: np.ndarray, gt_overexposure_lb: float = GT_OVEREXPOSURE_LB
 ) -> np.ndarray:
     """Create a boolean mask of non-overexposed pixels from a multi-channel image.
 
@@ -414,12 +414,12 @@ def make_overexposure_mask(
 #     loss_mask[loss_map >= reject_threshold] = 0.
 #     return loss_mask# if not return map else (loss_mask, loss_map)
 def make_loss_mask(
-    anchor_img: np.ndarray,
-    target_img: np.ndarray,
-    loss_threshold: float = LOSS_THRESHOLD,
-    keepers_quantile: float = KEEPERS_QUANTILE,
-    verbose: bool = False,
-    # ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:  # # python bw compat 2022-11-10
+        anchor_img: np.ndarray,
+        target_img: np.ndarray,
+        loss_threshold: float = LOSS_THRESHOLD,
+        keepers_quantile: float = KEEPERS_QUANTILE,
+        verbose: bool = False,
+        # ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:  # # python bw compat 2022-11-10
 ) -> Union[np.ndarray, tuple]:  # # python bw compat 2022-11-10
     """Compute a binary mask that ignores mismatched regions between two aligned images.
 
@@ -462,12 +462,12 @@ def make_loss_mask(
 
 
 def find_best_alignment(
-    anchor_img: np.ndarray,
-    target_img: np.ndarray,
-    max_shift_search: int = MAX_SHIFT_SEARCH,
-    return_loss_too: bool = False,
-    verbose: bool = False,
-    # ) -> Union[tuple[int, int], tuple[tuple[int, int], float]]: # python bw compat 2022-11-10
+        anchor_img: np.ndarray,
+        target_img: np.ndarray,
+        max_shift_search: int = MAX_SHIFT_SEARCH,
+        return_loss_too: bool = False,
+        verbose: bool = False,
+        # ) -> Union[tuple[int, int], tuple[tuple[int, int], float]]: # python bw compat 2022-11-10
 ) -> Union[tuple, tuple]:  # python bw compat 2022-11-10
     """Search for the integer (dy, dx) shift minimizing the mean L1 difference.
 
@@ -499,11 +499,11 @@ def find_best_alignment(
         print(f"{shifts_losses=}")
 
     def explore_neighbors(
-        initial_shift: tuple[int, int],
-        shifts_losses: dict[tuple[int, int], float] = shifts_losses,
-        anchor_img: np.ndarray = anchor_img,
-        target_img: np.ndarray = target_img,
-        search_window=NEIGHBORHOOD_SEARCH_WINDOW,
+            initial_shift: tuple[int, int],
+            shifts_losses: dict[tuple[int, int], float] = shifts_losses,
+            anchor_img: np.ndarray = anchor_img,
+            target_img: np.ndarray = target_img,
+            search_window=NEIGHBORHOOD_SEARCH_WINDOW,
     ) -> None:
         """Explore initial_shift's neighbors and update shifts_losses."""
         for yshift in range(-search_window, search_window + 1, 1):
@@ -518,8 +518,8 @@ def find_best_alignment(
                     print(f"{current_shift=}, {shifts_losses[current_shift]}")
 
     while (
-        min(shifts_losses.values()) > 0
-        and abs(current_best_shift[0]) + abs(current_best_shift[1]) < max_shift_search
+            min(shifts_losses.values()) > 0
+            and abs(current_best_shift[0]) + abs(current_best_shift[1]) < max_shift_search
     ):
         explore_neighbors(current_best_shift)
         new_best_shift = min(shifts_losses, key=shifts_losses.get)
@@ -625,24 +625,24 @@ def get_best_alignment_compute_gain_and_make_loss_mask(kwargs: dict) -> dict:
     mask_fpath = os.path.join(masks_dpath, mask_name)
     np_imgops.np_to_img(loss_mask, mask_fpath, precision=8)
     return {
-        "gt_fpath": gt_fpath,
-        "f_fpath": f_fpath,
-        "image_set": kwargs["image_set"],
-        "best_alignment": list(best_alignment),
+        "gt_fpath"           : gt_fpath,
+        "f_fpath"            : f_fpath,
+        "image_set"          : kwargs["image_set"],
+        "best_alignment"     : list(best_alignment),
         "best_alignment_loss": best_alignment_loss,
-        "mask_fpath": mask_fpath,
-        "mask_mean": float(loss_mask.mean()),
-        "is_bayer": is_bayer,
-        "rgb_xyz_matrix": rgb_xyz_matrix,
-        "overexposure_lb": gt_metadata["overexposure_lb"],
-        "raw_gain": raw_gain,
-        "rgb_gain": rgb_gain,
+        "mask_fpath"         : mask_fpath,
+        "mask_mean"          : float(loss_mask.mean()),
+        "is_bayer"           : is_bayer,
+        "rgb_xyz_matrix"     : rgb_xyz_matrix,
+        "overexposure_lb"    : gt_metadata["overexposure_lb"],
+        "raw_gain"           : raw_gain,
+        "rgb_gain"           : rgb_gain,
         # "gt_rgb_mean": gt_rgb_mean,
     }
 
 
 def camRGB_to_lin_rec2020_images(
-    camRGB_images: torch.Tensor, rgb_xyz_matrices: torch.Tensor
+        camRGB_images: torch.Tensor, rgb_xyz_matrices: torch.Tensor
 ) -> torch.Tensor:
     """Convert debayered camera RGB images to linear Rec.2020.
 
@@ -672,7 +672,7 @@ def camRGB_to_lin_rec2020_images(
     orig_dims = camRGB_images.shape
     # print(orig_dims)
     lin_rec2020_images = (
-        color_matrices @ camRGB_images.reshape(orig_dims[0], 3, -1)
+            color_matrices @ camRGB_images.reshape(orig_dims[0], 3, -1)
     ).reshape(orig_dims)
 
     return lin_rec2020_images
@@ -748,7 +748,7 @@ class Test_Rawproc(unittest.TestCase):
             self.assertTrue(
                 torch.allclose(
                     single_conversion,
-                    batched_conversion[i : i + 1],
+                    batched_conversion[i: i + 1],
                     atol=1e-04,
                     rtol=1e-04,
                 )

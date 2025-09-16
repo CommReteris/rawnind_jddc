@@ -20,7 +20,6 @@ import argparse
 from typing import Literal, Optional
 import numpy as np
 
-sys.path.append("..")
 from rawnind.libs import raw
 from rawnind.libs.rawproc import (
     DS_BASE_DPATH,  # os.path.join("..", "..", "datasets", "RawNIND")
@@ -51,13 +50,13 @@ EXT_RAW_DENOISE_TRAIN_DS_DPATH = os.path.join(
 
 
 def create_raw_img_crops(
-    in_fpath: str,
-    out_raw_dpath: Optional[str],
-    out_prgb_dpath: str,
-    out_metadata_dpath: str,
-    preprocess_raw_size: int,
-    train_size: int,
-    overwrite: bool = False,
+        in_fpath: str,
+        out_raw_dpath: Optional[str],
+        out_prgb_dpath: str,
+        out_metadata_dpath: str,
+        preprocess_raw_size: int,
+        train_size: int,
+        overwrite: bool = False,
 ) -> None:
     """Create aligned RAW and linear RGB crops from a single image.
 
@@ -95,7 +94,7 @@ def create_raw_img_crops(
         mono_image, metadata = raw.raw_fpath_to_mono_img_and_metadata(in_fpath)
         rggb_image: np.ndarray = raw.mono_to_rggb_img(mono_image, metadata)
         if not raw.is_exposure_ok(
-            mono_image, metadata, ue_threshold=0.0001 if "ext_" in in_fpath else 0.001
+                mono_image, metadata, ue_threshold=0.0001 if "ext_" in in_fpath else 0.001
         ):
             logging.warning(f"# bad exposure for {in_fpath} ({mono_image.mean()=})")
             return False
@@ -130,9 +129,9 @@ def create_raw_img_crops(
                     "%s.%u_%u.%s" % (basename, curw_raw, curh_raw, RAW_EXT),
                 )
                 if (
-                    overwrite
-                    or (not os.path.isfile(out_raw_fpath))
-                    or utilities.filesize(out_raw_fpath) < 10000000
+                        overwrite
+                        or (not os.path.isfile(out_raw_fpath))
+                        or utilities.filesize(out_raw_fpath) < 10000000
                 ):
                     raw_crop = rggb_image[
                         :,
@@ -144,13 +143,13 @@ def create_raw_img_crops(
                 out_prgb_dpath, "%s.%u_%u.%s" % (basename, curw_raw, curh_raw, HDR_EXT)
             )
             if overwrite or (
-                not os.path.isfile(out_prgb_fpath)
-                or utilities.filesize(out_prgb_fpath) < 10000000
+                    not os.path.isfile(out_prgb_fpath)
+                    or utilities.filesize(out_prgb_fpath) < 10000000
             ):
                 prgb_crop: np.ndarray = prgb_img[
                     :,
-                    curh_raw * 2 : curh2_raw * 2,
-                    curw_raw * 2 : curw2_raw * 2,
+                    curh_raw * 2: curh2_raw * 2,
+                    curw_raw * 2: curw2_raw * 2,
                 ]
                 raw.hdr_nparray_to_file(
                     prgb_crop,
@@ -337,9 +336,9 @@ if __name__ == "__main__":
                     )
                 )
     if not (
-        args.dataset == "all"
-        or args.dataset.lower().startswith("rawnind")
-        or args.dataset == "extraraw"
+            args.dataset == "all"
+            or args.dataset.lower().startswith("rawnind")
+            or args.dataset == "extraraw"
     ):
         print("Invalid dataset argument. Must be one of all, rawnind, extraraw.")
 

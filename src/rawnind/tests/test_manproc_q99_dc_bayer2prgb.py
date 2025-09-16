@@ -8,11 +8,8 @@ import configargparse
 import sys
 import torch
 
-sys.path.append("..")
-
 from rawnind.libs import rawds_manproc
-from rawnind.libs import rawtestlib
-
+from rawnind.tests import rawtestlib
 
 if __name__ == "__main__":
     preset_args = {"test_only": True, "init_step": None}
@@ -22,11 +19,11 @@ if __name__ == "__main__":
         preset_args=preset_args
     )
     if (
-        "manproc_q99_msssim_loss.None"
-        in denoiserTraining.json_saver.results["best_val"]
-        or "manproc_q99_msssim_loss" in denoiserTraining.json_saver.results["best_val"]
-        or "manproc_q99_msssim_loss.gamma22"
-        in denoiserTraining.json_saver.results["best_val"]
+            "manproc_q99_msssim_loss.None"
+            in denoiserTraining.json_saver.results["best_val"]
+            or "manproc_q99_msssim_loss" in denoiserTraining.json_saver.results["best_val"]
+            or "manproc_q99_msssim_loss.gamma22"
+            in denoiserTraining.json_saver.results["best_val"]
     ):
         print(f"Skipping test, manproc_msssim_loss is known")
         sys.exit(0)
@@ -38,3 +35,4 @@ if __name__ == "__main__":
     denoiserTraining.offline_custom_test(
         dataloader=dataloader, test_name="manproc_q99", save_individual_images=True
     )
+

@@ -4,7 +4,6 @@ import os
 import sys
 from typing import Literal, Optional
 
-sys.path.append("..")
 from rawnind.models import compression_autoencoders
 from common.libs import stdcompression
 from common.libs import pt_ops
@@ -67,7 +66,7 @@ class Std_ImageCompressor(compression_autoencoders.AbstractRawImageCompressor):
         return out_results
 
     def get_parameters(
-        self, lr=None, bitEstimator_lr_multiplier: Optional[float] = None
+            self, lr=None, bitEstimator_lr_multiplier: Optional[float] = None
     ):
         param_list = [
             {"params": self.parameters(), "name": "dummy"},
@@ -120,9 +119,9 @@ class Passthrough_ImageCompressor(Std_ImageCompressor):
 
 
 classes_dict = {
-    "bpg": BPG_ImageCompressor,
-    "jpg": JPEG_ImageCompressor,
-    "jxs": JPEGXS_ImageCompressor,
-    "jxl": JPEGXL_ImageCompressor,
+    "bpg"        : BPG_ImageCompressor,
+    "jpg"        : JPEG_ImageCompressor,
+    "jxs"        : JPEGXS_ImageCompressor,
+    "jxl"        : JPEGXL_ImageCompressor,
     "passthrough": Passthrough_ImageCompressor,
 }

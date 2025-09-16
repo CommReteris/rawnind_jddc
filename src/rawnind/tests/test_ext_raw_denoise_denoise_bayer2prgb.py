@@ -7,11 +7,8 @@ Launch with --debug_options output_valtest_images to output images.
 import sys
 import os
 
-sys.path.append("..")
-
 from rawnind.libs import rawds_ext_paired_test
-from rawnind.libs import rawtestlib
-
+from rawnind.tests import rawtestlib
 
 if __name__ == "__main__":
     preset_args = {"test_only": True, "init_step": None}
@@ -40,3 +37,4 @@ if __name__ == "__main__":
         test_name="ext_raw_denoise_test",
         save_individual_images=True,
     )
+

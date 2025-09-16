@@ -1,18 +1,42 @@
+# =============================================================================
+# Test Image Set Reservation Configuration
+# =============================================================================
+#
+# This configuration file defines image sets that are reserved exclusively for 
+# testing and evaluation purposes. These images are excluded from training to
+# ensure unbiased model evaluation on unseen data.
+#
+# Usage:
+#   This configuration is loaded by training scripts to exclude these image sets
+#   from the training data, ensuring test integrity.
+#
+# Important Notes:
+#   - Each entry represents an image set folder name
+#   - These images test model generalization across different camera models
+#   - Sets are selected to provide diverse scenes and lighting conditions
+#   - Comments indicate the camera models for reference
+#
+# See also:
+#   - test_reserve_extdata.yaml: Additional test sets for extended evaluation
+#   - test_reserve_std.yaml: Standardized test set for consistent benchmarking
+
 test_reserve:
-  - 7D-2 # Canon EOS 7D
-  - Vaxt-i-trad  # Canon EOS 6D
-  - Pen-pile  # Panasonic DMC-GH1
-  - MuseeL-vases-A7C # Sony A7C
-  - D60-1  # Canon EOS D60
-  - MuseeL-Saint-Pierre-C500D # Canon EOS C500D
-  - TitusToys  # Sony A7C
-  - boardgames_top  # Sony A7C
+  - 7D-2               # Canon EOS 7D
+  - Vaxt-i-trad        # Canon EOS 6D
+  - Pen-pile           # Panasonic DMC-GH1
+  - MuseeL-vases-A7C   # Sony A7C
+  - D60-1              # Canon EOS D60
+  - MuseeL-Saint-Pierre-C500D  # Canon EOS C500D
+  - TitusToys          # Sony A7C
+  - boardgames_top     # Sony A7C
   - Laura_Lemons_platformer  # Sony A7C
-  - MuseeL-bluebirds-A7C  # Sony A7C
-# LucieB test (Canon EOS M100, not included in general trainings)
-  - LucieB_bw_drawing1
-  - LucieB_bw_drawing2
-  - LucieB_board
-  - LucieB_painted_wallpaper
-  - LucieB_painted_plants
-  - LucieB_groceries
+  - MuseeL-bluebirds-A7C     # Sony A7C
+
+  # LucieB test sets (Canon EOS M100, not included in general trainings)
+  # These provide additional diversity in subject matter and lighting conditions
+  - LucieB_bw_drawing1        # Line drawings
+  - LucieB_bw_drawing2        # Line drawings
+  - LucieB_board              # Indoor scenes
+  - LucieB_painted_wallpaper  # Complex textures
+  - LucieB_painted_plants     # Natural patterns
+  - LucieB_groceries          # Color targets

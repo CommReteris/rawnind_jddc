@@ -16,12 +16,10 @@ import torch
 import numpy as np
 from typing import Literal, Optional, Union
 
-sys.path.append("..")
 from rawnind.models import bitEstimator
 from common.libs import pt_helpers
 from common.libs import pt_ops
 from rawnind.models import compression_autoencoders
-
 
 # logger = logging.getLogger("ImageCompression")
 # try:
@@ -50,20 +48,20 @@ class ManyPriors_RawImageCompressor(
     compression_autoencoders.AbstractRawImageCompressor
 ):
     def __init__(
-        self,
-        in_channels: Literal[3, 4],
-        encoder_cls: Optional[torch.nn.Module],
-        decoder_cls: Optional[torch.nn.Module],
-        device: Union[torch.device, Literal["cpu"]],
-        hidden_out_channels: int = 192,
-        bitstream_out_channels: int = 320,
-        num_distributions: int = 64,
-        preupsample: bool = False,
-        # min_feat: int = -127,
-        # max_feat: int = 128,
-        # precision: int = 16,
-        # entropy_coding: bool = False,
-        **kwargs,
+            self,
+            in_channels: Literal[3, 4],
+            encoder_cls: Optional[torch.nn.Module],
+            decoder_cls: Optional[torch.nn.Module],
+            device: Union[torch.device, Literal["cpu"]],
+            hidden_out_channels: int = 192,
+            bitstream_out_channels: int = 320,
+            num_distributions: int = 64,
+            preupsample: bool = False,
+            # min_feat: int = -127,
+            # max_feat: int = 128,
+            # precision: int = 16,
+            # entropy_coding: bool = False,
+            **kwargs,
     ):
         """
         max cost to encode the prior: (bits_per_prior) / (patch_size)**2; typically 6 * (16**2) = 0.0234375
@@ -119,7 +117,7 @@ class ManyPriors_RawImageCompressor(
         )  # multiply # of pixels by this value to get accurate bpp
 
     def get_parameters(
-        self, lr=None, bitEstimator_lr_multiplier: Optional[float] = None
+            self, lr=None, bitEstimator_lr_multiplier: Optional[float] = None
     ):
         assert lr is not None
         assert bitEstimator_lr_multiplier is not None
@@ -128,8 +126,8 @@ class ManyPriors_RawImageCompressor(
             {"params": self.Decoder.parameters(), "name": "decoder"},
             {
                 "params": self.bitEstimators.parameters(),
-                "lr": lr * bitEstimator_lr_multiplier,
-                "name": "bit_estimator",
+                "lr"    : lr * bitEstimator_lr_multiplier,
+                "name"  : "bit_estimator",
             },
         ]
         return param_list
@@ -193,7 +191,7 @@ class ManyPriors_RawImageCompressor(
         )
         self.dists_last_use[unused_dists] += 1
         if (
-            self.training and self.num_distributions > 1
+                self.training and self.num_distributions > 1
         ):  # and len(used_dists) < min((self.num_distributions // 4*3), self.out_channel_M//4*3):
             dists_i_to_train = np.argwhere(self.dists_last_use > 50).flatten()
             num_dists_to_force_train = min(
@@ -211,7 +209,7 @@ class ManyPriors_RawImageCompressor(
             )
 
         if self.training or not (
-            hasattr(self, "entropy_coding") and self.entropy_coding
+                hasattr(self, "entropy_coding") and self.entropy_coding
         ):
             total_bits_feature = torch.gather(
                 total_bits, 0, dist_select.unsqueeze(0)
@@ -241,16 +239,16 @@ class ManyPriors_RawImageCompressor(
                 dtype=torch.float32,
             ) / (im_shape[0] * im_shape[2] * im_shape[3] * self._bpp_px_mult)
         bpp_feature = total_bits_feature / (
-            im_shape[0] * im_shape[2] * im_shape[3] * self._bpp_px_mult
+                im_shape[0] * im_shape[2] * im_shape[3] * self._bpp_px_mult
         )
         bpp = bpp_feature + bpp_sidestring
         return {
             "reconstructed_image": clipped_recon_image,
-            "bpp_feature": bpp_feature,
-            "bpp_sidestring": bpp_sidestring,
-            "bpp": bpp,
-            "used_dists": used_dists_cpu.tolist(),
-            "num_forced_dists": num_dists_to_force_train,
+            "bpp_feature"        : bpp_feature,
+            "bpp_sidestring"     : bpp_sidestring,
+            "bpp"                : bpp,
+            "used_dists"         : used_dists_cpu.tolist(),
+            "num_forced_dists"   : num_dists_to_force_train,
         }
 
 

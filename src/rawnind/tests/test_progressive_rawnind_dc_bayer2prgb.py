@@ -7,10 +7,8 @@ Launch with --debug_options output_valtest_images to output images.
 import sys
 import os
 
-sys.path.append("..")
-
 from rawnind.libs import rawds
-from rawnind.libs import rawtestlib
+from rawnind.tests import rawtestlib
 
 # MS_SSSIM_VALUES = [0.00, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.00]
 # MS_SSSIM_VALUES = {
@@ -21,7 +19,6 @@ MS_SSSIM_VALUES = {
     "le": {0.85, 0.9, 0.97, 0.99},
     "ge": [0.5, 0.8, 0.9, 0.99, 1.00],
 }
-
 
 if __name__ == "__main__":
     preset_args = {"test_only": True, "init_step": None}
@@ -66,3 +63,4 @@ if __name__ == "__main__":
                 test_name=f"progressive_test_msssim_{operator}_{msssim_value}",
                 save_individual_images=True,
             )
+

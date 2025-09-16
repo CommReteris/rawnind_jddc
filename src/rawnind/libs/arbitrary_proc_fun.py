@@ -27,7 +27,7 @@ import numpy as np
 import torch
 import torchvision
 
-# sys.path.append("..")
+# 
 from rawnind.libs import rawproc, raw
 
 TONEMAPPING_FUN: Literal["reinhard", "drago", "log"] = "log"
@@ -37,11 +37,11 @@ TONEMAPPING_PARAMS_RANGES = {
         "min": {"gamma": 0.9, "intensity": -0.25, "light_adapt": 1, "color_adapt": 0},
         "max": {"gamma": 1.1, "intensity": 0.25, "light_adapt": 1, "color_adapt": 0},
     },
-    "drago": {
+    "drago"   : {
         "min": {"gamma": 0.9, "saturation": 0.75, "bias": 0.7},
         "max": {"gamma": 1.1, "saturation": 1.4, "bias": 0.9},
     },
-    "log": {"min": {}, "max": {}},
+    "log"     : {"min": {}, "max": {}},
 }
 TONEMAPPING_PARAMS_RANGE = TONEMAPPING_PARAMS_RANGES[TONEMAPPING_FUN]
 
@@ -60,11 +60,11 @@ SHARPEN_PARAMS_RANGE = {
     "max": {"kernel_size": 5, "sigma": 1.5},
 }
 ARBITRARY_PROC_PARAMS_RANGE = {
-    "edges_enhancement": EDGES_ENHANCEMENT_PARAMS_RANGE,
-    "sharpen": SHARPEN_PARAMS_RANGE,
-    "tonemapping": TONEMAPPING_PARAMS_RANGE,
-    "gamma_correction": GAMMA_CORRECTION_PARAMS_RANGE,
-    "contrast": CONTRAST_PARAMS_RANGE,
+    "edges_enhancement"           : EDGES_ENHANCEMENT_PARAMS_RANGE,
+    "sharpen"                     : SHARPEN_PARAMS_RANGE,
+    "tonemapping"                 : TONEMAPPING_PARAMS_RANGE,
+    "gamma_correction"            : GAMMA_CORRECTION_PARAMS_RANGE,
+    "contrast"                    : CONTRAST_PARAMS_RANGE,
     "sigmoid_contrast_enhancement": SIGMOID_CONTRAST_ENHANCEMENT_PARAMS_RANGE,
 }
 
@@ -111,7 +111,7 @@ def correct_white_balance(img):
 
 
 def apply_tone_mapping_reinhard(
-    img, gamma=1.0, intensity=0.0, light_adapt=1.0, color_adapt=0.0
+        img, gamma=1.0, intensity=0.0, light_adapt=1.0, color_adapt=0.0
 ):
     """
     Apply tone mapping to the image. Since the image is already in float32 format, we can directly use it.
@@ -166,7 +166,7 @@ def apply_tone_mapping_log(img, epsilon=0.001):
     )
     # Normalize tone-mapped Y to the range [0, 1]
     tone_mapped_Y = (tone_mapped_Y - np.min(tone_mapped_Y)) / (
-        np.max(tone_mapped_Y) - np.min(tone_mapped_Y)
+            np.max(tone_mapped_Y) - np.min(tone_mapped_Y)
     )
     tone_mapped_yuv = np.stack(
         [tone_mapped_Y, yuv_img[:, :, 1], yuv_img[:, :, 2]], axis=-1
@@ -336,7 +336,7 @@ def replace_nan_with_nearest(output_img):
 
 
 def arbitrarily_process_images_opencv(
-    lin_rgb_img: torch.Tensor, randseed=None, enable_all=False
+        lin_rgb_img: torch.Tensor, randseed=None, enable_all=False
 ) -> torch.Tensor:
     if randseed:
         random.seed(randseed)
@@ -493,13 +493,13 @@ def arbitrarily_process_images_opencv(
 
 
 def arbitrarily_process_images_naive_python(
-    lin_rgb_img: torch.Tensor,
-    equalize_weight=0.33,
-    contrast=1.25,
-    saturation=1.5,
-    gamma_val=2,
-    sharpness=2,
-    randseed=None,
+        lin_rgb_img: torch.Tensor,
+        equalize_weight=0.33,
+        contrast=1.25,
+        saturation=1.5,
+        gamma_val=2,
+        sharpness=2,
+        randseed=None,
 ) -> torch.Tensor:
     """
     Arbitrarily process an image (or a batch) to emulate typical raw-rgb conversion
@@ -532,10 +532,10 @@ def arbitrarily_process_images_naive_python(
 
 
 def arbitrarily_process_images(
-    lin_rgb_img: torch.Tensor,
-    method: Literal["naive", "opencv"],
-    randseed=None,
-    **kwargs,
+        lin_rgb_img: torch.Tensor,
+        method: Literal["naive", "opencv"],
+        randseed=None,
+        **kwargs,
 ):
     if method == "naive":
         return arbitrarily_process_images_naive_python(
@@ -617,8 +617,8 @@ def test_arbitrarily_process_images_opencv_values(infpath, outdpath):
     for param_type, param_ranges in ARBITRARY_PROC_PARAMS_RANGE_bak.items():
         for param_name in param_ranges["min"].keys():
             midpoint = (
-                param_ranges["min"][param_name] + param_ranges["max"][param_name]
-            ) / 2
+                               param_ranges["min"][param_name] + param_ranges["max"][param_name]
+                       ) / 2
             ARBITRARY_PROC_PARAMS_RANGE[param_type]["min"][param_name] = midpoint
             ARBITRARY_PROC_PARAMS_RANGE[param_type]["max"][param_name] = midpoint
 
@@ -638,9 +638,9 @@ def test_arbitrarily_process_images_opencv_values(infpath, outdpath):
             for other_param in param_ranges["min"].keys():
                 if other_param != param_name:
                     mid_min = (
-                        param_ranges["min"][other_param]
-                        + param_ranges["max"][other_param]
-                    ) / 2
+                                      param_ranges["min"][other_param]
+                                      + param_ranges["max"][other_param]
+                              ) / 2
                     ARBITRARY_PROC_PARAMS_RANGE[param_type]["min"][other_param] = (
                         mid_min
                     )

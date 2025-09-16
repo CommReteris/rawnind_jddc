@@ -1,8 +1,7 @@
 import sys
 
-sys.path.append("..")
 from rawnind.libs import rawds_manproc
-from rawnind.libs import rawtestlib
+from rawnind.tests import rawtestlib
 
 MS_SSIM_VALUES = {
     "le": {0.9975, 0.97, 0.99},
@@ -23,9 +22,9 @@ if __name__ == "__main__":
                 kwargs = {"min_msssim_score": msssim_value}
             score_key = f"progressive_test_manproc_rawnind_msssim_{operator}_{msssim_value}_msssim_loss"
             if (
-                score_key in denoiserTraining.json_saver.results["best_val"]
-                or f"{score_key}.None"
-                in denoiserTraining.json_saver.results["best_val"]
+                    score_key in denoiserTraining.json_saver.results["best_val"]
+                    or f"{score_key}.None"
+                    in denoiserTraining.json_saver.results["best_val"]
             ):
                 print(f"Skipping test, best_val is known")
                 continue
@@ -38,3 +37,4 @@ if __name__ == "__main__":
                 test_name=f"progressive_test_manproc_rawnind_msssim_{operator}_{msssim_value}",
                 save_individual_images=True,
             )
+

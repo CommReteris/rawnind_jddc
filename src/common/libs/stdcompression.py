@@ -44,7 +44,6 @@ import inspect
 import time
 import sys
 
-sys.path.append("..")
 from common.libs import utilities
 
 # Number of threads to use for parallel compression operations
@@ -81,6 +80,7 @@ class StdCompression:
     - Multi-threaded batch processing
     - Generating consistent naming conventions for compressed outputs
     """
+
     def __init__(self):
         """Initialize the compression handler and verify binary executable exists.
         
@@ -127,13 +127,13 @@ class StdCompression:
 
     @classmethod
     def file_encdec(
-        cls,
-        infpath: str,
-        outfpath: Optional[str],
-        tmpfpath: Optional[str] = None,
-        cleanup: bool = True,
-        overwrite: bool = False,
-        **kwargs,
+            cls,
+            infpath: str,
+            outfpath: Optional[str],
+            tmpfpath: Optional[str] = None,
+            cleanup: bool = True,
+            overwrite: bool = False,
+            **kwargs,
     ):
         """Compress a single image file using the specified compression method.
     
@@ -168,7 +168,7 @@ class StdCompression:
         assert outfpath is not None
         tmpfpath = cls.make_tmp_fpath(outfpath, tmpfpath)
         returnvals = {"infpath": infpath, "outfpath": outfpath, "tmpfpath": tmpfpath}
-    
+
         # Validate compression parameters and requirements
         assert set.issubset(set(kwargs.keys()), set(VALID_ARGS))
         assert shutil.which(cls.ENCBIN) is not None, "Missing {} binary".format(
@@ -176,7 +176,7 @@ class StdCompression:
         )
         assert tmpfpath.endswith(cls.ENCEXT), tmpfpath
         assert outfpath.split(".")[-1] in LOSSLESS_IMGEXT or not cls.REQ_DEC, outfpath
-    
+
         # Perform encoding
         cmd = cls.make_enc_cl(infpath, tmpfpath, **kwargs)
         if not os.path.isfile(tmpfpath) or overwrite:
@@ -185,7 +185,7 @@ class StdCompression:
             returnvals["enctime"] = time.time() - start_time
         assert os.path.isfile(tmpfpath), f"{tmpfpath=}, {' '.join(cmd)}"
         returnvals["encsize"] = os.path.getsize(tmpfpath)
-    
+
         # Perform decoding if needed
         if tmpfpath != outfpath:
             cmd = cls.make_dec_cl(tmpfpath, outfpath, **kwargs)
@@ -195,7 +195,7 @@ class StdCompression:
                 returnvals["dectime"] = time.time() - start_time
             if cleanup:
                 os.remove(tmpfpath)
-    
+
         return returnvals
 
     @classmethod
@@ -233,7 +233,7 @@ class StdCompression:
 
     @classmethod
     def dir_encdec(
-        cls, indpath: str, outdpath: str, cleanup=True, overwrite=False, **kwargs
+            cls, indpath: str, outdpath: str, cleanup=True, overwrite=False, **kwargs
     ):
         """Compress all images in a directory using the specified compression method.
     
@@ -255,7 +255,7 @@ class StdCompression:
         """
         imgs = os.listdir(indpath)
         args = []
-    
+
         # Create output directory path if not provided
         if outdpath is None:
             dsname = utilities.get_leaf(indpath)
@@ -263,36 +263,36 @@ class StdCompression:
                 indpath, "compressed", cls.make_cname(kwargs), dsname
             )
         os.makedirs(outdpath, exist_ok=True)
-    
+
         # Prepare compression arguments for each file
         for fn in imgs:
             outfpath = os.path.join(outdpath, fn)
-        
+
             # Handle file extensions based on compression method
             if not cls.REQ_DEC:
                 if outfpath.split(".")[-1] != cls.ENCEXT:
                     outfpath = outfpath + "." + cls.ENCEXT
             elif outfpath.split(".")[-1] not in LOSSLESS_IMGEXT:
                 outfpath = outfpath + "." + LOSSLESS_IMGEXT[0]
-            
+
             # Skip existing files unless overwrite is requested
             if os.path.isfile(outfpath) and not overwrite:
                 continue
-            
+
             args.append(
                 {
-                    "infpath": os.path.join(indpath, fn),
+                    "infpath" : os.path.join(indpath, fn),
                     "outfpath": outfpath,
-                    "cleanup": cleanup,
+                    "cleanup" : cleanup,
                     **kwargs,
                 }
             )
-    
+
         # Process all files in parallel
         utilities.mt_runner(
             cls.file_encdec_mtrunner, args, num_threads=NUMTHREADS, ordered=False
         )
-    
+
         return outdpath
 
 
@@ -339,7 +339,7 @@ class JPG_Compression(StdCompression):
             JPG_Compression.BINARY,
             "convert",
             infpath,
-            "-strip",           # Remove metadata to reduce file size
+            "-strip",  # Remove metadata to reduce file size
             "-quality",
             "{}%".format(quality),
             outfpath,
@@ -481,12 +481,12 @@ class BPG_Compression(StdCompression):
 
     @classmethod
     def make_enc_cl(
-        cls,
-        infpath: str,
-        outfpath: str,
-        quality: Any,
-        chroma_ss: Any = CHROMA_SS[0],
-        **kwargs,
+            cls,
+            infpath: str,
+            outfpath: str,
+            quality: Any,
+            chroma_ss: Any = CHROMA_SS[0],
+            **kwargs,
     ) -> list:
         """Create the command line for BPG encoding.
         
@@ -509,11 +509,11 @@ class BPG_Compression(StdCompression):
         assert quality is not None
         return [
             BPG_Compression.ENCBIN,
-            "-q",            # Quality parameter
+            "-q",  # Quality parameter
             str(quality),
-            "-f",            # Format (chroma subsampling)
+            "-f",  # Format (chroma subsampling)
             str(chroma_ss),
-            "-o",            # Output file
+            "-o",  # Output file
             outfpath,
             infpath,
         ]
@@ -582,13 +582,13 @@ class JPEGXS_Compression(StdCompression):
 
     @classmethod
     def make_enc_cl(
-        cls,
-        infpath: str,
-        outfpath: str,
-        bitrate: Any,
-        profile=PROFILE,
-        weights: str = WEIGHTS[0],
-        **kwargs,
+            cls,
+            infpath: str,
+            outfpath: str,
+            bitrate: Any,
+            profile=PROFILE,
+            weights: str = WEIGHTS[0],
+            **kwargs,
     ) -> list:
         """Create the command line for JPEG XS encoding.
         
@@ -612,11 +612,11 @@ class JPEGXS_Compression(StdCompression):
         assert bitrate is not None
         return [
             cls.ENCBIN,
-            "-b",            # Bitrate parameter
+            "-b",  # Bitrate parameter
             str(bitrate),
-            "-p",            # Profile parameter
+            "-p",  # Profile parameter
             str(profile),
-            "-o",            # Optimization weights
+            "-o",  # Optimization weights
             weights,
             infpath,
             outfpath,
@@ -673,7 +673,7 @@ class Test_utilities(unittest.TestCase):
     This class contains unit tests that verify the functionality of the
     compression classes using the Kodak test image dataset.
     """
-    
+
     def test_compress_kodak_bpg(self):
         """Test BPG compression on the Kodak dataset.
         

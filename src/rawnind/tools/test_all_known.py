@@ -7,7 +7,6 @@ import datetime
 import yaml
 import sys
 
-sys.path.append("..")
 from common.libs import utilities
 
 TESTS: list[str] = [
@@ -66,7 +65,7 @@ if __name__ == "__main__":
             if args.allowed_models:
                 # check if any of the allowed models are contained in the model_name
                 if not any(
-                    allowed_model in model_name for allowed_model in args.allowed_models
+                        allowed_model in model_name for allowed_model in args.allowed_models
                 ):
                     print(f"Skipping model not in allowed models: {model_name}")
                     continue
@@ -74,7 +73,7 @@ if __name__ == "__main__":
 
             for testname in args.tests:
                 if (
-                    "progressive_manproc" in testname in testname
+                        "progressive_manproc" in testname in testname
                 ) and model_type == "dc":
                     # raise NotImplementedError(
                     #     f"Cannot test progressive_manproc with dc models ({model_name=})"
@@ -84,17 +83,17 @@ if __name__ == "__main__":
                     )
                     continue
                 if "bm3d" in model_name and testname not in (
-                    "test_manproc",
-                    "test_progressive_manproc",
+                        "test_manproc",
+                        "test_progressive_manproc",
                 ):
                     print(f"Skipping BM3D test {testname=}")
                     continue
                 if (
-                    "manproc_playraw" in testname
-                    or "manproc_hq" in testname
-                    or "manproc_q99" in testname
-                    or "manproc_q995" in testname
-                    or "manproc_gt" in testname
+                        "manproc_playraw" in testname
+                        or "manproc_hq" in testname
+                        or "manproc_q99" in testname
+                        or "manproc_q995" in testname
+                        or "manproc_gt" in testname
                 ) and model_type == "denoise":
                     print(
                         f"Skipping denoise manproc_playraw test {testname=} (not implemented)"
@@ -102,12 +101,12 @@ if __name__ == "__main__":
                     continue
                 if model_attrs["in_channels"] == 3:
                     if (
-                        model_attrs.get("processed_input", False)
-                        and "proc" in args.model_input
+                            model_attrs.get("processed_input", False)
+                            and "proc" in args.model_input
                     ):
                         model_input = model_output = "proc"
                     elif "prgb" in args.model_input and not model_attrs.get(
-                        "processed_input", False
+                            "processed_input", False
                     ):
                         model_input = model_output = "prgb"
                     else:
@@ -125,7 +124,7 @@ if __name__ == "__main__":
                     continue
                 # skip non-manproc tests for proc2proc models
                 if "manproc" not in testname and model_attrs.get(
-                    "processed_input", False
+                        "processed_input", False
                 ):
                     continue
                 # print date and time
@@ -140,8 +139,8 @@ if __name__ == "__main__":
                     os.path.join(model_dpath, "args.yaml"),
                 ]
                 if args.cpu or (
-                    testname == "test_manproc"
-                    and (model_input != "bayer" or "preup" in model_name)
+                        testname == "test_manproc"
+                        and (model_input != "bayer" or "preup" in model_name)
                 ):
                     cmd += ["--device", "-1"]
                 print(" ".join(cmd))

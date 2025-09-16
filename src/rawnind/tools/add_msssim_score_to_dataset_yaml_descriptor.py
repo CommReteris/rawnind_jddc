@@ -11,13 +11,11 @@ import tqdm
 import torch
 import argparse
 
-sys.path.append("..")
 from common.libs import utilities
 from common.libs import pt_losses
 from common.libs import pt_helpers
 from rawnind.libs import rawproc
 from rawnind.libs import raw
-
 
 DATASET_YAML_DESCRIPTOR_FPATH = os.path.join(
     "..", "..", "datasets", "RawNIND", "RawNIND_masks_and_alignments.yaml"
@@ -25,7 +23,7 @@ DATASET_YAML_DESCRIPTOR_FPATH = os.path.join(
 
 
 def add_msssim_to_dataset_descriptor(
-    dataset_descriptor_fpath: str = DATASET_YAML_DESCRIPTOR_FPATH,
+        dataset_descriptor_fpath: str = DATASET_YAML_DESCRIPTOR_FPATH,
 ):
     """Compute and insert MS-SSIM scores into a dataset YAML descriptor.
 

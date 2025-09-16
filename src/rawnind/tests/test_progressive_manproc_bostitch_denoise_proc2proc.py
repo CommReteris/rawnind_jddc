@@ -1,9 +1,8 @@
 import sys
 import os
 
-sys.path.append("..")
 from rawnind.libs import rawds_manproc
-from rawnind.libs import rawtestlib
+from rawnind.tests import rawtestlib
 
 RAWNIND_BOSTITCH_TEST_DESCRIPTOR_FPATH = os.path.join(
     "..", "..", "datasets", "RawNIND_Bostitch", "manproc_test_descriptor.yaml"
@@ -40,3 +39,4 @@ if __name__ == "__main__":
                 test_name=f"progressive_test_manproc_bostitch_rawnind_msssim_{operator}_{msssim_value}",
                 save_individual_images=True,
             )
+

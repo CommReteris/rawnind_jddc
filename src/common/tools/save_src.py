@@ -27,7 +27,6 @@ import shutil
 import sys
 from typing import Optional, List, Tuple
 
-sys.path.append("..")
 from common.libs import utilities
 
 SRC_EXTENSIONS: tuple = ("py", "yaml")
@@ -35,10 +34,10 @@ SRC_ROOT_DPATH: str = ".."
 
 
 def save_src(
-    dest_root_dpath: str,
-    src_root_dpath: str = SRC_ROOT_DPATH,
-    src_extensions: Tuple[str, ...] = SRC_EXTENSIONS,
-    included_dirs: Optional[List[str]] = None,
+        dest_root_dpath: str,
+        src_root_dpath: str = SRC_ROOT_DPATH,
+        src_extensions: Tuple[str, ...] = SRC_EXTENSIONS,
+        included_dirs: Optional[List[str]] = None,
 ) -> None:
     """Copy source files from a source directory tree to a destination directory tree.
     
@@ -75,10 +74,10 @@ if __name__ == "__main__":
     # Command-line execution entry point
     # When run directly, the script requires exactly one argument:
     # the destination directory where source files will be copied
-    
+
     # Validate command-line arguments
     assert len(sys.argv) == 2, "usage: python save_src.py [DEST_ROOT_DPATH]"
-    
+
     # Call save_src with the specified destination directory
     # Uses default values for source directory and extensions
     save_src(dest_root_dpath=sys.argv[1])

@@ -1,9 +1,8 @@
 import sys
 import os
 
-sys.path.append("..")
 from rawnind.libs import rawds_manproc
-from rawnind.libs import rawtestlib
+from rawnind.tests import rawtestlib
 
 RAWNIND_BOSTITCH_TEST_DESCRIPTOR_FPATH = os.path.join(
     "..", "..", "datasets", "RawNIND_Bostitch", "manproc_test_descriptor.yaml"
@@ -26,11 +25,11 @@ if __name__ == "__main__":
             elif operator == "ge":
                 kwargs = {"min_msssim_score": msssim_value}
             if any(
-                score_key in denoiserTraining.json_saver.results["best_val"]
-                for score_key in [
-                    f"progressive_test_manproc_bostitch_rawnind_msssim_{operator}_{msssim_value}_msssim_loss.None",
-                    f"progressive_test_manproc_bostitch_rawnind_msssim_{operator}_{msssim_value}_msssim_loss",
-                ]
+                    score_key in denoiserTraining.json_saver.results["best_val"]
+                    for score_key in [
+                        f"progressive_test_manproc_bostitch_rawnind_msssim_{operator}_{msssim_value}_msssim_loss.None",
+                        f"progressive_test_manproc_bostitch_rawnind_msssim_{operator}_{msssim_value}_msssim_loss",
+                    ]
             ):
                 print(f"Skipping test, best_val is known")
                 continue

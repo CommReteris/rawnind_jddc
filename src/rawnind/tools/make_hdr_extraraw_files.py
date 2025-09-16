@@ -12,7 +12,6 @@ import logging
 import argparse
 from typing import Literal
 
-sys.path.append("..")
 from rawnind.libs import raw
 from common.libs import utilities
 
@@ -57,7 +56,7 @@ def proc_dataset(dataset: str, num_threads: int = NUM_THREADS):
             src_fpath = os.path.join(src_dpath, fn)
             dest_fpath = os.path.join(dest_dpath, fn + "." + PROC_EXTENSION)
             if (
-                os.path.isfile(dest_fpath) and utilities.filesize(dest_fpath) > 10000000
+                    os.path.isfile(dest_fpath) and utilities.filesize(dest_fpath) > 10000000
             ):  # assuming >= 1 MB is valid
                 continue
             list_of_src_dest.append((src_fpath, dest_fpath, "lin_rec2020", 16))

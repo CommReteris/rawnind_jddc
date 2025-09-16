@@ -5,7 +5,7 @@ clusters. Each cluster represents a functional area of the codebase with related
 
 ## Documentation Clusters
 
-### 1. Core Neural Network Models and Architecture (41%)
+### 1. Core Neural Network Models and Architecture (73%)
 
 This cluster includes components that define neural network architectures, models, and related functionality.
 
@@ -13,15 +13,15 @@ This cluster includes components that define neural network architectures, model
 |------------------------------------|--------------|
 | models/compression_autoencoders.py | 90%          |
 | models/raw_denoiser.py             | 100%         |
-| models/bitEstimator.py             | 30%          |
-| models/bm3d_denoiser.py            | 15%          |
-| models/denoise_then_compress.py    | 20%          |
+| models/bitEstimator.py             | 100%         |
+| models/bm3d_denoiser.py            | 100%         |
+| models/denoise_then_compress.py    | 100%         |
 | models/manynets_compression.py     | 50%          |
 | models/standard_compressor.py      | 80%          |
-| models/__init__.py                 | 0%           |
+| models/__init__.py                 | 100%         |
 | libs/abstract_trainer.py           | 18%          |
 | common/extlibs/gdn.py              | 100%         |
-| **Cluster Average**                | **41%**      |
+| **Cluster Average**                | **73%**      |
 
 ### 2. Image Processing and Operations (75%)
 
@@ -72,8 +72,8 @@ This cluster includes components for compression, file handling, and I/O operati
 | common/libs/json_saver.py     | 90%          |
 | common/libs/locking.py        | 100%         |
 | common/tools/save_src.py      | 75%          |
-| common/libs/utilities.py      | 20%          |
-| **Cluster Average**           | **65%**      |
+| common/libs/utilities.py      | 95%          |
+| **Cluster Average**           | **86%**      |
 
 ### 6. Utility Tools and Scripts (41%)
 
@@ -91,34 +91,42 @@ This cluster includes various utility tools and scripts.
 | scripts/mk_denoise_then_compress_models.py           | 10%          |
 | **Cluster Average**                                  | **41%**      |
 
-### 7. Testing and Validation (25%)
+### 7. Testing and Validation (33%)
 
 This cluster includes components for testing, validation, and verification.
 
 | Component                                           | Completion % |
 |-----------------------------------------------------|--------------|
 | tests/check_whether_wb_is_needed_before_demosaic.py | 5%           |
-| tests/get_ds_avg_msssim.py                          | 5%           |
-| other test files (50+ files)                        | 3%           |
+| tests/get_ds_avg_msssim.py                          | 90%          |
+| tests/test_alignment.py                             | 100%         |
+| tests/test_openEXR_bit_depth.py                     | 100%         |
+| tests/test_datasets_load_time.py                    | 100%         |
+| tests/test_progressive_rawnind_denoise_bayer2prgb.py | 95%         |
+| tests/test_playraw_dc_bayer2prgb.py                 | 95%          |
+| tests/test_manproc_denoise_bayer2prgb.py            | 95%          |
+| tests/__init__.py                                   | 100%         |
+| other test files (44+ files)                        | 3%           |
 | unittests.py                                        | 5%           |
-| **Cluster Average**                                 | **25%**      |
+| **Cluster Average**                                 | **33%**      |
 
-### 8. Configuration and Settings (23%)
+### 8. Configuration and Settings (53%)
 
 This cluster includes configuration files and settings.
 
-| Component                       | Completion % |
-|---------------------------------|--------------|
-| config/train_dc.yaml            | 90%          |
-| config/train_dc_bayer2prgb.yaml | 0%           |
-| config/train_denoiser_*.yaml    | 0%           |
-| config/graph_dc_model.yaml      | 0%           |
-| config/graph_denoiser.yaml      | 0%           |
-| config/test_reserve.yaml        | 0%           |
-| plot_cfg/Picture1_32.yaml       | 95%          |
-| plot_cfg/Picture2_32.yaml       | 0%           |
-| plot_cfg/Picture1_picture2.yaml | 0%           |
-| **Cluster Average**             | **23%**      |
+| Component                                | Completion % |
+|------------------------------------------|--------------|
+| config/train_dc.yaml                     | 90%          |
+| config/train_dc_bayer2prgb.yaml          | 90%          |
+| config/train_denoise.yaml                | 90%          |
+| config/train_denoise_bayer2prgb.yaml     | 90%          |
+| config/graph_dc_models_definitions.yaml  | 0%           |
+| config/graph_denoise_models_definitions.yaml | 0%       |
+| config/test_reserve.yaml                 | 90%          |
+| plot_cfg/Picture1_32.yaml                | 95%          |
+| plot_cfg/Picture2_32.yaml                | 0%           |
+| plot_cfg/Picture1_picture2.yaml          | 0%           |
+| **Cluster Average**                      | **53%**      |
 
 ### 9. Visualization and Reporting (79%)
 
@@ -151,40 +159,37 @@ This cluster includes components for model training.
 ## Documentation Coverage Visualization
 
 ```
-Core Neural Network Models (41%) ██████████████░░░░░░░░░░░░░░░
+Core NN Models (73%)           ███████████████████████░░░░░
 Image Processing (75%)         ███████████████████████░░░░░
 Dataset Management (46%)       ██████████████░░░░░░░░░░░░░░░
 Evaluation Metrics (85%)       █████████████████████████░░░
-Compression & Files (65%)      ████████████████████░░░░░░░░
+Compression & Files (86%)      ██████████████████████████░░
 Utility Tools (41%)            ██████████████░░░░░░░░░░░░░░░
-Testing & Validation (25%)     ████████░░░░░░░░░░░░░░░░░░░░░
-Configuration (23%)            ████████░░░░░░░░░░░░░░░░░░░░░
+Testing & Validation (33%)     ███████████░░░░░░░░░░░░░░░░░
+Configuration (53%)            ████████████████░░░░░░░░░░░░░
 Visualization (79%)            █████████████████████████░░░
 Training Scripts (53%)         ████████████████░░░░░░░░░░░░░
 ```
 
 ## Overall Documentation Status
 
-The overall project documentation coverage is approximately 45%.
+The overall project documentation coverage is approximately 62%.
 
 ### Documentation Priority Areas
 
 Based on the cluster analysis, the following areas should be prioritized for documentation improvement:
 
-1. **Testing and Validation (25%)** - This cluster has the lowest documentation coverage and includes over 50 test files
-   that could benefit from improved documentation.
+1. **Testing and Validation (33%)** - This cluster still has the lowest documentation coverage. While several key test files
+   have been thoroughly documented, over 40 test files still need improved documentation.
 
-2. **Configuration and Settings (23%)** - Configuration files are critical for understanding how to run the system but
-   have very low documentation coverage.
+2. **Utility Tools and Scripts (41%)** - These tools are likely used frequently across the project but lack
+   comprehensive documentation in many cases.
 
-3. **Core Neural Network Models (41%)** - These components form the backbone of the system's functionality but have
-   below-average documentation coverage.
-
-4. **Utility Tools and Scripts (41%)** - These tools are likely used frequently across the project but lack
-   comprehensive documentation.
-
-5. **Dataset Management (46%)** - Better documentation of data handling would improve understanding of data flow through
+3. **Dataset Management (46%)** - Better documentation of data handling would improve understanding of data flow through
    the system.
+
+4. **Core Neural Network Models (73%)** and **abstract_trainer.py (18%)** - While the overall coverage for neural network models
+   is good, the abstract_trainer.py file that forms the backbone of the training system has below-average documentation coverage.
 
 ### Well-Documented Areas
 

@@ -52,6 +52,7 @@ import numpy as np
 
 try:
     import OpenImageIO as oiio
+
     TIFF_PROVIDER = "OpenImageIO"
 except ImportError:
     TIFF_PROVIDER = "OpenCV"
@@ -59,8 +60,6 @@ except ImportError:
         "np_imgops.py warning: missing OpenImageIO library; falling back to OpenCV which cannot open 16-bit float tiff images"
     )
 
-
-sys.path.append("..")
 from rawnind.libs import raw
 from common.libs import libimganalysis
 
@@ -79,8 +78,8 @@ class CropMethod(Enum):
         CENTER: Center cropping - crops the center region of the specified size,
                 useful for consistent evaluation and testing
     """
-    RAND = auto()   # Random crop location
-    CENTER = auto() # Center crop location
+    RAND = auto()  # Random crop location
+    CENTER = auto()  # Center crop location
 
 
 def _oiio_img_fpath_to_np(fpath: str):
@@ -144,8 +143,8 @@ def _opencv_img_fpath_to_np(fpath: str):
 
 
 def img_fpath_to_np_flt(
-    fpath: str,
-    incl_metadata=False,  # , bit_depth: Optional[int] = None
+        fpath: str,
+        incl_metadata=False,  # , bit_depth: Optional[int] = None
 ) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
     """Load an image file into a normalized NumPy array with optional metadata.
     
@@ -188,7 +187,7 @@ def img_fpath_to_np_flt(
         print("img_fpath_to_np_flt warning: ignoring raw image metadata")
         return rggb_img
     if (
-        fpath.lower().endswith(".tif") or fpath.lower().endswith(".tiff")
+            fpath.lower().endswith(".tif") or fpath.lower().endswith(".tiff")
     ) and TIFF_PROVIDER == "OpenImageIO":
         rgb_img = _oiio_img_fpath_to_np(fpath)
     else:
@@ -241,15 +240,15 @@ def np_pad_img_pair(img1, img2, cs):
     # Calculate padding for width (x-axis)
     xpad0 = max(0, (cs - img1.shape[2]) // 2)  # Left padding
     xpad1 = max(0, cs - img1.shape[2] - xpad0)  # Right padding
-    
+
     # Calculate padding for height (y-axis)
     ypad0 = max(0, (cs - img1.shape[1]) // 2)  # Top padding
     ypad1 = max(0, cs - img1.shape[1] - ypad0)  # Bottom padding
-    
+
     # Create padding tuple for numpy.pad - format ((before_axis1, after_axis1), ...)
     # No padding for channel dimension, only for height and width
     padding = ((0, 0), (ypad0, ypad1), (xpad0, xpad1))
-    
+
     # Apply same padding to both images and return
     return np.pad(img1, padding), np.pad(img2, padding)
 
@@ -285,9 +284,9 @@ def np_crop_img_pair(img1, img2, cs: int, crop_method=CropMethod.RAND):
         # Center crop: calculate starting point for centered crop
         x0 = (img1.shape[2] - cs) // 2
         y0 = (img1.shape[1] - cs) // 2
-        
+
     # Extract the same region from both images
-    return img1[:, y0 : y0 + cs, x0 : x0 + cs], img2[:, y0 : y0 + cs, x0 : x0 + cs]
+    return img1[:, y0: y0 + cs, x0: x0 + cs], img2[:, y0: y0 + cs, x0: x0 + cs]
 
 
 def np_to_img(img: np.ndarray, fpath: str, precision: int = 16):
@@ -316,13 +315,13 @@ def np_to_img(img: np.ndarray, fpath: str, precision: int = 16):
     # Handle single-channel (H,W) images by adding channel dimension
     if len(img.shape) == 2:
         img = np.expand_dims(img, 0)
-        
+
     # Convert from CHW to HWC format for OpenCV
     hwc_img = img.transpose(1, 2, 0)
-    
+
     # Convert from RGB to BGR color order for OpenCV
     hwc_img = cv2.cvtColor(hwc_img, cv2.COLOR_RGB2BGR)
-    
+
     # Scale and convert to appropriate bit depth
     if precision == 16:
         # 16-bit: scale to [0, 65535] and convert to uint16
@@ -332,7 +331,7 @@ def np_to_img(img: np.ndarray, fpath: str, precision: int = 16):
         hwc_img = (hwc_img * 255).clip(0, 255).astype(np.uint8)
     else:
         raise NotImplemented(precision)
-        
+
     # Save the image using OpenCV
     cv2.imwrite(fpath, hwc_img)
 
@@ -349,7 +348,7 @@ class TestImgOps(unittest.TestCase):
     The tests use both even and odd-sized images to ensure proper handling of
     edge cases, and verify both the dimensions and content of the processed images.
     """
-    
+
     def setUp(self):
         """Set up test images and fixtures.
         
@@ -365,11 +364,11 @@ class TestImgOps(unittest.TestCase):
         # Create even-sized test images (8x8)
         self.imgeven1 = np.random.rand(3, 8, 8)
         self.imgeven2 = np.random.rand(3, 8, 8)
-        
+
         # Create odd-sized test images (5x5)
         self.imgodd1 = np.random.rand(3, 5, 5)
         self.imgodd2 = np.random.rand(3, 5, 5)
-        
+
         # Create a larger test image and save it as a TIFF file
         self.random_image = np.random.rand(3, 512, 768).astype(np.float32)
         self.random_image_fpath = os.path.join(TMP_DPATH, "rand.tiff")
@@ -393,11 +392,11 @@ class TestImgOps(unittest.TestCase):
             self.imgeven1, self.imgeven2, 16
         )
         imgodd1_padded, imgodd2_padded = np_pad_img_pair(self.imgodd1, self.imgodd2, 16)
-        
+
         # Verify the dimensions of padded images
         self.assertTupleEqual(imgeven1_padded.shape, (3, 16, 16), imgeven1_padded.shape)
         self.assertTupleEqual(imgodd2_padded.shape, (3, 16, 16), imgodd2_padded.shape)
-        
+
         # Verify the original content is preserved at the correct position
         # For 8x8 image centered in 16x16 result, pixel (0,0) should be at (4,4)
         self.assertEqual(imgeven1_padded[0, 4, 4], self.imgeven1[0, 0, 0])
@@ -425,7 +424,7 @@ class TestImgOps(unittest.TestCase):
         self.assertTupleEqual(
             imgeven1_centercropped.shape, (3, 4, 4), imgeven1_centercropped.shape
         )
-        
+
         # For 8x8 image with center crop of 4x4, the crop starts at (2,2)
         # Visual representation:
         # orig:    0 1 2 3 4 5 6 7
@@ -456,7 +455,7 @@ class TestImgOps(unittest.TestCase):
         cvimg = _opencv_img_fpath_to_np(self.random_image_fpath)
         oiioimg = _oiio_img_fpath_to_np(self.random_image_fpath)
         default_img = img_fpath_to_np_flt(self.random_image_fpath, incl_metadata=False)
-        
+
         # Verify that all loaded versions match each other and the original
         self.assertTrue(
             (cvimg == oiioimg).all(), "OpenCV and OpenImageIO images do not match"

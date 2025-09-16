@@ -21,7 +21,6 @@ import tqdm
 
 import torch
 
-sys.path.append("..")
 from common.libs import pt_helpers, utilities
 from rawnind.libs import raw
 from rawnind.libs import rawproc
@@ -43,6 +42,7 @@ OVEREXPOSURE_LB = 0.99
 
 TOY_DATASET_LEN = 25  # debug option
 
+
 # Abstract classes:
 
 
@@ -63,16 +63,17 @@ class RawImageDataset:
     Subclasses are expected to implement data loading and masking policy by
     overriding __getitem__ and optionally get_mask-like helpers.
     """
+
     def __init__(self, num_crops: int, crop_size: int):
         self.num_crops = num_crops
         assert crop_size % 2 == 0
         self.crop_size = crop_size
 
     def random_crops(
-        self,
-        ximg: torch.Tensor,
-        yimg: Optional[torch.Tensor],
-        whole_img_mask: torch.BoolTensor,
+            self,
+            ximg: torch.Tensor,
+            yimg: Optional[torch.Tensor],
+            whole_img_mask: torch.BoolTensor,
     ):  # -> Union[tuple[torch.Tensor, Optional[torch.Tensor], torch.BoolTensor], bool]:  # Python 3.8 incompat :(
         """Extract multiple random crops from input images while ensuring sufficient valid pixels.
 
@@ -125,7 +126,7 @@ class RawImageDataset:
             )
             # ensure there are sufficient valid pixels
             attempts: int = 0
-            while mask_crops[crop_i].sum() / self.crop_size**2 < MAX_MASKED:
+            while mask_crops[crop_i].sum() / self.crop_size ** 2 < MAX_MASKED:
                 if attempts >= MAX_RANDOM_CROP_ATTEMPS:
                     return False
                 self.make_a_random_crop(
@@ -145,16 +146,16 @@ class RawImageDataset:
         return x_crops, mask_crops
 
     def make_a_random_crop(
-        self,
-        crop_i: int,
-        x_crops: torch.Tensor,
-        y_crops: Optional[torch.Tensor],
-        mask_crops: torch.BoolTensor,
-        max_start_v: int,
-        max_start_h: int,
-        ximg: torch.Tensor,
-        yimg: Optional[torch.Tensor],
-        whole_img_mask: torch.BoolTensor,
+            self,
+            crop_i: int,
+            x_crops: torch.Tensor,
+            y_crops: Optional[torch.Tensor],
+            mask_crops: torch.BoolTensor,
+            max_start_v: int,
+            max_start_h: int,
+            ximg: torch.Tensor,
+            yimg: Optional[torch.Tensor],
+            whole_img_mask: torch.BoolTensor,
     ) -> None:
         """Extract a single random crop and store it at the specified index.
 
@@ -185,26 +186,26 @@ class RawImageDataset:
         #    f"{x_crops.shape=}, {ximg.shape=}, {vstart=}, {hstart=}, {self.crop_size=}, {max_start_h=}, {max_start_v=}"
         # )  # dbg
         x_crops[crop_i] = ximg[
-            ..., vstart : vstart + self.crop_size, hstart : hstart + self.crop_size
+            ..., vstart: vstart + self.crop_size, hstart: hstart + self.crop_size
         ]
         if yimg is not None:
             yimg_divisor = (yimg.shape[0] == 4) + 1
             y_crops[crop_i] = yimg[
                 ...,
-                vstart // yimg_divisor : vstart // yimg_divisor
-                + self.crop_size // yimg_divisor,
-                hstart // yimg_divisor : hstart // yimg_divisor
-                + self.crop_size // yimg_divisor,
+                vstart // yimg_divisor: vstart // yimg_divisor
+                                        + self.crop_size // yimg_divisor,
+                hstart // yimg_divisor: hstart // yimg_divisor
+                                        + self.crop_size // yimg_divisor,
             ]
         mask_crops[crop_i] = whole_img_mask[
-            ..., vstart : vstart + self.crop_size, hstart : hstart + self.crop_size
+            ..., vstart: vstart + self.crop_size, hstart: hstart + self.crop_size
         ]
 
     def center_crop(
-        self,
-        ximg: torch.Tensor,
-        yimg: Optional[torch.Tensor],
-        mask: torch.BoolTensor,
+            self,
+            ximg: torch.Tensor,
+            yimg: Optional[torch.Tensor],
+            mask: torch.BoolTensor,
     ):  # -> Union[tuple[torch.Tensor, torch.Tensor], torch.Tensor]: # python3.8 incompat :(
         """Extract a center crop from input images and mask.
 
@@ -228,13 +229,13 @@ class RawImageDataset:
         xstart -= xstart % 2
         xcrop = ximg[
             ...,
-            ystart : ystart + self.crop_size,
-            xstart : xstart + self.crop_size,
+            ystart: ystart + self.crop_size,
+            xstart: xstart + self.crop_size,
         ]
         mask_crop = mask[
             ...,
-            ystart : ystart + self.crop_size,
-            xstart : xstart + self.crop_size,
+            ystart: ystart + self.crop_size,
+            xstart: xstart + self.crop_size,
         ]
         if yimg is not None:
             if yimg.size(-3) == 4:
@@ -247,10 +248,10 @@ class RawImageDataset:
                 )
             ycrop = yimg[
                 ...,
-                ystart // shape_divisor : ystart // shape_divisor
-                + self.crop_size // shape_divisor,
-                xstart // shape_divisor : xstart // shape_divisor
-                + self.crop_size // shape_divisor,
+                ystart // shape_divisor: ystart // shape_divisor
+                                         + self.crop_size // shape_divisor,
+                xstart // shape_divisor: xstart // shape_divisor
+                                         + self.crop_size // shape_divisor,
             ]
             return xcrop, ycrop, mask_crop
         return xcrop, mask_crop
@@ -263,14 +264,15 @@ class ProfiledRGBBayerImageDataset(RawImageDataset):
     profiles, which is essential for training models that work with Bayer patterns
     while maintaining color accuracy.
     """
+
     def __init__(self, num_crops: int, crop_size: int):
         super().__init__(num_crops=num_crops, crop_size=crop_size)
 
     @staticmethod
     def camRGB_to_profiledRGB_img(
-        camRGB_img: torch.Tensor,
-        metadata: dict,
-        output_color_profile=COLOR_PROFILE,
+            camRGB_img: torch.Tensor,
+            metadata: dict,
+            output_color_profile=COLOR_PROFILE,
     ) -> torch.Tensor:
         return raw.camRGB_to_profiledRGB_img(camRGB_img, metadata, output_color_profile)
 
@@ -294,6 +296,7 @@ class ProfiledRGBProfiledRGBImageDataset(RawImageDataset):
     are in profiled RGB color spaces, typically used for image enhancement
     or processing tasks that don't require color space conversion.
     """
+
     def __init__(self, num_crops: int, crop_size: int):
         super().__init__(num_crops=num_crops, crop_size=crop_size)
 
@@ -305,6 +308,7 @@ class CleanCleanImageDataset(RawImageDataset):
     synthetic noise, relying on natural image variations or processing artifacts
     for supervision signal.
     """
+
     def __init__(self, num_crops: int, crop_size: int):
         super().__init__(num_crops=num_crops, crop_size=crop_size)
 
@@ -388,7 +392,7 @@ class TestDataLoader:
         single_to_batch = lambda x: torch.unsqueeze(x, 0)
         identity = lambda x: x
         if hasattr(
-            self, "get_images"
+                self, "get_images"
         ):  # TODO should combine this ifelse with an iterator selection
             for res in self.get_images():
                 batch_fun = single_to_batch if res["y_crops"].dim() == 3 else identity
@@ -457,11 +461,11 @@ class CleanProfiledRGBCleanBayerImageCropsDataset(
     """Dataloader for pre-cropped unpaired images generated by tools/crop_dataset.py w/ metadata from tools/prep_image_dataset_extraraw.py."""
 
     def __init__(
-        self,
-        content_fpaths: list[str],
-        num_crops: int,
-        crop_size: int,
-        toy_dataset: bool = False,
+            self,
+            content_fpaths: list[str],
+            num_crops: int,
+            crop_size: int,
+            toy_dataset: bool = False,
     ):
         super().__init__(num_crops=num_crops, crop_size=crop_size)
         self.num_crops = num_crops
@@ -477,8 +481,8 @@ class CleanProfiledRGBCleanBayerImageCropsDataset(
                     break
                 useful_metadata = {
                     "overexposure_lb": all_metadata["overexposure_lb"],
-                    "rgb_xyz_matrix": torch.tensor(all_metadata["rgb_xyz_matrix"]),
-                    "crops": all_metadata["crops"],
+                    "rgb_xyz_matrix" : torch.tensor(all_metadata["rgb_xyz_matrix"]),
+                    "crops"          : all_metadata["crops"],
                 }
                 if not useful_metadata["crops"]:
                     logging.warning(
@@ -524,11 +528,11 @@ class CleanProfiledRGBCleanBayerImageCropsDataset(
                 self._dataset.remove(self._dataset[i])
             return self.__getitem__(i)
         return {
-            "x_crops": x_crops,
-            "y_crops": y_crops,
-            "mask_crops": mask_crops,
+            "x_crops"       : x_crops,
+            "y_crops"       : y_crops,
+            "mask_crops"    : mask_crops,
             "rgb_xyz_matrix": metadata["rgb_xyz_matrix"],
-            "gain": 1.0,
+            "gain"          : 1.0,
         }
 
     def __len__(self) -> int:
@@ -554,12 +558,12 @@ class CleanProfiledRGBCleanProfiledRGBImageCropsDataset(
     """
 
     def __init__(
-        self,
-        content_fpaths: list[str],
-        num_crops: int,
-        crop_size: int,
-        toy_dataset: bool = False,
-        arbitrary_proc_method: bool = False,
+            self,
+            content_fpaths: list[str],
+            num_crops: int,
+            crop_size: int,
+            toy_dataset: bool = False,
+            arbitrary_proc_method: bool = False,
     ):
         super().__init__(num_crops=num_crops, crop_size=crop_size)
         self.arbitrary_proc_method = arbitrary_proc_method
@@ -576,7 +580,7 @@ class CleanProfiledRGBCleanProfiledRGBImageCropsDataset(
                     break
                 useful_metadata = {
                     "overexposure_lb": all_metadata["overexposure_lb"],
-                    "crops": all_metadata["crops"],
+                    "crops"          : all_metadata["crops"],
                 }
                 if not useful_metadata["crops"]:
                     logging.warning(
@@ -658,21 +662,21 @@ class CleanProfiledRGBNoisyBayerImageCropsDataset(
     """
 
     def __init__(
-        self,
-        content_fpaths: list[str],
-        num_crops: int,
-        crop_size: int,
-        # test_reserve: list[str],  # python 3.8 incompat
-        test_reserve: list,
-        bayer_only: bool = True,
-        alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
-        mask_mean_min: float = MASK_MEAN_MIN,
-        test: bool = False,
-        toy_dataset: bool = False,
-        data_pairing: Literal["x_y", "x_x", "y_y"] = "x_y",  # x_y, x_x, y_y
-        match_gain: bool = False,
-        min_msssim_score: Optional[float] = 0.0,
-        max_msssim_score: Optional[float] = 1.0,
+            self,
+            content_fpaths: list[str],
+            num_crops: int,
+            crop_size: int,
+            # test_reserve: list[str],  # python 3.8 incompat
+            test_reserve: list,
+            bayer_only: bool = True,
+            alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
+            mask_mean_min: float = MASK_MEAN_MIN,
+            test: bool = False,
+            toy_dataset: bool = False,
+            data_pairing: Literal["x_y", "x_x", "y_y"] = "x_y",  # x_y, x_x, y_y
+            match_gain: bool = False,
+            min_msssim_score: Optional[float] = 0.0,
+            max_msssim_score: Optional[float] = 1.0,
     ):
         """
         content_fpath points to a yaml file containing:
@@ -701,22 +705,22 @@ class CleanProfiledRGBNoisyBayerImageCropsDataset(
 
                 # check that the image is (/not) reserved for testing
                 if (not test and image["image_set"] in test_reserve) or (
-                    test and image["image_set"] not in test_reserve
+                        test and image["image_set"] not in test_reserve
                 ):
                     continue
                 try:
                     if (
-                        min_msssim_score
-                        and min_msssim_score > image["rgb_msssim_score"]
+                            min_msssim_score
+                            and min_msssim_score > image["rgb_msssim_score"]
                     ):
                         print(
                             f"Skipping {image['f_fpath']} with {image['rgb_msssim_score']} < {min_msssim_score}"
                         )
                         continue
                     if (
-                        max_msssim_score
-                        and max_msssim_score != 1.0
-                        and max_msssim_score < image["rgb_msssim_score"]
+                            max_msssim_score
+                            and max_msssim_score != 1.0
+                            and max_msssim_score < image["rgb_msssim_score"]
                     ):
                         print(
                             f"Skipping {image['f_fpath']} with {image['rgb_msssim_score']} > {max_msssim_score}"
@@ -727,8 +731,8 @@ class CleanProfiledRGBNoisyBayerImageCropsDataset(
                         f"{image} does not contain msssim score (required with {min_msssim_score=})"
                     )
                 if (
-                    image["best_alignment_loss"] > alignment_max_loss
-                    or image["mask_mean"] < mask_mean_min
+                        image["best_alignment_loss"] > alignment_max_loss
+                        or image["mask_mean"] < mask_mean_min
                 ):
                     logging.info(
                         f"{type(self).__name__}.__init__: rejected {image['f_fpath']}"
@@ -766,8 +770,8 @@ class CleanProfiledRGBNoisyBayerImageCropsDataset(
 
             whole_img_mask = pt_helpers.fpath_to_tensor(image["mask_fpath"])[
                 :,
-                crop["coordinates"][1] : crop["coordinates"][1] + gt_img.shape[1],
-                crop["coordinates"][0] : crop["coordinates"][0] + gt_img.shape[2],
+                crop["coordinates"][1]: crop["coordinates"][1] + gt_img.shape[1],
+                crop["coordinates"][0]: crop["coordinates"][0] + gt_img.shape[2],
             ]
             whole_img_mask = whole_img_mask.expand(gt_img.shape)
         elif self.data_pairing == "x_x":
@@ -806,9 +810,9 @@ class CleanProfiledRGBNoisyBayerImageCropsDataset(
         #     ]
         # )
         output = {
-            "x_crops": x_crops.float(),
-            "y_crops": y_crops.float(),
-            "mask_crops": mask_crops,
+            "x_crops"       : x_crops.float(),
+            "y_crops"       : y_crops.float(),
+            "mask_crops"    : mask_crops,
             # "rgb_xyz_matrix": hardcoded_rgbm  # TODO RM DBG
             "rgb_xyz_matrix": torch.tensor(image["rgb_xyz_matrix"]),
         }
@@ -845,22 +849,22 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsDataset(
     """
 
     def __init__(
-        self,
-        content_fpaths: list[str],
-        num_crops: int,
-        crop_size: int,
-        # test_reserve: list[str],
-        test_reserve,  # python 38 incompat
-        bayer_only: bool,
-        alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
-        mask_mean_min: float = MASK_MEAN_MIN,
-        test: bool = False,
-        toy_dataset: bool = False,
-        data_pairing: Literal["x_y", "x_x", "y_y"] = "x_y",
-        match_gain: bool = False,
-        arbitrary_proc_method: bool = False,
-        min_msssim_score: Optional[float] = 0.0,
-        max_msssim_score: Optional[float] = 1.0,
+            self,
+            content_fpaths: list[str],
+            num_crops: int,
+            crop_size: int,
+            # test_reserve: list[str],
+            test_reserve,  # python 38 incompat
+            bayer_only: bool,
+            alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
+            mask_mean_min: float = MASK_MEAN_MIN,
+            test: bool = False,
+            toy_dataset: bool = False,
+            data_pairing: Literal["x_y", "x_x", "y_y"] = "x_y",
+            match_gain: bool = False,
+            arbitrary_proc_method: bool = False,
+            min_msssim_score: Optional[float] = 0.0,
+            max_msssim_score: Optional[float] = 1.0,
     ):
         """
         content_fpath points to a yaml file containing:
@@ -890,24 +894,24 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsDataset(
 
                 # check that the image is (/not) reserved for testing
                 if (
-                    (not test and image["image_set"] in test_reserve)
-                    or (test and image["image_set"] not in test_reserve)
-                    or (  # check that there is a bayer version available if bayer_only is True
+                        (not test and image["image_set"] in test_reserve)
+                        or (test and image["image_set"] not in test_reserve)
+                        or (  # check that there is a bayer version available if bayer_only is True
                         bayer_only and not image["is_bayer"]
-                    )
+                )
                 ):
                     # print(f'Image is (/not) reserved for testing: {image["image_set"]}')
                     continue
                 try:
                     if (
-                        min_msssim_score
-                        and min_msssim_score > image["rgb_msssim_score"]
+                            min_msssim_score
+                            and min_msssim_score > image["rgb_msssim_score"]
                     ):
                         continue
                     if (
-                        max_msssim_score
-                        and max_msssim_score != 1.0
-                        and max_msssim_score < image["rgb_msssim_score"]
+                            max_msssim_score
+                            and max_msssim_score != 1.0
+                            and max_msssim_score < image["rgb_msssim_score"]
                     ):
                         print(
                             f"Skipping {image['f_fpath']} with {image['rgb_msssim_score']} > {max_msssim_score}"
@@ -919,8 +923,8 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsDataset(
                     )
 
                 if (
-                    image["best_alignment_loss"] > alignment_max_loss
-                    or image["mask_mean"] < mask_mean_min
+                        image["best_alignment_loss"] > alignment_max_loss
+                        or image["mask_mean"] < mask_mean_min
                 ):
                     logging.info(
                         f"{type(self).__name__}.__init__: rejected {image['f_fpath']}"
@@ -943,9 +947,9 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsDataset(
                 exit(-1)
 
     def __getitem__(
-        self,
-        i: int,
-        # ) -> tuple[torch.Tensor, torch.Tensor, torch.BoolTensor]:
+            self,
+            i: int,
+            # ) -> tuple[torch.Tensor, torch.Tensor, torch.BoolTensor]:
     ):  # python 3.8 incompat
         """Returns a random crop triplet (ximage, yimage, mask).
 
@@ -968,8 +972,8 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsDataset(
             )
             whole_img_mask = pt_helpers.fpath_to_tensor(image["mask_fpath"])[
                 :,
-                crop["coordinates"][1] : crop["coordinates"][1] + gt_img.shape[1],
-                crop["coordinates"][0] : crop["coordinates"][0] + gt_img.shape[2],
+                crop["coordinates"][1]: crop["coordinates"][1] + gt_img.shape[1],
+                crop["coordinates"][0]: crop["coordinates"][0] + gt_img.shape[2],
             ]
             whole_img_mask = whole_img_mask.expand(gt_img.shape)
         elif self.data_pairing == "x_x":
@@ -1045,18 +1049,18 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsValidationDataset(
     """
 
     def __init__(
-        self,
-        content_fpaths: list[str],
-        crop_size: int,
-        # test_reserve: list[str],
-        test_reserve,  # python38 incompat
-        bayer_only: bool,
-        alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
-        mask_mean_min: float = MASK_MEAN_MIN,
-        toy_dataset: bool = False,
-        match_gain: bool = False,
-        arbitrary_proc_method: bool = False,
-        data_pairing: Literal["x_y", "x_x", "y_y"] = "x_y",
+            self,
+            content_fpaths: list[str],
+            crop_size: int,
+            # test_reserve: list[str],
+            test_reserve,  # python38 incompat
+            bayer_only: bool,
+            alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
+            mask_mean_min: float = MASK_MEAN_MIN,
+            toy_dataset: bool = False,
+            match_gain: bool = False,
+            arbitrary_proc_method: bool = False,
+            data_pairing: Literal["x_y", "x_x", "y_y"] = "x_y",
     ):
         super().__init__(
             content_fpaths=content_fpaths,
@@ -1074,7 +1078,7 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsValidationDataset(
         )
 
     def __getitem__(
-        self, i: int
+            self, i: int
     ):  # -> tuple[torch.Tensor, torch.Tensor, torch.BoolTensor]:  # python 3.8 incompat
         """Returns a center crop triplet (ximage, yimage, mask).
 
@@ -1098,8 +1102,8 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsValidationDataset(
             )
             whole_img_mask = pt_helpers.fpath_to_tensor(image["mask_fpath"])[
                 :,
-                crop["coordinates"][1] : crop["coordinates"][1] + gt_img.shape[1],
-                crop["coordinates"][0] : crop["coordinates"][0] + gt_img.shape[2],
+                crop["coordinates"][1]: crop["coordinates"][1] + gt_img.shape[1],
+                crop["coordinates"][0]: crop["coordinates"][0] + gt_img.shape[2],
             ]
             try:
                 whole_img_mask = whole_img_mask.expand(gt_img.shape)
@@ -1136,11 +1140,11 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsValidationDataset(
             return self.__getitem__(i)
 
         output = {
-            "x_crops": x_crop.float(),
-            "y_crops": y_crop.float(),
+            "x_crops"   : x_crop.float(),
+            "y_crops"   : y_crop.float(),
             "mask_crops": mask_crop,
-            "gt_fpath": crop["gt_linrec2020_fpath"],
-            "y_fpath": crop["f_linrec2020_fpath"],
+            "gt_fpath"  : crop["gt_linrec2020_fpath"],
+            "y_fpath"   : crop["f_linrec2020_fpath"],
         }
         if self.match_gain:
             output["y_crops"] *= image["rgb_gain"]
@@ -1167,17 +1171,17 @@ class CleanProfiledRGBNoisyBayerImageCropsValidationDataset(
     """Dataset of clean (profiled RGB) - noisy (Bayer) images from rawNIND."""
 
     def __init__(
-        self,
-        content_fpaths: list[str],
-        crop_size: int,
-        # test_reserve: list[str],
-        test_reserve,  # python 38 incompat
-        bayer_only: bool,
-        alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
-        mask_mean_min: float = MASK_MEAN_MIN,
-        toy_dataset=False,
-        match_gain: bool = False,
-        data_pairing: Literal["x_y", "x_x", "y_y"] = "x_y",
+            self,
+            content_fpaths: list[str],
+            crop_size: int,
+            # test_reserve: list[str],
+            test_reserve,  # python 38 incompat
+            bayer_only: bool,
+            alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
+            mask_mean_min: float = MASK_MEAN_MIN,
+            toy_dataset=False,
+            match_gain: bool = False,
+            data_pairing: Literal["x_y", "x_x", "y_y"] = "x_y",
     ):
         super().__init__(
             content_fpaths=content_fpaths,
@@ -1208,8 +1212,8 @@ class CleanProfiledRGBNoisyBayerImageCropsValidationDataset(
             )
             whole_img_mask = pt_helpers.fpath_to_tensor(image["mask_fpath"])[
                 :,
-                crop["coordinates"][1] : crop["coordinates"][1] + gt_img.shape[1],
-                crop["coordinates"][0] : crop["coordinates"][0] + gt_img.shape[2],
+                crop["coordinates"][1]: crop["coordinates"][1] + gt_img.shape[1],
+                crop["coordinates"][0]: crop["coordinates"][0] + gt_img.shape[2],
             ]
             whole_img_mask = whole_img_mask.expand(gt_img.shape)
         elif self.data_pairing == "x_x":
@@ -1242,12 +1246,12 @@ class CleanProfiledRGBNoisyBayerImageCropsValidationDataset(
             self._dataset[i]["crops"].remove(crop)
             return self.__getitem__(i)
         output = {
-            "x_crops": x_crop.float(),
-            "y_crops": y_crop.float(),
-            "mask_crops": mask_crop,
+            "x_crops"       : x_crop.float(),
+            "y_crops"       : y_crop.float(),
+            "mask_crops"    : mask_crop,
             "rgb_xyz_matrix": torch.tensor(image["rgb_xyz_matrix"]),
-            "gt_fpath": crop["gt_linrec2020_fpath"],
-            "y_fpath": crop["f_bayer_fpath"],
+            "gt_fpath"      : crop["gt_linrec2020_fpath"],
+            "y_fpath"       : crop["f_bayer_fpath"],
         }
         if self.match_gain:
             output["y_crops"] *= image["raw_gain"]
@@ -1263,18 +1267,18 @@ class CleanProfiledRGBNoisyBayerImageCropsTestDataloader(
     """Dataloader of clean (profiled RGB) - noisy (Bayer) images crops from rawNIND."""
 
     def __init__(
-        self,
-        content_fpaths: list[str],
-        crop_size: int,
-        # test_reserve: list[str],
-        test_reserve,  # python38 incompat
-        bayer_only: bool,
-        alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
-        mask_mean_min: float = MASK_MEAN_MIN,
-        toy_dataset=False,
-        match_gain: bool = False,
-        min_msssim_score: Optional[float] = 0.0,
-        max_msssim_score: Optional[float] = 1.0,
+            self,
+            content_fpaths: list[str],
+            crop_size: int,
+            # test_reserve: list[str],
+            test_reserve,  # python38 incompat
+            bayer_only: bool,
+            alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
+            mask_mean_min: float = MASK_MEAN_MIN,
+            toy_dataset=False,
+            match_gain: bool = False,
+            min_msssim_score: Optional[float] = 0.0,
+            max_msssim_score: Optional[float] = 1.0,
     ):
         super().__init__(
             content_fpaths=content_fpaths,
@@ -1306,8 +1310,8 @@ class CleanProfiledRGBNoisyBayerImageCropsTestDataloader(
                 )
                 whole_img_mask = pt_helpers.fpath_to_tensor(image["mask_fpath"])[
                     :,
-                    crop["coordinates"][1] : crop["coordinates"][1] + gt_img.shape[1],
-                    crop["coordinates"][0] : crop["coordinates"][0] + gt_img.shape[2],
+                    crop["coordinates"][1]: crop["coordinates"][1] + gt_img.shape[1],
+                    crop["coordinates"][0]: crop["coordinates"][0] + gt_img.shape[2],
                 ].expand(gt_img.shape)
 
                 height, width = gt_img.shape[-2:]
@@ -1323,25 +1327,25 @@ class CleanProfiledRGBNoisyBayerImageCropsTestDataloader(
                         continue
                     yield (
                         {
-                            "x_crops": gt_img[
+                            "x_crops"       : gt_img[
                                 ...,
                                 :height,
                                 :width,
                             ].unsqueeze(0),
-                            "y_crops": noisy_img[
+                            "y_crops"       : noisy_img[
                                 ...,
                                 : height // 2,
                                 : width // 2,
                             ].unsqueeze(0),
-                            "mask_crops": whole_img_mask[
+                            "mask_crops"    : whole_img_mask[
                                 ...,
                                 :height,
                                 :width,
                             ].unsqueeze(0),
                             "rgb_xyz_matrix": rgb_xyz_matrix.unsqueeze(0),
-                            "gt_fpath": crop["gt_linrec2020_fpath"],
-                            "y_fpath": crop["f_bayer_fpath"],
-                            "gain": torch.tensor(out_gain),
+                            "gt_fpath"      : crop["gt_linrec2020_fpath"],
+                            "y_fpath"       : crop["f_bayer_fpath"],
+                            "gain"          : torch.tensor(out_gain),
                         }
                     )
                 else:
@@ -1349,30 +1353,30 @@ class CleanProfiledRGBNoisyBayerImageCropsTestDataloader(
                     while y < height:
                         while x < width:
                             if (
-                                y + self.crop_size <= height
-                                and x + self.crop_size <= width
+                                    y + self.crop_size <= height
+                                    and x + self.crop_size <= width
                             ):
                                 yield (
                                     {
-                                        "x_crops": gt_img[
+                                        "x_crops"       : gt_img[
                                             ...,
-                                            y : y + self.crop_size,
-                                            x : x + self.crop_size,
+                                            y: y + self.crop_size,
+                                            x: x + self.crop_size,
                                         ].unsqueeze(0),
-                                        "y_crops": noisy_img[
+                                        "y_crops"       : noisy_img[
                                             ...,
-                                            y // 2 : y // 2 + self.crop_size // 2,
-                                            x // 2 : x // 2 + self.crop_size // 2,
+                                            y // 2: y // 2 + self.crop_size // 2,
+                                            x // 2: x // 2 + self.crop_size // 2,
                                         ].unsqueeze(0),
-                                        "mask_crops": whole_img_mask[
+                                        "mask_crops"    : whole_img_mask[
                                             ...,
-                                            y : y + self.crop_size,
-                                            x : x + self.crop_size,
+                                            y: y + self.crop_size,
+                                            x: x + self.crop_size,
                                         ].unsqueeze(0),
                                         "rgb_xyz_matrix": rgb_xyz_matrix.unsqueeze(0),
-                                        "gt_fpath": crop["gt_linrec2020_fpath"],
-                                        "y_fpath": crop["f_bayer_fpath"],
-                                        "gain": torch.tensor(out_gain),
+                                        "gt_fpath"      : crop["gt_linrec2020_fpath"],
+                                        "y_fpath"       : crop["f_bayer_fpath"],
+                                        "gain"          : torch.tensor(out_gain),
                                     }
                                 )
                             x += self.crop_size
@@ -1386,19 +1390,19 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsTestDataloader(
     """Dataloader of clean (profiled RGB) - noisy (profiled RGB) images crops from rawNIND."""
 
     def __init__(
-        self,
-        content_fpaths: list[str],
-        crop_size: int,
-        # test_reserve: list[str],
-        test_reserve,  # python38 incompat
-        bayer_only: bool,
-        alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
-        mask_mean_min: float = MASK_MEAN_MIN,
-        toy_dataset=False,
-        match_gain: bool = False,
-        arbitrary_proc_method: bool = False,
-        min_msssim_score: Optional[float] = 0.0,
-        max_msssim_score: Optional[float] = 1.0,
+            self,
+            content_fpaths: list[str],
+            crop_size: int,
+            # test_reserve: list[str],
+            test_reserve,  # python38 incompat
+            bayer_only: bool,
+            alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
+            mask_mean_min: float = MASK_MEAN_MIN,
+            toy_dataset=False,
+            match_gain: bool = False,
+            arbitrary_proc_method: bool = False,
+            min_msssim_score: Optional[float] = 0.0,
+            max_msssim_score: Optional[float] = 1.0,
     ):
         super().__init__(
             content_fpaths=content_fpaths,
@@ -1430,8 +1434,8 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsTestDataloader(
                 )
                 whole_img_mask = pt_helpers.fpath_to_tensor(image["mask_fpath"])[
                     :,
-                    crop["coordinates"][1] : crop["coordinates"][1] + gt_img.shape[1],
-                    crop["coordinates"][0] : crop["coordinates"][0] + gt_img.shape[2],
+                    crop["coordinates"][1]: crop["coordinates"][1] + gt_img.shape[1],
+                    crop["coordinates"][0]: crop["coordinates"][0] + gt_img.shape[2],
                 ].expand(gt_img.shape)
                 height, width = gt_img.shape[-2:]
                 if self.match_gain:
@@ -1458,12 +1462,12 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsTestDataloader(
                         continue
                     yield (
                         {
-                            "x_crops": gt_img[
+                            "x_crops"   : gt_img[
                                 ...,
                                 :height,
                                 :width,
                             ].unsqueeze(0),
-                            "y_crops": noisy_img[
+                            "y_crops"   : noisy_img[
                                 ...,
                                 :height,
                                 :width,
@@ -1473,9 +1477,9 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsTestDataloader(
                                 :height,
                                 :width,
                             ].unsqueeze(0),
-                            "gt_fpath": crop["gt_linrec2020_fpath"],
-                            "y_fpath": crop["f_linrec2020_fpath"],
-                            "gain": torch.tensor(out_gain),
+                            "gt_fpath"  : crop["gt_linrec2020_fpath"],
+                            "y_fpath"   : crop["f_linrec2020_fpath"],
+                            "gain"      : torch.tensor(out_gain),
                         }
                     )
                 else:
@@ -1483,29 +1487,29 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsTestDataloader(
                     while y < height:
                         while x < width:
                             if (
-                                y + self.crop_size <= height
-                                and x + self.crop_size <= width
+                                    y + self.crop_size <= height
+                                    and x + self.crop_size <= width
                             ):
                                 yield (
                                     {
-                                        "x_crops": gt_img[
+                                        "x_crops"   : gt_img[
                                             ...,
-                                            y : y + self.crop_size,
-                                            x : x + self.crop_size,
+                                            y: y + self.crop_size,
+                                            x: x + self.crop_size,
                                         ].unsqueeze(0),
-                                        "y_crops": noisy_img[
+                                        "y_crops"   : noisy_img[
                                             ...,
-                                            y : y + self.crop_size,
-                                            x : x + self.crop_size,
+                                            y: y + self.crop_size,
+                                            x: x + self.crop_size,
                                         ].unsqueeze(0),
                                         "mask_crops": whole_img_mask[
                                             ...,
-                                            y : y + self.crop_size,
-                                            x : x + self.crop_size,
+                                            y: y + self.crop_size,
+                                            x: x + self.crop_size,
                                         ].unsqueeze(0),
-                                        "gt_fpath": crop["gt_linrec2020_fpath"],
-                                        "y_fpath": crop["f_linrec2020_fpath"],
-                                        "gain": torch.tensor(out_gain),
+                                        "gt_fpath"  : crop["gt_linrec2020_fpath"],
+                                        "y_fpath"   : crop["f_linrec2020_fpath"],
+                                        "gain"      : torch.tensor(out_gain),
                                     }
                                 )
                             x += self.crop_size

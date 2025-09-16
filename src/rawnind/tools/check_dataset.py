@@ -25,7 +25,6 @@ import tqdm
 import argparse
 import random
 
-sys.path.append("..")
 from rawnind.libs import rawproc  # includes DS_BASE_DPATH
 from common.libs import pt_helpers
 from rawnind.libs import raw
@@ -59,11 +58,11 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument("--num_threads", type=int, default=os.cpu_count() // 4 * 3,
-                       help="Number of threads to use for parallel checking")
+                        help="Number of threads to use for parallel checking")
     parser.add_argument("--directory", default=rawproc.DS_BASE_DPATH,
-                       help="Root directory to scan for image files")
+                        help="Root directory to scan for image files")
     args = parser.parse_args()
-    
+
     # Step 1: Collect all image files to check, filtering out non-image files
     list_of_files = []
     print(f"Scanning directory: {args.directory}")
@@ -71,22 +70,22 @@ if __name__ == "__main__":
         fpath = os.path.join(*fpath)
         # Skip known non-image files and already quarantined files
         if (
-            "bad_src_files" in fpath  # Skip already quarantined files
-            or fpath.endswith(".txt")  # Skip text files
-            or fpath.endswith(".yaml")  # Skip YAML files
+                "bad_src_files" in fpath  # Skip already quarantined files
+                or fpath.endswith(".txt")  # Skip text files
+                or fpath.endswith(".yaml")  # Skip YAML files
         ):
             continue
         list_of_files.append(fpath)
-    
+
     # Shuffle files to distribute workload more evenly across threads
     random.shuffle(list_of_files)
     print(f"Found {len(list_of_files)} files to check")
-    
+
     # Step 2: Check validity of all files in parallel
     print(f"Checking file validity using {args.num_threads} threads")
-    results = utilities.mt_runner(is_valid_img_mtrunner, list_of_files, 
-                                 num_threads=args.num_threads)
-    
+    results = utilities.mt_runner(is_valid_img_mtrunner, list_of_files,
+                                  num_threads=args.num_threads)
+
     # Step 3: Generate commands to move invalid files
     invalid_count = 0
     for result in results:
@@ -95,7 +94,7 @@ if __name__ == "__main__":
             invalid_count += 1
             # Print shell command to move invalid file to quarantine directory
             print(f"mv {fpath} {BAD_SRC_FILES_DPATH}")
-    
+
     # Print summary
     print(f"\nScan complete. Found {invalid_count} invalid files out of {len(list_of_files)}.")
     if invalid_count > 0:

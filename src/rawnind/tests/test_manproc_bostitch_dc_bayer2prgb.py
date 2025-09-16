@@ -9,10 +9,8 @@ import sys
 import torch
 import os
 
-sys.path.append("..")
-
 from rawnind.libs import rawds_manproc
-from rawnind.libs import rawtestlib
+from rawnind.tests import rawtestlib
 
 RAWNIND_BOSTITCH_TEST_DESCRIPTOR_FPATH = os.path.join(
     "..", "..", "datasets", "RawNIND_Bostitch", "manproc_test_descriptor.yaml"
@@ -26,12 +24,12 @@ if __name__ == "__main__":
         preset_args=preset_args
     )
     if (
-        "manproc_bostitch_msssim_loss.None"
-        in denoiserTraining.json_saver.results["best_val"]
-        or "manproc_bostitch_msssim_loss"
-        in denoiserTraining.json_saver.results["best_val"]
-        or "manproc_bostitch_msssim_loss.gamma22"
-        in denoiserTraining.json_saver.results["best_val"]
+            "manproc_bostitch_msssim_loss.None"
+            in denoiserTraining.json_saver.results["best_val"]
+            or "manproc_bostitch_msssim_loss"
+            in denoiserTraining.json_saver.results["best_val"]
+            or "manproc_bostitch_msssim_loss.gamma22"
+            in denoiserTraining.json_saver.results["best_val"]
     ):
         print(f"Skipping test, manproc_msssim_loss is known")
         sys.exit(0)
@@ -44,3 +42,4 @@ if __name__ == "__main__":
     denoiserTraining.offline_custom_test(
         dataloader=dataloader, test_name="manproc_bostitch", save_individual_images=True
     )
+

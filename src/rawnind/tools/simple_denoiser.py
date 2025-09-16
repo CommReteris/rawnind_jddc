@@ -5,7 +5,6 @@ import time
 
 import torch
 
-sys.path.append("..")
 import rawnind.models
 from rawnind.tools import denoise_image
 from rawnind.libs import rawproc

@@ -14,8 +14,10 @@ with appropriate output mechanisms for each case.
 import torch
 from torch import nn
 
-# sys.path.append("..")
+# 
 from rawnind.libs import rawproc
+
+
 class Denoiser(nn.Module):
     """Base class for all image denoising models.
     
@@ -26,6 +28,7 @@ class Denoiser(nn.Module):
     All denoiser implementations should inherit from this class and implement
     the forward method.
     """
+
     def __init__(self, in_channels: int):
         """Initialize a denoiser model.
         
@@ -49,6 +52,7 @@ class Passthrough(Denoiser):
     For 3-channel inputs, it acts as a simple identity function.
     For 4-channel inputs, it applies demosaicing to convert to RGB.
     """
+
     def __init__(self, in_channels: int, **kwargs):
         """Initialize a Passthrough model.
         
@@ -142,12 +146,13 @@ class UtNet2(Denoiser):
     Where Enc = Convolution blocks with downsampling
           Dec = Convolution blocks with upsampling
     """
+
     def __init__(
-        self,
-        in_channels: int,
-        funit: int = 32,
-        activation: str = "LeakyReLU",
-        preupsample: bool = False,
+            self,
+            in_channels: int,
+            funit: int = 32,
+            activation: str = "LeakyReLU",
+            preupsample: bool = False,
     ):
         """Initialize a U-Net model for image denoising.
         
@@ -166,7 +171,7 @@ class UtNet2(Denoiser):
         super().__init__(in_channels=in_channels)
         assert (in_channels == 3 and not preupsample) or in_channels == 4
         activation_fun, activation_params = get_activation_class_params(activation)
-        
+
         # Optional upsampling of input (for 4-channel Bayer only)
         if preupsample:
             self.preprocess = torch.nn.Upsample(
@@ -174,7 +179,7 @@ class UtNet2(Denoiser):
             )
         else:
             self.preprocess = torch.nn.Identity()
-            
+
         # Encoder path - level 1 (highest resolution)
         self.convs1 = nn.Sequential(
             nn.Conv2d(in_channels, funit, 3, padding=1),
@@ -183,7 +188,7 @@ class UtNet2(Denoiser):
             activation_fun(**activation_params),
         )
         self.maxpool = nn.MaxPool2d(2)
-        
+
         # Encoder path - level 2
         self.convs2 = nn.Sequential(
             nn.Conv2d(funit, 2 * funit, 3, padding=1),
@@ -191,7 +196,7 @@ class UtNet2(Denoiser):
             nn.Conv2d(2 * funit, 2 * funit, 3, padding=1),
             activation_fun(**activation_params),
         )
-        
+
         # Encoder path - level 3
         self.convs3 = nn.Sequential(
             nn.Conv2d(2 * funit, 4 * funit, 3, padding=1),
@@ -199,7 +204,7 @@ class UtNet2(Denoiser):
             nn.Conv2d(4 * funit, 4 * funit, 3, padding=1),
             activation_fun(**activation_params),
         )
-        
+
         # Encoder path - level 4 (lowest resolution before bottleneck)
         self.convs4 = nn.Sequential(
             nn.Conv2d(4 * funit, 8 * funit, 3, padding=1),
@@ -207,7 +212,7 @@ class UtNet2(Denoiser):
             nn.Conv2d(8 * funit, 8 * funit, 3, padding=1),
             activation_fun(**activation_params),
         )
-        
+
         # Bottleneck at lowest resolution
         self.bottom = nn.Sequential(
             nn.Conv2d(8 * funit, 16 * funit, 3, padding=1),
@@ -215,7 +220,7 @@ class UtNet2(Denoiser):
             nn.Conv2d(16 * funit, 16 * funit, 3, padding=1),
             activation_fun(**activation_params),
         )
-        
+
         # Decoder path - level 1 (lowest resolution after bottleneck)
         self.up1 = nn.ConvTranspose2d(16 * funit, 8 * funit, 2, stride=2)
         self.tconvs1 = nn.Sequential(
@@ -224,7 +229,7 @@ class UtNet2(Denoiser):
             nn.Conv2d(8 * funit, 8 * funit, 3, padding=1),
             activation_fun(**activation_params),
         )
-        
+
         # Decoder path - level 2
         self.up2 = nn.ConvTranspose2d(8 * funit, 4 * funit, 2, stride=2)
         self.tconvs2 = nn.Sequential(
@@ -233,7 +238,7 @@ class UtNet2(Denoiser):
             nn.Conv2d(4 * funit, 4 * funit, 3, padding=1),
             activation_fun(**activation_params),
         )
-        
+
         # Decoder path - level 3
         self.up3 = nn.ConvTranspose2d(4 * funit, 2 * funit, 2, stride=2)
         self.tconvs3 = nn.Sequential(
@@ -242,7 +247,7 @@ class UtNet2(Denoiser):
             nn.Conv2d(2 * funit, 2 * funit, 3, padding=1),
             activation_fun(**activation_params),
         )
-        
+
         # Decoder path - level 4 (highest resolution)
         self.up4 = nn.ConvTranspose2d(2 * funit, funit, 2, stride=2)
         self.tconvs4 = nn.Sequential(
@@ -251,7 +256,7 @@ class UtNet2(Denoiser):
             nn.Conv2d(funit, funit, 3, padding=1),
             activation_fun(**activation_params),
         )
-        
+
         # Output layer - depends on input type
         if in_channels == 3 or preupsample:
             # For RGB input, direct mapping to RGB output (same resolution)
@@ -284,19 +289,19 @@ class UtNet2(Denoiser):
         """
         # Preprocessing (identity or upsampling)
         l1 = self.preprocess(l)
-        
+
         # Encoder path with skip connection storage
         l1 = self.convs1(l1)  # Level 1 features (stored for skip connection)
         l2 = self.convs2(self.maxpool(l1))  # Level 2 features
         l3 = self.convs3(self.maxpool(l2))  # Level 3 features
         l4 = self.convs4(self.maxpool(l3))  # Level 4 features
-        
+
         # Bottleneck and decoder path with skip connections
         l = torch.cat([self.up1(self.bottom(self.maxpool(l4))), l4], dim=1)  # Skip connection 1
         l = torch.cat([self.up2(self.tconvs1(l)), l3], dim=1)  # Skip connection 2
         l = torch.cat([self.up3(self.tconvs2(l)), l2], dim=1)  # Skip connection 3
         l = torch.cat([self.up4(self.tconvs3(l)), l1], dim=1)  # Skip connection 4
-        
+
         # Final convolutions and output
         l = self.tconvs4(l)
         return self.output_module(l)
@@ -314,10 +319,11 @@ class ResBlock(torch.nn.Module):
                                                             ↑
                                                           Input
     """
+
     def __init__(
-        self,
-        num_channels: int,
-        activation="LeakyReLU",
+            self,
+            num_channels: int,
+            activation="LeakyReLU",
     ):
         """Initialize a residual block.
         
@@ -358,6 +364,7 @@ class UtNet3(UtNet2):
     allowing more complex feature transformations at the output stage.
     Currently only supports Bayer pattern inputs (4 channels).
     """
+
     def __init__(self, in_channels: int = 4, funit: int = 32, activation="LeakyReLU"):
         """Initialize an enhanced U-Net model with ResBlocks in output stage.
         
@@ -384,7 +391,6 @@ class UtNet3(UtNet2):
 
 
 architectures = {"UtNet2": UtNet2, "Passthrough": Passthrough}
-
 
 if __name__ == "__main__":
     utnet3 = UtNet3(in_channels=4)

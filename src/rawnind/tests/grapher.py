@@ -4,7 +4,6 @@ Don't forget to run python tools/list_strictly_worse_plotted_models.py
 
 print(__doc__)
 
-
 from io import BytesIO
 import os
 import re
@@ -15,7 +14,6 @@ import xml.etree.ElementTree as ET
 import csv
 import subprocess
 
-sys.path.append("..")
 from common.libs import json_saver
 from common.libs import utilities
 from rawnind.tools.test_all_known import (
@@ -27,14 +25,13 @@ from rawnind.tools.test_all_known import (
 
 ET.register_namespace("", "http://www.w3.org/2000/svg")
 
-
 TRAINED_MODELS_YAMLFPATHS = {
     "denoise": os.path.join("config", "trained_denoise_models.yaml"),
-    "dc": os.path.join("config", "trained_dc_models.yaml"),
+    "dc"     : os.path.join("config", "trained_dc_models.yaml"),
 }
 MODELS_DEFINITIONS_YAMLFPATHS = {
     "denoise": os.path.join("config", "graph_denoise_models_definitions.yaml"),
-    "dc": os.path.join("config", "graph_dc_models_definitions.yaml"),
+    "dc"     : os.path.join("config", "graph_dc_models_definitions.yaml"),
 }
 METRICS = ("mse", "msssim")
 METRICS_LOSS = {"mse": "mse", "msssim": "msssim_loss", "psnr": "mse"}
@@ -54,66 +51,66 @@ TESTS = [
 ]
 
 MARKERS = {
-    "Bayer": "s",
-    "JDDC (Bayer input) + dev.": "s",
-    "Linear RGB": "^",
-    "JDC (Linear RGB input) + dev.": "^",
-    "passthrough": "_",
-    "BM3D (sRGB)": "$3$",
-    "LinRGB (extra pairs)": "+",
-    "JDC LinRGB (extra pairs)": "+",
-    "Bayer (extra pairs)": "+",
-    "JDC Bayer (extra pairs)": "+",
-    "Bayer (no unpaired data)": "$D$",
-    "JDDC (no clean data, Bayer input) + dev.": "$D$",
-    "LinRGB (no unpaired data)": "$D$",
-    "JDC (no clean data, LinRGB input) + dev.": "$D$",
-    "Bayer (pre-upsampled)": "D",
-    "JDDC (upsampled Bayer input) + dev.": "D",
-    "Bayer (more channels)": "h",
-    "JDDC (more channels, Bayer input) + dev.": "h",
-    "sRGB": "$s$",
-    "JDC (developed input) [COMPDENOISE]": "$s$",
-    "Compression AE (Bayer input) + dev.": "$c$",
-    "Compression AE (Linear RGB input) + dev.": "$c$",
+    "Bayer"                                      : "s",
+    "JDDC (Bayer input) + dev."                  : "s",
+    "Linear RGB"                                 : "^",
+    "JDC (Linear RGB input) + dev."              : "^",
+    "passthrough"                                : "_",
+    "BM3D (sRGB)"                                : "$3$",
+    "LinRGB (extra pairs)"                       : "+",
+    "JDC LinRGB (extra pairs)"                   : "+",
+    "Bayer (extra pairs)"                        : "+",
+    "JDC Bayer (extra pairs)"                    : "+",
+    "Bayer (no unpaired data)"                   : "$D$",
+    "JDDC (no clean data, Bayer input) + dev."   : "$D$",
+    "LinRGB (no unpaired data)"                  : "$D$",
+    "JDC (no clean data, LinRGB input) + dev."   : "$D$",
+    "Bayer (pre-upsampled)"                      : "D",
+    "JDDC (upsampled Bayer input) + dev."        : "D",
+    "Bayer (more channels)"                      : "h",
+    "JDDC (more channels, Bayer input) + dev."   : "h",
+    "sRGB"                                       : "$s$",
+    "JDC (developed input) [COMPDENOISE]"        : "$s$",
+    "Compression AE (Bayer input) + dev."        : "$c$",
+    "Compression AE (Linear RGB input) + dev."   : "$c$",
     "Denoise then compress (LinRGB input) + dev.": "$2$",
-    "LinRGB (w/gamma)": "*",
-    "JDC LinRGB (w/gamma)": "*",
-    "Bayer (w/gamma)": "*",
-    "JDC Bayer (w/gamma)": "*",
-    "JPEG XL (developed input) [JPEGXL]": ".",
-    "JPEG XL (Linear RGB input) [JPEGXL] + dev.": ".",
+    "LinRGB (w/gamma)"                           : "*",
+    "JDC LinRGB (w/gamma)"                       : "*",
+    "Bayer (w/gamma)"                            : "*",
+    "JDC Bayer (w/gamma)"                        : "*",
+    "JPEG XL (developed input) [JPEGXL]"         : ".",
+    "JPEG XL (Linear RGB input) [JPEGXL] + dev." : ".",
 }
 COLORS = {
-    "Bayer": "green",
-    "JDDC (Bayer input) + dev.": "green",
-    "Linear RGB": "red",
-    "JDC (Linear RGB input) + dev.": "red",
-    "passthrough": "tab:gray",
-    "BM3D (sRGB)": "black",
-    "LinRGB (extra pairs)": "maroon",
-    "JDC LinRGB (extra pairs)": "maroon",
-    "Bayer (extra pairs)": "darkgreen",
-    "JDC Bayer (extra pairs)": "darkgreen",
-    "Bayer (no unpaired data)": "springgreen",
-    "JDDC (no clean data, Bayer input) + dev.": "springgreen",
-    "LinRGB (no unpaired data)": "lightcoral",
-    "JDC (no clean data, LinRGB input) + dev.": "lightcoral",
-    "Bayer (pre-upsampled)": "greenyellow",
-    "JDDC (upsampled Bayer input) + dev.": "greenyellow",
-    "Bayer (more channels)": "mediumturquoise",
-    "JDDC (more channels, Bayer input) + dev.": "mediumturquoise",
-    "sRGB": "orange",
-    "JDC (developed input) [COMPDENOISE]": "orange",
-    "Compression AE (Bayer input) + dev.": "palegreen",
-    "Compression AE (Linear RGB input) + dev.": "lightpink",
+    "Bayer"                                      : "green",
+    "JDDC (Bayer input) + dev."                  : "green",
+    "Linear RGB"                                 : "red",
+    "JDC (Linear RGB input) + dev."              : "red",
+    "passthrough"                                : "tab:gray",
+    "BM3D (sRGB)"                                : "black",
+    "LinRGB (extra pairs)"                       : "maroon",
+    "JDC LinRGB (extra pairs)"                   : "maroon",
+    "Bayer (extra pairs)"                        : "darkgreen",
+    "JDC Bayer (extra pairs)"                    : "darkgreen",
+    "Bayer (no unpaired data)"                   : "springgreen",
+    "JDDC (no clean data, Bayer input) + dev."   : "springgreen",
+    "LinRGB (no unpaired data)"                  : "lightcoral",
+    "JDC (no clean data, LinRGB input) + dev."   : "lightcoral",
+    "Bayer (pre-upsampled)"                      : "greenyellow",
+    "JDDC (upsampled Bayer input) + dev."        : "greenyellow",
+    "Bayer (more channels)"                      : "mediumturquoise",
+    "JDDC (more channels, Bayer input) + dev."   : "mediumturquoise",
+    "sRGB"                                       : "orange",
+    "JDC (developed input) [COMPDENOISE]"        : "orange",
+    "Compression AE (Bayer input) + dev."        : "palegreen",
+    "Compression AE (Linear RGB input) + dev."   : "lightpink",
     "Denoise then compress (LinRGB input) + dev.": "peru",
-    "LinRGB (w/gamma)": "tab:purple",
-    "JDC LinRGB (w/gamma)": "tab:purple",
-    "Bayer (w/gamma)": "darkolivegreen",
-    "JDC Bayer (w/gamma)": "darkolivegreen",
-    "JPEG XL (developed input) [JPEGXL]": "slateblue",
-    "JPEG XL (Linear RGB input) [JPEGXL] + dev.": "purple",
+    "LinRGB (w/gamma)"                           : "tab:purple",
+    "JDC LinRGB (w/gamma)"                       : "tab:purple",
+    "Bayer (w/gamma)"                            : "darkolivegreen",
+    "JDC Bayer (w/gamma)"                        : "darkolivegreen",
+    "JPEG XL (developed input) [JPEGXL]"         : "slateblue",
+    "JPEG XL (Linear RGB input) [JPEGXL] + dev." : "purple",
 }
 LINEWIDTH = 0.15
 # MINMAX_TO_MEAN_MSSSIM = {  # TODO check this since we are working w/ manproc
@@ -174,7 +171,6 @@ DENOISING_TESTNAMES = ["manproc", "manproc_bostitch"]
 #         )
 MAX_BITRATE = 2
 
-
 """
 different graphs:
     - denoise @ progressive noise: y-axis: msssim, x-axis: noise level
@@ -182,21 +178,21 @@ different graphs:
 """
 # also in mk_megafig.py
 LITERATURE = {
-    "jddc": {
-        "[BM3D]": "[3]",
-        "[NIND]": "[10]",
-        "[OURS]": "",
-        "[JPEGXL]": "[17]",
+    "jddc"  : {
+        "[BM3D]"       : "[3]",
+        "[NIND]"       : "[10]",
+        "[OURS]"       : "",
+        "[JPEGXL]"     : "[17]",
         "[COMPDENOISE]": "[24]",
-        "[MANYPRIORS]": "[27]",
+        "[MANYPRIORS]" : "[27]",
     },
     "thesis": {
-        "[BM3D]": "",
-        "[NIND]": "",
-        "[OURS]": "(Ch. 5)",
-        "[JPEGXL]": "",
+        "[BM3D]"       : "",
+        "[NIND]"       : "",
+        "[OURS]"       : "(Ch. 5)",
+        "[JPEGXL]"     : "",
         "[COMPDENOISE]": "(Ch. 4)",
-        "[MANYPRIORS]": "(Ch. 3)",
+        "[MANYPRIORS]" : "(Ch. 3)",
     },
 }
 
@@ -227,7 +223,7 @@ def add_default_values_to_models_list(models_list):
 
 
 def load_models_results(
-    model_types: list[str] = MODEL_TYPES, strictly_worse_models: list[str] = []
+        model_types: list[str] = MODEL_TYPES, strictly_worse_models: list[str] = []
 ):
     def get_load_metric_key(model_attrs: dict) -> str:
         if "val_key" in model_attrs:
@@ -316,7 +312,7 @@ def get_models_definitions(model_types: list[str] = MODEL_TYPES):
 
 
 def group_relevant_models(
-    models_definitions, models_results, metric: str, reduce: bool = False
+        models_definitions, models_results, metric: str, reduce: bool = False
 ) -> dict[str, list[dict[str, dict[str, float]]]]:
     """Group models by definition"""
     models_per_definition = {}
@@ -329,13 +325,13 @@ def group_relevant_models(
             # print(model_attrs["passthrough"])
 
             if any(
-                [
-                    model_attrs[attr] != model_definition[attr]
-                    for attr in model_definition
-                ]
+                    [
+                        model_attrs[attr] != model_definition[attr]
+                        for attr in model_definition
+                    ]
             ) or (
-                not model_attrs["passthrough"]
-                and METRICS_LOSS[metric] not in model_attrs.get("loss")
+                    not model_attrs["passthrough"]
+                    and METRICS_LOSS[metric] not in model_attrs.get("loss")
             ):
                 # if (
                 #     model_name
@@ -348,9 +344,9 @@ def group_relevant_models(
 
             try:
                 if reduce and (
-                    best_model_name is None
-                    or model_attrs["results"][f"val_{metric}"]
-                    > best_model_attrs["results"][f"val_{metric}"]
+                        best_model_name is None
+                        or model_attrs["results"][f"val_{metric}"]
+                        > best_model_attrs["results"][f"val_{metric}"]
                 ):
                     best_model_attrs = model_attrs
                     best_model_name = model_name
@@ -380,98 +376,98 @@ def plot_tooltip_points(tooltips_coordinates_to_name: dict[tuple[float, float], 
 
 
 def plot_rd_curves(
-    models_results,
-    models_definitions,
-    metrics=METRICS,
-    tests=TESTS,
-    visualize=False,
-    max_bitrate=MAX_BITRATE,
-    paper: str = "jddc",
+        models_results,
+        models_definitions,
+        metrics=METRICS,
+        tests=TESTS,
+        visualize=False,
+        max_bitrate=MAX_BITRATE,
+        paper: str = "jddc",
 ):
     AXIS_LIMITS = [
         {
-            "metric": "msssim",
-            "test": "manproc",
-            "max_bitrate": 0.32,
-            "min_bitrate": 0.027,
-            "min_metric": 0.903,
-            "max_metric": 0.95,
+            "metric"        : "msssim",
+            "test"          : "manproc",
+            "max_bitrate"   : 0.32,
+            "min_bitrate"   : 0.027,
+            "min_metric"    : 0.903,
+            "max_metric"    : 0.95,
             "min_metric_sub": 0.73,
             "max_metric_sub": 0.93,
-            "mean_input": 0.763277364,
+            "mean_input"    : 0.763277364,
         },
         {
-            "metric": "mse",
-            "test": "manproc",
+            "metric"     : "mse",
+            "test"       : "manproc",
             "max_bitrate": 0.5,
             "min_bitrate": 0.05,
         },
         {
-            "metric": "msssim",
-            "test": "playraw",
+            "metric"     : "msssim",
+            "test"       : "playraw",
             "max_bitrate": 0.23,
             "min_bitrate": 0.03,
-            "min_metric": 0.992,
-            "max_metric": 0.998,
+            "min_metric" : 0.992,
+            "max_metric" : 0.998,
         },
         {
-            "metric": "msssim",
-            "test": "manproc_playraw",
+            "metric"     : "msssim",
+            "test"       : "manproc_playraw",
             "max_bitrate": 0.36,
             "min_bitrate": 0.03,
-            "min_metric": 0.908,
-            "max_metric": 0.971,
+            "min_metric" : 0.908,
+            "max_metric" : 0.971,
         },
         {
-            "metric": "msssim",
-            "test": "manproc_hq",
+            "metric"     : "msssim",
+            "test"       : "manproc_hq",
             "max_bitrate": 0.36,
             "min_bitrate": 0.03,
-            "min_metric": 0.90,
-            "max_metric": 0.96,
+            "min_metric" : 0.90,
+            "max_metric" : 0.96,
         },
         {
-            "metric": "msssim",
-            "test": "manproc_gt",
-            "max_bitrate": 0.27,
-            "min_bitrate": 0.03,
-            "min_metric": 0.91,
-            "max_metric": 0.975,
+            "metric"        : "msssim",
+            "test"          : "manproc_gt",
+            "max_bitrate"   : 0.27,
+            "min_bitrate"   : 0.03,
+            "min_metric"    : 0.91,
+            "max_metric"    : 0.975,
             "min_metric_sub": 0.75,
             "max_metric_sub": 0.91,
-            "mean_input": 1.00,
+            "mean_input"    : 1.00,
         },
         {
-            "metric": "msssim",
-            "test": "manproc_q99",
-            "max_bitrate": 0.281,
-            "min_bitrate": 0.027,
-            "min_metric": 0.91,
-            "max_metric": 0.966,
+            "metric"        : "msssim",
+            "test"          : "manproc_q99",
+            "max_bitrate"   : 0.281,
+            "min_bitrate"   : 0.027,
+            "min_metric"    : 0.91,
+            "max_metric"    : 0.966,
             "min_metric_sub": 0.76,
             "max_metric_sub": 0.90,
-            "mean_input": 0.933550062,
+            "mean_input"    : 0.933550062,
         },
         {
-            "metric": "msssim",
-            "test": "manproc_q995",
-            "max_bitrate": 0.281,
-            "min_bitrate": 0.027,
-            "min_metric": 0.91,
-            "max_metric": 0.966,
+            "metric"        : "msssim",
+            "test"          : "manproc_q995",
+            "max_bitrate"   : 0.281,
+            "min_bitrate"   : 0.027,
+            "min_metric"    : 0.91,
+            "max_metric"    : 0.966,
             "min_metric_sub": 0.79,
             "max_metric_sub": 0.90,
-            "mean_input": 0.96110374,
+            "mean_input"    : 0.96110374,
         },
         {
-            "metric": "mse",
-            "test": "playraw",
+            "metric"     : "mse",
+            "test"       : "playraw",
             "max_bitrate": 0.5,
             "min_bitrate": 0.05,
         },
         {
-            "metric": "msssim",
-            "test": "ext_raw_denoise_test",
+            "metric"     : "msssim",
+            "test"       : "ext_raw_denoise_test",
             "max_bitrate": 0.5,
             "min_bitrate": 0.05,
         },
@@ -496,8 +492,8 @@ def plot_rd_curves(
             figs2plot = None
             for bitrate_limits_dict in AXIS_LIMITS:
                 if (
-                    bitrate_limits_dict["metric"] == metric
-                    and bitrate_limits_dict["test"] == test
+                        bitrate_limits_dict["metric"] == metric
+                        and bitrate_limits_dict["test"] == test
                 ):
                     if "min_metric_sub" in bitrate_limits_dict:
                         fig, (ax1, ax2) = plt.subplots(
@@ -514,8 +510,8 @@ def plot_rd_curves(
                         figs2plot = [ax1, ax2]
                     else:
                         if (
-                            "min_metric" in bitrate_limits_dict
-                            or "max_metric" in bitrate_limits_dict
+                                "min_metric" in bitrate_limits_dict
+                                or "max_metric" in bitrate_limits_dict
                         ):
                             plt.gca().set_ylim(
                                 bitrate_limits_dict.get("min_metric", None),
@@ -535,21 +531,21 @@ def plot_rd_curves(
             # Models to ignore go here
             for grouped_model_name, individual_models in grouped_models.items():
                 if (
-                    (
-                        grouped_model_name
-                        == "Denoise then compress (LinRGB input) + dev."
-                        and metric == "msssim"
-                        and "playraw" in test
-                    )
-                    or ("w/gamma" in grouped_model_name and "manproc" in test)
-                    or (
+                        (
+                                grouped_model_name
+                                == "Denoise then compress (LinRGB input) + dev."
+                                and metric == "msssim"
+                                and "playraw" in test
+                        )
+                        or ("w/gamma" in grouped_model_name and "manproc" in test)
+                        or (
                         grouped_model_name == "Compression AE (Bayer input) + dev."
                         and "manproc" in test
-                    )
-                    or (
+                )
+                        or (
                         grouped_model_name == "JDDC (upsampled Bayer input) + dev."
                         and "manproc_" in test
-                    )
+                )
                 ):
                     print(f"Skipping {grouped_model_name=} for {test=}")
                     continue
@@ -797,14 +793,14 @@ def add_svg_tooltips(num_indices: int, output_fpath):
 
 
 def plot_1d_denoising(
-    models_results,
-    models_definitions,
-    generic_test_name,
-    metrics=METRICS,
-    visualize=False,
+        models_results,
+        models_definitions,
+        generic_test_name,
+        metrics=METRICS,
+        visualize=False,
 ):
     MODELS_TO_IGNORE = {
-        "manproc": ["Bayer (extra pairs)", "LinRGB (extra pairs)", "BM3D (LinRGB)"],
+        "manproc"         : ["Bayer (extra pairs)", "LinRGB (extra pairs)", "BM3D (LinRGB)"],
         "manproc_bostitch": ["BM3D (LinRGB)", "Bayer (more channels)"],
     }
     """Plot the noise level for denoising models (1D; no bitrate or input noise, just different tests and one bar shown per model)
@@ -812,7 +808,7 @@ def plot_1d_denoising(
     """
 
     def remove_strictly_worse_models(
-        models_data: list[tuple[str, float, str, bool]], metric: str
+            models_data: list[tuple[str, float, str, bool]], metric: str
     ):
         """Remove strictly worse models from the models_data"""
         models_data = [model_data for model_data in models_data if not model_data[3]]
@@ -821,14 +817,14 @@ def plot_1d_denoising(
         # minimize mse metric, maximize *ssim metric
         for model_name, yval, individual_model_name, strictly_worse in models_data:
             if any(
-                [
-                    (
-                        (model_data[1] < yval and metric.lower() == "mse")
-                        or (model_data[1] > yval and "ssim" in metric.lower())
-                    )
-                    for model_data in models_data
-                    if model_data[0] == model_name
-                ]
+                    [
+                        (
+                                (model_data[1] < yval and metric.lower() == "mse")
+                                or (model_data[1] > yval and "ssim" in metric.lower())
+                        )
+                        for model_data in models_data
+                        if model_data[0] == model_name
+                    ]
             ):
                 continue
             new_models_data.append(
@@ -1003,11 +999,11 @@ def plot_1d_denoising(
 
 
 def plot_progressive_denoising_curve(
-    models_results,
-    models_definitions,
-    generic_test_name: str,
-    metrics=METRICS,
-    visualize=False,
+        models_results,
+        models_definitions,
+        generic_test_name: str,
+        metrics=METRICS,
+        visualize=False,
 ):
     """Plot output noise as a function of input noise
     Used twice in the paper
@@ -1076,7 +1072,7 @@ def plot_progressive_denoising_curve(
         test_x_values = {}
         for test_name, test_result in passthrough_model_results.items():
             if not test_name.startswith(
-                f"progressive_{generic_test_name}_msssim_"
+                    f"progressive_{generic_test_name}_msssim_"
             ) or not test_name.endswith(metric):
                 continue
             test_x_values[test_name] = test_result
@@ -1094,7 +1090,7 @@ def plot_progressive_denoising_curve(
                 individual_model_results = next(iter(individual_model.values()))
                 for test_name, test_result in individual_model_results.items():
                     if not test_name.startswith(
-                        f"progressive_{generic_test_name}_msssim_"
+                            f"progressive_{generic_test_name}_msssim_"
                     ) or not test_name.endswith(metric):
                         # print(test_name)
                         # breakpoint()
@@ -1148,10 +1144,10 @@ def plot_progressive_denoising_curve(
                 new_y_values = []
                 for i, (xval, yval) in enumerate(zip(x_values, y_values)):
                     if yval < 1.0 and any(
-                        [
-                            (x_values[j] == xval and y_values[j] > yval)
-                            for j in range(len(x_values))
-                        ]
+                            [
+                                (x_values[j] == xval and y_values[j] > yval)
+                                for j in range(len(x_values))
+                            ]
                     ):
                         continue
                     new_x_values.append(xval)
@@ -1223,7 +1219,7 @@ def plot_progressive_denoising_curve(
             test_name,
         )
         with open(
-            f"plots/progressive_{generic_test_name}_denoising_curve_{metric}.csv", "w"
+                f"plots/progressive_{generic_test_name}_denoising_curve_{metric}.csv", "w"
         ) as f:
             writer = csv.writer(f)
             writer.writerow(csv_header)

@@ -25,7 +25,6 @@ import sys
 import logging
 import argparse
 
-sys.path.append("..")
 from rawnind.libs import rawproc
 from common.libs import utilities
 
@@ -108,6 +107,7 @@ def fetch_crops_list(image_set, gt_fpath, f_fpath, is_bayer, ds_base_dpath):
         A list of dicts with keys including coordinates, gt_linrec2020_fpath,
         f_linrec2020_fpath, and optionally gt_bayer_fpath, f_bayer_fpath.
     """
+
     def get_coordinates(fn: str) -> list[int, int]:
         return [int(c) for c in fn.split(".")[-2].split("_")]
 
@@ -123,7 +123,7 @@ def fetch_crops_list(image_set, gt_fpath, f_fpath, is_bayer, ds_base_dpath):
         )
     for f_is_gt in (True, False):
         for fn_f in os.listdir(
-            os.path.join(prgb_image_set_dpath, "gt" if f_is_gt else "")
+                os.path.join(prgb_image_set_dpath, "gt" if f_is_gt else "")
         ):
             if fn_f.startswith(f_basename):
                 coordinates = get_coordinates(fn_f)
@@ -132,8 +132,8 @@ def fetch_crops_list(image_set, gt_fpath, f_fpath, is_bayer, ds_base_dpath):
                         coordinates_gt = get_coordinates(fn_gt)
                         if coordinates == coordinates_gt:
                             crop = {
-                                "coordinates": coordinates,
-                                "f_linrec2020_fpath": os.path.join(
+                                "coordinates"        : coordinates,
+                                "f_linrec2020_fpath" : os.path.join(
                                     prgb_image_set_dpath, "gt" if f_is_gt else "", fn_f
                                 ),
                                 "gt_linrec2020_fpath": os.path.join(
@@ -152,7 +152,7 @@ def fetch_crops_list(image_set, gt_fpath, f_fpath, is_bayer, ds_base_dpath):
                                     fn_gt.replace("." + HDR_EXT, ".npy"),
                                 )
                                 if not os.path.exists(
-                                    crop["f_bayer_fpath"]
+                                        crop["f_bayer_fpath"]
                                 ) or not os.path.exists(crop["gt_bayer_fpath"]):
                                     logging.error(
                                         f"Missing crop: {crop['f_bayer_fpath']} and/or {crop['gt_bayer_fpath']}"
@@ -209,25 +209,25 @@ if __name__ == "__main__":
 
             for gt_file_endpath in gt_files_endpaths:
                 if gt_file_endpath.endswith(".xmp") or gt_file_endpath.endswith(
-                    "darktable_exported"
+                        "darktable_exported"
                 ):
                     continue
                 for f_endpath in gt_files_endpaths + noisy_files_endpaths:
                     if f_endpath.endswith(".xmp") or f_endpath.endswith(
-                        "darktable_exported"
+                            "darktable_exported"
                     ):
                         continue
                     if find_cached_result(
-                        ds_dpath, image_set, gt_file_endpath, f_endpath, cached_results
+                            ds_dpath, image_set, gt_file_endpath, f_endpath, cached_results
                     ):
                         continue
                     args_in.append(
                         {
-                            "ds_dpath": ds_dpath,
-                            "image_set": image_set,
+                            "ds_dpath"       : ds_dpath,
+                            "image_set"      : image_set,
                             "gt_file_endpath": gt_file_endpath,
-                            "f_endpath": f_endpath,
-                            "masks_dpath": os.path.join(
+                            "f_endpath"      : f_endpath,
+                            "masks_dpath"    : os.path.join(
                                 DATASETS_ROOT, args.dataset, f"masks_{LOSS_THRESHOLD}"
                             ),
                         }

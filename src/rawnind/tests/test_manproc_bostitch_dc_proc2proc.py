@@ -9,7 +9,6 @@ import sys
 import torch
 import os
 
-sys.path.append("..")
 from rawnind import train_dc_prgb2prgb
 from rawnind.libs import abstract_trainer
 from rawnind.libs import rawds_manproc
@@ -37,8 +36,8 @@ if __name__ == "__main__":
         preset_args=preset_args
     )
     if (
-        "manproc_bostitch_msssim_loss.arbitraryproc"
-        in denoiserTraining.json_saver.results["best_val"]
+            "manproc_bostitch_msssim_loss.arbitraryproc"
+            in denoiserTraining.json_saver.results["best_val"]
     ):
         print(f"Skipping test, manproc_msssim_loss is known")
         sys.exit(0)

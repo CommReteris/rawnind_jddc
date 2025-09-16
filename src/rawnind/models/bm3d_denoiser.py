@@ -63,7 +63,6 @@ import sys
 
 import torch
 
-sys.path.append("..")
 from typing import Union
 from rawnind.models import raw_denoiser
 from rawnind.libs import raw

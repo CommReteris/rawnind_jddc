@@ -1,7 +1,6 @@
 import configargparse
 import sys
 
-sys.path.append("..")
 from rawnind import train_denoiser_prgb2prgb
 
 if __name__ == "__main__":

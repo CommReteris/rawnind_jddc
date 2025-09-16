@@ -5,13 +5,9 @@ Launch with --debug_options output_valtest_images to output images.
 """
 
 import sys
-import os
-
-sys.path.append("..")
 
 from rawnind.libs import rawds_manproc
-from rawnind.libs import rawtestlib
-
+from rawnind.tests import rawtestlib
 
 if __name__ == "__main__":
     preset_args = {"test_only": True, "init_step": None}
@@ -21,27 +17,16 @@ if __name__ == "__main__":
         preset_args=preset_args
     )
     if any(
-        akey in denoiserTraining.json_saver.results["best_val"]
-        for akey in [
-            "manproc_playraw_combined.None",
-            "manproc_playraw_combined",
-            "manproc_playraw_combined.gamma22",
-        ]
+            akey in denoiserTraining.json_saver.results["best_val"]
+            for akey in [
+                "manproc_playraw_combined.None",
+                "manproc_playraw_combined",
+                "manproc_playraw_combined.gamma22",
+            ]
     ):
         print(f"Skipping test, best_val is known")
         sys.exit(0)
-    # dataset = rawds_cleancleantest.CleanProfiledRGBCleanBayerImageCropsTestDataloader(
-    #     content_fpaths=[
-    #         os.path.join(
-    #             "..",
-    #             "..",
-    #             "datasets",
-    #             "extraraw",
-    #             "play_raw_test",
-    #             "crops_metadata.yaml",
-    #         )
-    #     ]
-    # )
+
     dataset = rawds_manproc.ManuallyProcessedImageTestDataHandler(
         net_input_type="lin_rec2020",
         test_descriptor_fpath="../../datasets/extraraw/play_raw_test/manproc_test_descriptor.yaml",
@@ -52,3 +37,4 @@ if __name__ == "__main__":
     denoiserTraining.offline_custom_test(
         dataloader=dataloader, test_name="manproc_playraw", save_individual_images=True
     )
+

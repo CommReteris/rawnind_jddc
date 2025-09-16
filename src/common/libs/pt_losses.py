@@ -22,7 +22,7 @@ import torch
 import pytorch_msssim
 import sys
 
-sys.path.append("..")
+
 # from common.extlibs import DISTS_pt
 
 # class MS_SSIM_loss(piqa.MS_SSIM):
@@ -43,6 +43,7 @@ class MS_SSIM_loss(pytorch_msssim.MS_SSIM):
     MS-SSIM is perceptually motivated and often correlates better with human judgment
     of image quality than pixel-wise losses like MSE.
     """
+
     def __init__(self, data_range=1.0, **kwargs):
         """Initialize the MS-SSIM loss.
         
@@ -73,6 +74,7 @@ class MS_SSIM_metric(pytorch_msssim.MS_SSIM):
     
     Values range from 0 to 1, where 1 indicates perfect similarity between images.
     """
+
     def __init__(self, data_range=1.0, **kwargs):
         """Initialize the MS-SSIM metric.
         
@@ -103,19 +105,18 @@ class MS_SSIM_metric(pytorch_msssim.MS_SSIM):
 
 # Dictionary mapping loss function names to their implementation classes
 losses = {
-    "mse": torch.nn.MSELoss,  # Standard Mean Squared Error loss
+    "mse"        : torch.nn.MSELoss,  # Standard Mean Squared Error loss
     "msssim_loss": MS_SSIM_loss  # Perceptual MS-SSIM loss (1 - MS_SSIM)
 }  # "dists": DISTS_loss is commented out due to dependency issues
 
 # Dictionary mapping metric names to their implementation classes
 # Note: Python 3.8/3.10 compatibility workaround (can't use | operator for dict merging)
 metrics = {
-    "msssim": MS_SSIM_metric,  # Direct MS-SSIM metric (higher = better)
-    "mse": torch.nn.MSELoss,    # Mean Squared Error (lower = better)
+    "msssim"     : MS_SSIM_metric,  # Direct MS-SSIM metric (higher = better)
+    "mse"        : torch.nn.MSELoss,  # Mean Squared Error (lower = better)
     "msssim_loss": MS_SSIM_loss  # MS-SSIM loss (lower = better)
     # "dists": DISTS_loss,  # DISTS metric commented out due to dependency issues
 }
-
 
 if __name__ == "__main__":
     """
@@ -128,6 +129,8 @@ if __name__ == "__main__":
     Note: This test uses pytorch_msssim, not the commented-out piqa implementation.
     The result from previous tests was 162 as the minimum valid dimension.
     """
+
+
     def findvaliddim(start):
         """
         Recursively find the minimum valid dimension for MS-SSIM calculation.
@@ -149,6 +152,7 @@ if __name__ == "__main__":
             print(start)
             # Recursively try the next dimension
             return findvaliddim(start + 1)
+
 
     # Start testing from dimension 1
     findvaliddim(1)  # result is 162

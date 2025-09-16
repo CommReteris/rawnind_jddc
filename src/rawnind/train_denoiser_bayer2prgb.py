@@ -12,7 +12,6 @@ from typing import Optional
 from collections.abc import Iterable
 import torch
 
-sys.path.append("..")
 from rawnind.libs import abstract_trainer
 from rawnind.libs import rawproc
 from rawnind.libs import raw

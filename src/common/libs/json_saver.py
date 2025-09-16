@@ -37,7 +37,6 @@ from typing import Optional, Set, Dict, Any, Union
 import sys
 import os
 
-sys.path.append("..")
 from common.libs import utilities
 
 
@@ -60,12 +59,13 @@ class JSONSaver:
         results: Dictionary containing all saved results
         warmup_nsteps: Number of initial steps to ignore when tracking best values
     """
+
     def __init__(
-        self,
-        jsonfpath: str,
-        step_type: str = ["step", "epoch"][0],
-        default: Optional[Dict[str, Any]] = None,
-        warmup_nsteps: int = 0,
+            self,
+            jsonfpath: str,
+            step_type: str = ["step", "epoch"][0],
+            default: Optional[Dict[str, Any]] = None,
+            warmup_nsteps: int = 0,
     ):
         """Initialize the JSONSaver with file path and configuration.
         
@@ -79,22 +79,22 @@ class JSONSaver:
             AssertionError: If jsonfpath is a directory
         """
         assert not os.path.isdir(jsonfpath), "JSON path must be a file, not a directory"
-        
+
         # Initialize default data structure if not provided
         if default is None:
             default = {"best_val": dict()}
-            
+
         # Create key string for best step/epoch values
         self.best_key_str = "best_{}".format(step_type)  # best step/epoch #
         self.jsonfpath = jsonfpath
-        
+
         # Load existing results or use default
         self.results = self._load(jsonfpath, default=default)
-        
+
         # Ensure best_key_str exists in results
         if self.best_key_str not in self.results:
             self.results[self.best_key_str] = dict()
-            
+
         # Set warmup period
         self.warmup_nsteps = warmup_nsteps
 
@@ -111,15 +111,15 @@ class JSONSaver:
         return utilities.jsonfpath_load(fpath, default=default)
 
     def add_res(
-        self,
-        step: int,
-        res: Dict[str, Any],
-        minimize: Union[bool, Dict[str, bool]] = True,
-        write: bool = True,
-        val_type: Optional[type] = float,
-        epoch: Optional[int] = None,
-        rm_none: bool = False,
-        key_prefix: str = "",
+            self,
+            step: int,
+            res: Dict[str, Any],
+            minimize: Union[bool, Dict[str, bool]] = True,
+            write: bool = True,
+            val_type: Optional[type] = float,
+            epoch: Optional[int] = None,
+            rm_none: bool = False,
+            key_prefix: str = "",
     ) -> None:
         """Add results for a specific training step and update best values.
         
@@ -153,65 +153,65 @@ class JSONSaver:
             step = epoch
         elif (epoch is None and step is None) or step is None or epoch is not None:
             raise ValueError("JSONSaver.add_res: Must specify either step or epoch")
-            
+
         # Initialize results dictionary for this step if it doesn't exist
         if step not in self.results:
             self.results[step] = dict()
-            
+
         # Add prefix to metric names if specified
         if key_prefix != "":
             res_ = dict()
             for akey, aval in res.items():
                 res_[key_prefix + akey] = aval
             res = res_
-            
+
         # Process each metric in the results
         for akey, aval in res.items():
             # Skip None values with warning
             if aval is None:
                 print(f"JSONSaver.add_res warning: missing value for {akey}")
                 continue
-                
+
             # Convert value to specified type if needed
             if val_type is not None:
                 aval = val_type(aval)
-                
+
             # Store the value for this step
             self.results[step][akey] = aval
-            
+
             # Skip list values for best tracking (can't compare)
             if isinstance(aval, list):
                 continue
-                
+
             # Skip zero values if rm_none is True
             if rm_none and aval == 0:
                 continue
-                
+
             # Skip steps before warmup period for best tracking
             if step < self.warmup_nsteps:
                 continue
-                
+
             # Determine whether to minimize this metric
             minimize_this = minimize
             if isinstance(minimize, dict):
                 minimize_this = minimize.get(akey, True)
-                
+
             # Initialize best value if this is the first occurrence
             if akey not in self.results["best_val"]:
                 self.results["best_val"][akey] = aval
-                
+
             # Initialize best step if this is the first occurrence
             if akey not in self.results[self.best_key_str]:
                 self.results[self.best_key_str][akey] = step
-                
+
             # Update best value and step if this result is better
             is_better = ((self.results["best_val"][akey] > aval) and minimize_this) or (
-                (self.results["best_val"][akey] < aval) and not minimize_this
+                    (self.results["best_val"][akey] < aval) and not minimize_this
             )
             if is_better:
                 self.results[self.best_key_str][akey] = step
                 self.results["best_val"][akey] = aval
-                
+
         # Write to file if requested
         if write:
             self.write()
@@ -285,12 +285,13 @@ class YAMLSaver(JSONSaver):
         saver = YAMLSaver('results.yaml')
         saver.add_res(step=1000, res={'loss': 0.245})
     """
+
     def __init__(
-        self,
-        jsonfpath: str,
-        step_type: str = ["step", "epoch"][0],
-        default: Optional[Dict[str, Any]] = None,
-        warmup_nsteps: int = 0,
+            self,
+            jsonfpath: str,
+            step_type: str = ["step", "epoch"][0],
+            default: Optional[Dict[str, Any]] = None,
+            warmup_nsteps: int = 0,
     ):
         """Initialize the YAMLSaver with file path and configuration.
         
