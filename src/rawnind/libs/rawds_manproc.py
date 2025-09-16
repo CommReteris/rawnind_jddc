@@ -1,25 +1,21 @@
+import argparse
 import os
-import sys
+import platform
 from typing import Literal, Optional
+
 import torch
 import tqdm
 import yaml
-import argparse
 
-sys.path.append("..")
-from rawnind.libs import rawds
-from rawnind.libs import rawproc
-from rawnind.libs import raw
-from rawnind.tools import make_hdr_rawnind_files, make_hdr_extraraw_files
-from common.libs import utilities
-from common.libs import pt_helpers
-from common.libs import pt_ops
+from common.libs import pt_helpers, pt_ops, utilities
+from rawnind.libs import raw, rawds, rawproc
+from rawnind.tools import make_hdr_extraraw_files, make_hdr_rawnind_files
 
 TEST_DESCRIPTOR_FPATH = os.path.join(
     rawproc.DS_BASE_DPATH, "manproc_test_descriptor.yaml"
 )
 # MANPROC_DS_DPATH = os.path.join(rawproc.DS_BASE_DPATH, "proc", "dt")
-TMPDIR = f"tmp_{os.uname()[1]}"
+TMPDIR = f"tmp_{platform.uname()[1]}"
 REMOVE_TMP_IMAGES = False
 """Handlers for manually processed test images and dataset utilities.
 
@@ -53,13 +49,13 @@ class ManuallyProcessedImageTestDataHandler(rawds.TestDataLoader):
     OUTPUTS_IMAGE_FILES = True
 
     def __init__(
-        self,
-        # net_output_proc_dpath: str,
-        net_input_type: Literal["bayer", "lin_rec2020", "proc"],
-        test_descriptor_fpath=TEST_DESCRIPTOR_FPATH,
-        always_output_processed_net_output: bool = True,
-        min_msssim_score: Optional[float] = 0.0,
-        max_msssim_score: Optional[float] = 1.0,
+            self,
+            # net_output_proc_dpath: str,
+            net_input_type: Literal["bayer", "lin_rec2020", "proc"],
+            test_descriptor_fpath=TEST_DESCRIPTOR_FPATH,
+            always_output_processed_net_output: bool = True,
+            min_msssim_score: Optional[float] = 0.0,
+            max_msssim_score: Optional[float] = 1.0,
     ):
         # super().__init__(test_descriptor_fpath=test_descriptor_fpath)
         self._dataset = utilities.load_yaml(test_descriptor_fpath, error_on_404=True)
@@ -72,11 +68,11 @@ class ManuallyProcessedImageTestDataHandler(rawds.TestDataLoader):
                         f"ManuallyProcessedImageTestDataHandler: {image['f_fpath']} does not have an MSSSIM score"
                     )
                 if (
-                    min_msssim_score is None
-                    or min_msssim_score <= image["rgb_msssim_score"]
+                        min_msssim_score is None
+                        or min_msssim_score <= image["rgb_msssim_score"]
                 ) and (
-                    max_msssim_score is None
-                    or image["rgb_msssim_score"] <= max_msssim_score
+                        max_msssim_score is None
+                        or image["rgb_msssim_score"] <= max_msssim_score
                 ):
                     new_dataset.append(image)
             self._dataset = new_dataset
@@ -87,7 +83,7 @@ class ManuallyProcessedImageTestDataHandler(rawds.TestDataLoader):
 
     @staticmethod
     def process_lin_rec2020_img(
-        linrec_img, output_fpath: str, xmp_fpath: str, src_fpath: str
+            linrec_img, output_fpath: str, xmp_fpath: str, src_fpath: str
     ) -> None:
         """Save a lin_rec2020 image and process it with an external XMP recipe.
 
@@ -133,6 +129,7 @@ class ManuallyProcessedImageTestDataHandler(rawds.TestDataLoader):
 
     def __getitem__(self, i: int):
         image = self._dataset[i]
+
         # figure out output_fpath
         # net_output_processed_fpath = os.path.join(
         #     self.net_output_proc_dpath,
@@ -140,7 +137,7 @@ class ManuallyProcessedImageTestDataHandler(rawds.TestDataLoader):
         # )
 
         def process_net_output(
-            net_output: torch.Tensor, output_fpath: str
+                net_output: torch.Tensor, output_fpath: str
         ) -> torch.Tensor:
             if self.net_input_type == "proc":
                 if self.always_output_processed_net_output:
@@ -174,12 +171,12 @@ class ManuallyProcessedImageTestDataHandler(rawds.TestDataLoader):
 
         manproc_gt = pt_helpers.fpath_to_tensor(image["gt_manproc_fpath"])
         res = {
-            "x_crops": manproc_gt,
-            "gt_fpath": image["gt_manproc_fpath"],
-            "gain": 1.0,
+            "x_crops"                 : manproc_gt,
+            "gt_fpath"                : image["gt_manproc_fpath"],
+            "gain"                    : 1.0,
             "net_output_processor_fun": process_net_output,
-            "image_set": image["image_set"],
-            "gt_rgb_mean": image["gt_rgb_mean"],
+            "image_set"               : image["image_set"],
+            "gt_rgb_mean"             : image["gt_rgb_mean"],
             # "net_output_processed_fpath": net_output_processed_fpath,
         }
         if "rgb_msssim_score" in image:
@@ -203,7 +200,7 @@ class ManuallyProcessedImageTestDataHandler(rawds.TestDataLoader):
         elif self.net_input_type == "lin_rec2020":
             res["y_fpath"] = image["f_manproc_fpath"]
             if (
-                "f_linrec2020_fpath" not in image and "linrec2020_fpath" in image
+                    "f_linrec2020_fpath" not in image and "linrec2020_fpath" in image
             ):  # workaround for unpaired images w/ incomplete metadata, this should probably be more consistent / cleaner but oh well
                 image["f_linrec2020_fpath"] = image["linrec2020_fpath"]
             noisy_img: torch.Tensor = pt_helpers.fpath_to_tensor(
@@ -242,13 +239,13 @@ class ManuallyProcessedImageTestDataHandler(rawds.TestDataLoader):
 
 
 def prep_manproc_dataset(
-    test_descriptor_fpath: str = TEST_DESCRIPTOR_FPATH,
-    rawnind_content_fpath=rawproc.RAWNIND_CONTENT_FPATH,
-    test_reserve_fpath=os.path.join("config", "test_reserve.yaml"),
-    bayer_only=True,
-    alignment_max_loss=rawds.ALIGNMENT_MAX_LOSS,
-    mask_mean_min=rawds.MASK_MEAN_MIN,
-    unpaired_images=False,
+        test_descriptor_fpath: str = TEST_DESCRIPTOR_FPATH,
+        rawnind_content_fpath=rawproc.RAWNIND_CONTENT_FPATH,
+        test_reserve_fpath=os.path.join("config", "test_reserve.yaml"),
+        bayer_only=True,
+        alignment_max_loss=rawds.ALIGNMENT_MAX_LOSS,
+        mask_mean_min=rawds.MASK_MEAN_MIN,
+        unpaired_images=False,
 ):
     """
     Generate the manually processed images and the manproc dataset descriptor.
@@ -290,15 +287,15 @@ def prep_manproc_dataset(
             image["rgb_msssim_score"] = 1.0
         # Check that the image is reserved for testing
         if (
-            (image["image_set"] not in test_reserve and not unpaired_images)
-            or bayer_only
-            and not image["is_bayer"]
+                (image["image_set"] not in test_reserve and not unpaired_images)
+                or bayer_only
+                and not image["is_bayer"]
         ):
             continue
         # Check that image is good enough
         if (not unpaired_images) and (
-            image["best_alignment_loss"] > alignment_max_loss
-            or image["mask_mean"] < mask_mean_min
+                image["best_alignment_loss"] > alignment_max_loss
+                or image["mask_mean"] < mask_mean_min
         ):
             print(f"prep_manproc_dataset: rejected {image['f_fpath']}")
             continue
@@ -308,10 +305,10 @@ def prep_manproc_dataset(
             image["gt_linrec2020_fpath"] = image["linrec2020_fpath"]
         else:
             image["f_linrec2020_fpath"] = (
-                image["f_fpath"].replace("src/Bayer", "proc/lin_rec2020") + ".tif"
+                    image["f_fpath"].replace("src/Bayer", "proc/lin_rec2020") + ".tif"
             )
             image["gt_linrec2020_fpath"] = (
-                image["gt_fpath"].replace("src/Bayer", "proc/lin_rec2020") + ".tif"
+                    image["gt_fpath"].replace("src/Bayer", "proc/lin_rec2020") + ".tif"
             )
         image["dt_xmp"] = image["gt_linrec2020_fpath"] + ".xmp"
         # figure out new and temporary paths
@@ -342,7 +339,7 @@ def prep_manproc_dataset(
             print(f"prep_manproc_dataset: processing {image['f_manproc_fpath']}")
         # Previously done; nothing to do
         if os.path.isfile(image["gt_manproc_fpath"]) and (
-            os.path.isfile(image["f_manproc_fpath"]) and "gt_rgb_mean" in image
+                os.path.isfile(image["f_manproc_fpath"]) and "gt_rgb_mean" in image
         ):
             print(
                 f"prep_manproc_dataset: skipping existing files ({image['f_manproc_fpath']})"

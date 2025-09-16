@@ -357,7 +357,7 @@ class ImageToImageNN:
         except KeyError as e:
             raise KeyError(f'"{metric}" not found in {jsonfpath=}') from e
         return {
-            "fpath": os.path.join(model_dpath, "saved_models", f"iter_{best_step}.pt"),
+            "fpath" : os.path.join(model_dpath, "saved_models", f"iter_{best_step}.pt"),
             "step_n": best_step,
         }
 
@@ -1034,7 +1034,7 @@ class ImageToImageNNTraining(ImageToImageNN):
         """
         # validation lock (TODO put in a function)
         own_lock = bypass_lock = printed_lock_warning = False
-        lock_fpath = f"validation_{os.uname()[1]}_{os.environ.get('CUDA_VISIBLE_DEVICES', 'unk')}.lock"
+        lock_fpath = f"validation_{platform.uname()[1]}_{os.environ.get('CUDA_VISIBLE_DEVICES', 'unk')}.lock"
         if (platform.node() == "sd" or platform.node() == "bd") and (
                 "manproc" not in test_name or self.arbitrary_proc_method == "opencv"
         ):
@@ -2244,18 +2244,18 @@ class BayerImageToImageNNTraining(ImageToImageNNTraining, BayerImageToImageNN):
 class DenoiseCompress(ImageToImageNN):
     MODELS_BASE_DPATH = os.path.join("..", "..", "models", "rawnind_dc")
     ARCHS = {
-        "ManyPriors" : manynets_compression.ManyPriors_RawImageCompressor,
+        "ManyPriors"         : manynets_compression.ManyPriors_RawImageCompressor,
         "DenoiseThenCompress": denoise_then_compress.DenoiseThenCompress,
-        "JPEGXL"     : standard_compressor.JPEGXL_ImageCompressor,
-        "JPEG"       : standard_compressor.JPEGXL_ImageCompressor,
-        "Passthrough": standard_compressor.Passthrough_ImageCompressor,
+        "JPEGXL"             : standard_compressor.JPEGXL_ImageCompressor,
+        "JPEG"               : standard_compressor.JPEGXL_ImageCompressor,
+        "Passthrough"        : standard_compressor.Passthrough_ImageCompressor,
     }
     ARCHS_ENC = {
         "Balle": compression_autoencoders.BalleEncoder,
         # "BayerPreUp": compression_autoencoders.BayerPreUpEncoder,
     }
     ARCHS_DEC = {
-        "Balle": compression_autoencoders.BalleDecoder,
+        "Balle"  : compression_autoencoders.BalleDecoder,
         "BayerPS": compression_autoencoders.BayerPSDecoder,
         "BayerTC": compression_autoencoders.BayerTCDecoder,
     }
@@ -2365,12 +2365,12 @@ class DenoiseCompressTraining(ImageToImageNNTraining, DenoiseCompress):
 class Denoiser(ImageToImageNN):
     MODELS_BASE_DPATH = os.path.join("..", "..", "models", "rawnind_denoise")
     ARCHS = {
-        "unet"  : raw_denoiser.UtNet2,
-        "utnet3": raw_denoiser.UtNet3,
+        "unet"    : raw_denoiser.UtNet2,
+        "utnet3"  : raw_denoiser.UtNet3,
         # "runet": runet.Runet,
         "identity": raw_denoiser.Passthrough,
         # "edsr": edsr.EDSR,
-        "bm3d"  : bm3d_denoiser.BM3D_Denoiser,
+        "bm3d"    : bm3d_denoiser.BM3D_Denoiser,
     }
 
     def __init__(self, **kwargs):

@@ -54,6 +54,7 @@ Example usage:
 """
 
 import os
+import platform
 import random
 import shutil
 import string
@@ -69,7 +70,7 @@ from rawnind.libs import raw
 from common.libs import pt_helpers
 from common.libs import np_imgops
 
-TMPDIR = f"tmp_{os.uname().nodename}"
+TMPDIR = f"tmp_{platform.uname().node}"
 
 
 class BM3D_Denoiser(raw_denoiser.Denoiser):
