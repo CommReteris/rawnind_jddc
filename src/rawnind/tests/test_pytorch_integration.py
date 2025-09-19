@@ -18,7 +18,7 @@ import numpy as np
 from rawnind.models.denoise_then_compress import DenoiseThenCompress
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def concrete_model(model_bayer_dc, device):
     """Concrete model fixture for integration tests."""
     return model_bayer_dc.model.to(device)  # DenoiseThenCompress instance

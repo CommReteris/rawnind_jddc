@@ -25,11 +25,11 @@ import sys
 import torch
 import ptflops
 
-from .libs import abstract_trainer
-from .models import raw_denoiser
-from .models import manynets_compression
-from .models import denoise_then_compress
-from .models import compression_autoencoders
+from .. import abstract_trainer
+from ...models import raw_denoiser
+from ...models import manynets_compression
+from ...models import denoise_then_compress
+from ...models import compression_autoencoders
 
 # NOTE: This import appears to be problematic - potentially unavailable or a typo
 # Keeping it commented to preserve reference while resolving the semantic error

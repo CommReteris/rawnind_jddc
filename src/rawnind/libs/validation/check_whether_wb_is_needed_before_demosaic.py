@@ -34,7 +34,7 @@ import statistics
 import cv2
 import numpy as np
 
-from src.rawnind.libs import raw
+from .. import raw
 
 # Path to the ground truth images in the Natural Image Noise Dataset
 IMAGE_SETS_DPATH = os.path.join("../..", "..", "datasets", "RawNIND", "Bayer")

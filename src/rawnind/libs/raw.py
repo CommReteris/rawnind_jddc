@@ -756,6 +756,33 @@ def get_sample_raw_file(url: str = SAMPLE_RAW_URL) -> str:
     return str(fpath)
 
 
+def hdr_nparray_to_file(img_array: np.ndarray, output_path: str, color_profile: str = "lin_rec2020", bit_depth: Optional[int] = 16) -> None:
+    """
+    Save RGB numpy array to HDR file (EXR/TIFF) using HdrExporter.
+
+    Args:
+        img_array: RGB image as np.ndarray shape (3, H, W), float [0,1]
+        output_path: Output file path (.exr or .tif/.tiff)
+        color_profile: Color profile for export (default: "lin_rec2020")
+        bit_depth: Bit depth for EXR (16 or 32; default 16)
+
+    Raises:
+        ValueError: Invalid shape or format
+        IOError: Save failure
+    """
+    if img_array.shape[0] != 3:
+        raise ValueError(f"Expected RGB (3,H,W), got {img_array.shape}")
+    if img_array.dtype != np.float32:
+        img_array = img_array.astype(np.float32)
+    img_array = np.clip(img_array, 0, 1)  # Ensure [0,1]
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    exporter = HdrExporter()
+    exporter.save(img_array, output_path, color_profile, bit_depth)
+
+
 def libraw_process(raw_path: str, out_path: str) -> None:
     """LibRaw sanity check; disabled if no imageio."""
     if imageio is None:
@@ -820,5 +847,9 @@ if __name__ == "__main__":
     exporter.save(gamma_srgb, f"{args.out_base_path}.gamma_sRGB.tif", "gamma_sRGB")
     exporter.save(cam_rgb, f"{args.out_base_path}.camRGB.exr", None)
 
+    # Use new function for libraw output if needed, but keep original
     libraw_process(args.raw_fpath, f"{args.out_base_path}.libraw.tif")
     logger.info(f"Outputs saved to {args.out_base_path}.*")
+
+    # Legacy call for compatibility (now defined)
+    hdr_nparray_to_file(lin_rec2020, f"{args.out_base_path}.lin_rec2020_hdr.exr", color_profile="lin_rec2020")
