@@ -25,7 +25,7 @@ from torch.utils.data import DataLoader, TensorDataset
 import configargparse
 
 # Local project
-from common.libs.pt_helpers import get_device
+from rawnind.libs.pt_helpers import get_device
 from .rawtestlib import DCTestCustomDataloaderBayerToProfiledRGB
 from ..libs.abstract_trainer import ImageToImageNN
 

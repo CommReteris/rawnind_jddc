@@ -1,7 +1,7 @@
 """Quick validity scan over a dataset tree.
 
 Walks a directory, filters out non-image paths, and checks readability of files
-using common.libs.libimganalysis. Prints shell mv commands for files deemed
+using rawnind.libs.libimganalysis. Prints shell mv commands for files deemed
 invalid so they can be quarantined easily.
 
 This script is useful for cleaning up datasets before training to ensure all
@@ -26,10 +26,10 @@ import argparse
 import random
 
 from rawnind.libs import rawproc  # includes DS_BASE_DPATH
-from common.libs import pt_helpers
+from rawnind.libs import pt_helpers
 from rawnind.libs import raw
-from common.libs import libimganalysis
-from common.libs import utilities
+from rawnind.libs import libimganalysis
+from rawnind.libs import utilities
 
 # Destination directory for invalid files
 BAD_SRC_FILES_DPATH = os.path.join("..", "..", "datasets", "RawNIND", "bad_src_files")

@@ -12,7 +12,7 @@ from collections.abc import Iterable
 from rawnind.libs import abstract_trainer
 from rawnind.libs import raw
 from rawnind.libs import rawproc
-from common.libs import pt_helpers
+from rawnind.libs import pt_helpers
 
 
 class DCTrainingProfiledRGBToProfiledRGB(

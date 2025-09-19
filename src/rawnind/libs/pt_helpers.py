@@ -18,10 +18,10 @@ import math
 import logging
 import time
 
-from common.libs import utilities
-from common.libs import pt_losses
-from common.libs import np_imgops
-from common.libs import pt_ops
+from rawnind.libs import utilities
+from rawnind.libs import pt_losses
+from rawnind.libs import np_imgops
+from rawnind.libs import pt_ops
 
 TMPDIR = "tmp"
 os.makedirs(TMPDIR, exist_ok=True)

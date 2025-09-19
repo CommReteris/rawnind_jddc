@@ -21,8 +21,8 @@ import torch
 import yaml
 
 from rawnind.libs import abstract_trainer
-from common.libs import pt_losses
-from common.libs import pt_helpers
+from rawnind.libs import pt_losses
+from rawnind.libs import pt_helpers
 from rawnind.libs import rawproc
 from rawnind.libs import raw
 

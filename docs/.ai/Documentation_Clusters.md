@@ -29,8 +29,8 @@ This cluster includes components for image processing, transformations, and oper
 
 | Component                  | Completion % |
 |----------------------------|--------------|
-| common/libs/np_imgops.py   | 60%          |
-| common/libs/pt_ops.py      | 100%         |
+| rawnind/libs/np_imgops.py   | 60%          |
+| rawnind/libs/pt_ops.py      | 100%         |
 | libs/rawproc.py            | 90%          |
 | libs/arbitrary_proc_fun.py | 85%          |
 | libs/raw.py                | 35%          |
@@ -45,7 +45,7 @@ This cluster includes components for dataset management, loading, and processing
 | libs/rawds.py         | 35%          |
 | libs/rawds_manproc.py | 75%          |
 | libs/rawtestlib.py    | 25%          |
-| common/libs/icc.py    | 100%         |
+| rawnind/libs/icc.py    | 100%         |
 | **Cluster Average**   | **46%**      |
 
 ### 4. Evaluation Metrics and Loss Functions (85%)
@@ -54,9 +54,9 @@ This cluster includes components for calculating metrics, losses, and evaluation
 
 | Component                                      | Completion % |
 |------------------------------------------------|--------------|
-| common/libs/pt_losses.py                       | 100%         |
-| common/libs/pt_helpers.py                      | 67%          |
-| common/libs/libimganalysis.py                  | 40%          |
+| rawnind/libs/pt_losses.py                       | 100%         |
+| rawnind/libs/pt_helpers.py                      | 67%          |
+| rawnind/libs/libimganalysis.py                  | 40%          |
 | tools/get_ds_avg_msssim.py                     | 5%           |
 | tests/get_models_complexity.py                 | 100%         |
 | tests/get_RawNIND_test_quality_distribution.py | 95%          |
@@ -68,11 +68,11 @@ This cluster includes components for compression, file handling, and I/O operati
 
 | Component                     | Completion % |
 |-------------------------------|--------------|
-| common/libs/stdcompression.py | 70%          |
-| common/libs/json_saver.py     | 90%          |
-| common/libs/locking.py        | 100%         |
+| rawnind/libs/stdcompression.py | 70%          |
+| rawnind/libs/json_saver.py     | 90%          |
+| rawnind/libs/locking.py        | 100%         |
 | common/tools/save_src.py      | 75%          |
-| common/libs/utilities.py      | 95%          |
+| rawnind/libs/utilities.py      | 95%          |
 | **Cluster Average**           | **86%**      |
 
 ### 6. Utility Tools and Scripts (41%)

@@ -29,7 +29,7 @@ import numpy as np
 import rawpy
 import requests
 
-from ...common.libs import icc
+from rawnind.libs import icc
 
 # Constants
 BAYER_PATTERNS = {
@@ -589,8 +589,24 @@ class HdrExporter:
 
 
 # X-Trans Support (Enhanced Validation)
+"""Check if the input file is a Fujifilm X-Trans RAW (.RAF).
+
+    Validates extension and peeks header for 'RAF' magic bytes.
+
+    Args:
+        input_file_path (Union[str, Path]): Path to potential .raf file.
+
+    Returns:
+        bool: True if valid X-Trans RAF, False otherwise.
+
+    Raises:
+        UnsupportedFormatError: If header invalid.
+        RawProcessingError: If file read fails.
+
+    Notes:
+        Simplified header check; assumes X-Trans for all .raf.
+    """
 def is_xtrans(input_file_path: Union[str, Path]) -> bool:
-    """Validate if file is X-Trans (Fujifilm .raf)."""
     path = Path(input_file_path)
     if not path.suffix.lower() == ".raf":
         return False
@@ -605,23 +621,42 @@ def is_xtrans(input_file_path: Union[str, Path]) -> bool:
     return True
 
 
+"""Convert Fujifilm X-Trans RAW (.RAF) to linear Rec.2020 EXR using Darktable CLI.
+
+    Requires darktable-cli and specific XMP config for demosaicing and color transform.
+
+    Args:
+        src_path (Union[str, Path]): Input .raf file.
+        dest_path (Union[str, Path]): Output .exr path.
+        profile (str): Must be 'lin_rec2020'; ignored otherwise.
+
+    Raises:
+        ValueError: If profile not 'lin_rec2020'.
+        UnsupportedFormatError: If src not X-Trans.
+        RuntimeError: If darktable-cli not installed.
+        FileNotFoundError: If XMP config missing.
+        RawProcessingError: If Darktable command fails.
+
+    Notes:
+        Uses 16-bit half-float EXR. XMP: dt4_xtrans_to_linrec2020.xmp in config/.
+        Based on Darktable documentation: https://www.darktable.org/
+    """
 def xtrans_to_openexr(src_path: Union[str, Path], dest_path: Union[str, Path], profile: str = DEFAULT_OUTPUT_PROFILE) -> None:
-    """Convert X-Trans to EXR via Darktable CLI; enhanced error handling."""
     if profile != DEFAULT_OUTPUT_PROFILE:
         raise ValueError(f"X-Trans only supports {DEFAULT_OUTPUT_PROFILE}")
-
+ 
     src = Path(src_path)
     dest = Path(dest_path)
     if not is_xtrans(src):
         raise UnsupportedFormatError(f"Not X-Trans file: {src}")
-
+ 
     if not shutil.which("darktable-cli"):
         raise RuntimeError("darktable-cli required for X-Trans conversion")
-
+ 
     xmp_path = Path(__file__).parent / "config" / "dt4_xtrans_to_linrec2020.xmp"
     if not xmp_path.exists():
         raise FileNotFoundError(f"XMP config missing: {xmp_path}")
-
+ 
     cmd = [
         "darktable-cli", str(src), str(xmp_path), str(dest),
         "--core", "--conf", "plugins/imageio/format/exr/bpp=16"
@@ -632,6 +667,22 @@ def xtrans_to_openexr(src_path: Union[str, Path], dest_path: Union[str, Path], p
 
 
 # Convenience API Functions (Backward Compatible)
+"""Convenience function: Load RAW to mono Bayer and metadata.
+
+    Wrapper for RawLoader.load() with common defaults.
+
+    Args:
+        file_path (str): Input RAW file path.
+        force_rggb (bool): Force RGGB pattern. Default True.
+        crop_all (bool): Crop to active area. Default True.
+        return_float (bool): Normalize to [0,1] float. Default True.
+
+    Returns:
+        Tuple[BayerImage, Metadata]: Bayer mosaic and metadata.
+
+    Raises:
+        Same as RawLoader.load().
+    """
 def raw_fpath_to_mono_img_and_metadata(
     file_path: str, force_rggb: bool = True, crop_all: bool = True, return_float: bool = True
 ) -> Tuple[BayerImage, Metadata]:

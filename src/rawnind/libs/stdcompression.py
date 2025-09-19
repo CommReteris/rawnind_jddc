@@ -44,7 +44,7 @@ import inspect
 import time
 import sys
 
-from common.libs import utilities
+from rawnind.libs import utilities
 
 # Number of threads to use for parallel compression operations
 NUMTHREADS: int = 1  # Default to 1, can be set to os.cpu_count()//4*3 for parallel processing

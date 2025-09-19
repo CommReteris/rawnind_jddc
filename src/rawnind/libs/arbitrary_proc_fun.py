@@ -551,7 +551,7 @@ def arbitrarily_process_images(
 
 
 def arbitrary_proc_visual_test():
-    from common.libs import pt_helpers
+    from rawnind.libs import pt_helpers
 
     TEST_IMAGES_FPATHS = (
         "/orb/benoit_phd/datasets/RawNIND/proc/lin_rec2020/D60-1/gt/CRW_6994.CRW.tif",
@@ -604,7 +604,7 @@ def test_arbitrarily_process_images_opencv_values(infpath, outdpath):
     # create a backup of the default values
     import hashlib
     import copy
-    from common.libs import pt_helpers
+    from rawnind.libs import pt_helpers
 
     global ARBITRARY_PROC_PARAMS_RANGE
     ARBITRARY_PROC_PARAMS_RANGE_bak = copy.deepcopy(ARBITRARY_PROC_PARAMS_RANGE)
@@ -672,7 +672,7 @@ def test_arbitrarily_process_images_opencv_values(infpath, outdpath):
 
 class Test_Rawproc(unittest.TestCase):
     def test_arbitrary_proc_single_and_batch_equivalence(self):
-        from common.libs import pt_helpers
+        from rawnind.libs import pt_helpers
 
         TEST_IMAGES_FPATHS = (
             "../../datasets/RawNIND/proc/lin_rec2020/gnome/gt/DSCF1051.RAF.exr",

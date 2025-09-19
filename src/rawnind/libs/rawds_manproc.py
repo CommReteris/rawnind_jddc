@@ -7,7 +7,7 @@ import torch
 import tqdm
 import yaml
 
-from common.libs import pt_helpers, pt_ops, utilities
+from rawnind.libs import pt_helpers, pt_ops, utilities
 from rawnind.libs import raw, rawds, rawproc
 from rawnind.tools import make_hdr_extraraw_files, make_hdr_rawnind_files
 

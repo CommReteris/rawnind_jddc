@@ -17,8 +17,8 @@ import numpy as np
 from typing import Literal, Optional, Union
 
 from rawnind.models import bitEstimator
-from common.libs import pt_helpers
-from common.libs import pt_ops
+from rawnind.libs import pt_helpers
+from rawnind.libs import pt_ops
 from rawnind.models import compression_autoencoders
 
 # logger = logging.getLogger("ImageCompression")

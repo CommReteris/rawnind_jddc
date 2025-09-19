@@ -5,10 +5,10 @@ import sys
 from typing import Literal, Optional
 
 from rawnind.models import compression_autoencoders
-from common.libs import stdcompression
-from common.libs import pt_ops
-from common.libs import pt_helpers
-from common.libs import utilities
+from rawnind.libs import stdcompression
+from rawnind.libs import pt_ops
+from rawnind.libs import pt_helpers
+from rawnind.libs import utilities
 import torch
 
 TMP_INIMG_DPATH = os.path.join("tmp", "inimg")

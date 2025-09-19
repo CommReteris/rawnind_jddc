@@ -32,10 +32,10 @@ import piqa
 import sys
 
 # try:
-#    from common.libs import tf_helpers
+#    from rawnind.libs import tf_helpers
 # except ModuleNotFoundError as e:
 #    print("libimganalysis: warning: {}".format(e))
-from common.libs import pt_helpers
+from rawnind.libs import pt_helpers
 from rawnind.libs import rawproc
 
 VALID_IMG_EXT = ["png", "jpg", "jpeg", "bmp", "gif", "tiff", "ppm", "j2k", "webp"]
@@ -304,7 +304,7 @@ class Test_libimganalysis(unittest.TestCase):
     )
 
     def setUp(self):
-        from common.libs.libimgops import bpg_encdec
+        from rawnind.libs.libimgops import bpg_encdec
 
         self.inimgpath = os.path.join(self.DSROOTPATH, self.TESTIMG)
         self.tmpimgpath = "test_libimganalysis.png"

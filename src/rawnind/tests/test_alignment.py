@@ -31,7 +31,7 @@ import os
 import sys
 
 from .libs import rawproc
-from common.libs import np_imgops
+from rawnind.libs import np_imgops
 
 if __name__ == "__main__":
     # Input file paths for the test images

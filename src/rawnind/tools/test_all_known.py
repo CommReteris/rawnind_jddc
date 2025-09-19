@@ -7,7 +7,7 @@ import datetime
 import yaml
 import sys
 
-from common.libs import utilities
+from rawnind.libs import utilities
 
 TESTS: list[str] = [
     "test_manproc",

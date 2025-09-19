@@ -14,8 +14,8 @@ import xml.etree.ElementTree as ET
 import csv
 import subprocess
 
-from common.libs import json_saver
-from common.libs import utilities
+from rawnind.libs import json_saver
+from rawnind.libs import utilities
 from .tools.test_all_known import (
     TESTS,
     MODEL_TYPES,

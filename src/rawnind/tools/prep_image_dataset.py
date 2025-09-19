@@ -26,7 +26,7 @@ import logging
 import argparse
 
 from rawnind.libs import rawproc
-from common.libs import utilities
+from rawnind.libs import utilities
 
 from rawnind.libs.rawproc import (
     DATASETS_ROOT,

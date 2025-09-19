@@ -21,7 +21,7 @@ import tqdm
 
 import torch
 
-from common.libs import pt_helpers, utilities
+from rawnind.libs import pt_helpers, utilities
 from rawnind.libs import raw
 from rawnind.libs import rawproc
 from rawnind.libs import arbitrary_proc_fun

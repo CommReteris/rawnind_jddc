@@ -61,7 +61,7 @@ except ImportError:
     )
 
 from rawnind.libs import raw
-from common.libs import libimganalysis
+from rawnind.libs import libimganalysis
 
 # Directory for temporary files used in testing
 TMP_DPATH = "tmp"

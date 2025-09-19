@@ -37,7 +37,7 @@ from typing import Optional, Set, Dict, Any, Union
 import sys
 import os
 
-from common.libs import utilities
+from rawnind.libs import utilities
 
 
 class JSONSaver:

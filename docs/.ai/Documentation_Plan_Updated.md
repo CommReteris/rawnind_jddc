@@ -636,7 +636,7 @@ pt_losses.py (100%), locking.py (100%), pt_ops.py (100%), compression_autoencode
 stdcompression.py (70%), json_saver.py (90%), np_imgops.py (60%), create_bm3d_argsyaml.py (95%),
 create_jpegxl_argsyaml.py (95%), find_best_bm3d_models_for_given_pictures.py (95%), mk_megafig.py (95%),
 mk_combined_mosaic.py (95%), get_RawNIND_test_quality_distribution.py (95%), denoise_image.py (75%), rawproc.py (90%),
-and rawds_manproc.py (75%). However, there are significant gaps, particularly in common/libs/utilities.py (20%), many of
+and rawds_manproc.py (75%). However, there are significant gaps, particularly in rawnind/libs/utilities.py (20%), many of
 the test files (3-5%), and various smaller utility scripts (10-30%). The largest source files generally have better
 documentation than smaller utility files.*
 *Priority Areas: Improving documentation for utilities.py, test files, and numerous small utility scripts would
