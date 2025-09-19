@@ -22,14 +22,14 @@ Note:
     as seen in the test_manproc_playraw_* files.
     
     To fix this file:
-    1. Add "from rawnind.libs import rawds_manproc"
+    1. Add "from .libs import rawds_manproc"
     2. Replace the dataset initialization with rawds_manproc.ManuallyProcessedImageTestDataHandler
     3. Update the test_name parameter in offline_custom_test if necessary
 """
 
 import sys
 
-from rawnind.tests import rawtestlib
+from .tests import rawtestlib
 
 if __name__ == "__main__":
     preset_args = {"test_only": True, "init_step": None}

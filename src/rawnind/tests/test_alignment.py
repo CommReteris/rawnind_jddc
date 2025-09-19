@@ -30,7 +30,7 @@ Expected output:
 import os
 import sys
 
-from rawnind.libs import rawproc
+from .libs import rawproc
 from common.libs import np_imgops
 
 if __name__ == "__main__":

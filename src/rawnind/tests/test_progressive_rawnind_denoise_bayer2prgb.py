@@ -32,8 +32,8 @@ import os
 # Add parent directory to Python path for imports
 
 
-from rawnind.libs import rawds
-from rawnind.tests import rawtestlib
+from .libs import rawds
+from .tests import rawtestlib
 
 # Define MS-SSIM threshold values for filtering test images
 # MS-SSIM (Multi-Scale Structural Similarity) measures image similarity

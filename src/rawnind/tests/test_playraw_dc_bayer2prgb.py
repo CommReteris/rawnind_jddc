@@ -25,9 +25,9 @@ Note:
 import sys
 
 # Import the manually processed image test handler
-import rawnind.libs.rawds_manproc
+import .libs.rawds_manproc
 # Import the test helper classes
-from rawnind.tests import rawtestlib
+from .tests import rawtestlib
 
 if __name__ == "__main__":
     # Configure test-only mode for the denoise+compress model
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     # Create test dataset using manually processed clean images
     # These are high-quality "playraw" images that test the model's
     # performance on ideal inputs without significant noise
-    dataset = rawnind.libs.rawds_manproc.ManuallyProcessedImageTestDataHandler(
+    dataset = .libs.rawds_manproc.ManuallyProcessedImageTestDataHandler(
         # Configure for profiled RGB processing (demosaiced images)
         net_input_type="prgb",
         # Path to the test dataset descriptor

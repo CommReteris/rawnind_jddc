@@ -18,8 +18,8 @@ Optional arguments:
 
 import sys
 
-import rawnind.libs.rawds_manproc
-from rawnind.tests import rawtestlib
+import .libs.rawds_manproc
+from .tests import rawtestlib
 
 if __name__ == "__main__":
     preset_args = {"test_only": True, "init_step": None}
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     ):
         print(f"Skipping test, best_val is known")
         sys.exit(0)
-    dataset = (rawnind.libs.rawds_manproc.ManuallyProcessedImageTestDataHandler(
+    dataset = (.libs.rawds_manproc.ManuallyProcessedImageTestDataHandler(
         net_input_type="bayer",
         test_descriptor_fpath="../../datasets/extraraw/play_raw_test/manproc_test_descriptor.yaml",
     )

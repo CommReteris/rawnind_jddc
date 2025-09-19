@@ -7,8 +7,8 @@ Launch with --debug_options output_valtest_images to output images.
 import sys
 import os
 
-from rawnind.libs import rawds
-from rawnind.tests import rawtestlib
+from .libs import rawds
+from .tests import rawtestlib
 
 MS_SSSIM_VALUES = {
     "le": {0.85, 0.9, 0.97, 0.99},

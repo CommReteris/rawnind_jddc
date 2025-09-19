@@ -5,11 +5,16 @@ None, allowing fast import-time checks and sanity tests on training pipelines
 without requiring access to full datasets.
 """
 
-from rawnind import train_dc_bayer2prgb, train_dc_prgb2prgb, train_denoiser_bayer2prgb, train_denoiser_prgb2prgb
+import configargparse
+from ..train_dc_bayer2prgb import DCTrainingBayerToProfiledRGB
+from ..train_dc_prgb2prgb import DCTrainingProfiledRGBToProfiledRGB
+from ..train_denoiser_bayer2prgb import DenoiserTrainingBayerToProfiledRGB
+from ..train_denoiser_prgb2prgb import DenoiserTrainingProfiledRGBToProfiledRGB
+from ..models import denoise_then_compress, raw_denoiser
 
 
 class DCTestCustomDataloaderBayerToProfiledRGB(
-    train_dc_bayer2prgb.DCTrainingBayerToProfiledRGB
+    DCTrainingBayerToProfiledRGB
 ):
     """Test subclass for Bayer-to-RGB denoise+compress training with null dataloaders.
     
@@ -34,7 +39,15 @@ class DCTestCustomDataloaderBayerToProfiledRGB(
             launch: If True, triggers immediate parameter processing
             **kwargs: Additional keyword arguments passed to the parent class
         """
-        super().__init__(launch=launch, **kwargs)
+        if kwargs.get('test_only'):
+            preset_args = kwargs.get('preset_args', {})
+            kwargs.update(preset_args)
+            args = configargparse.Namespace(**kwargs)
+            
+            self.__dict__.update(vars(args))
+            super().__init__(**kwargs)
+        else:
+            super().__init__(launch=launch, **kwargs)
 
     def get_dataloaders(self) -> None:
         """Override parent's get_dataloaders method to return None.
@@ -48,9 +61,18 @@ class DCTestCustomDataloaderBayerToProfiledRGB(
         """
         return None
 
+    def instantiate_model(self):
+        self.model = denoise_then_compress.DenoiseThenCompress(
+            self.in_channels,
+            self.arch_enc,
+            self.arch_dec,
+            self.hidden_out_channels,
+            self.bitstream_out_channels
+        )
+
 
 class DenoiseTestCustomDataloaderBayerToProfiledRGB(
-    train_denoiser_bayer2prgb.DenoiserTrainingBayerToProfiledRGB
+    DenoiserTrainingBayerToProfiledRGB
 ):
     """Test subclass for Bayer-to-RGB denoiser training with null dataloaders.
     
@@ -78,7 +100,15 @@ class DenoiseTestCustomDataloaderBayerToProfiledRGB(
             launch: If True, triggers immediate parameter processing
             **kwargs: Additional keyword arguments passed to the parent class
         """
-        super().__init__(launch=launch, **kwargs)
+        if kwargs.get('test_only'):
+            preset_args = kwargs.get('preset_args', {})
+            kwargs.update(preset_args)
+            args = configargparse.Namespace(**kwargs)
+            
+            self.__dict__.update(vars(args))
+            super().__init__(**kwargs)
+        else:
+            super().__init__(launch=launch, **kwargs)
 
     def get_dataloaders(self) -> None:
         """Override parent's get_dataloaders method to return None.
@@ -92,9 +122,12 @@ class DenoiseTestCustomDataloaderBayerToProfiledRGB(
         """
         return None
 
+    def instantiate_model(self):
+        self.model = raw_denoiser.UtNet2(self.in_channels, self.funit)
+
 
 class DCTestCustomDataloaderProfiledRGBToProfiledRGB(
-    train_dc_prgb2prgb.DCTrainingProfiledRGBToProfiledRGB
+    DCTrainingProfiledRGBToProfiledRGB
 ):
     """Test subclass for RGB-to-RGB denoise+compress training with null dataloaders.
     
@@ -122,7 +155,15 @@ class DCTestCustomDataloaderProfiledRGBToProfiledRGB(
             launch: If True, triggers immediate parameter processing
             **kwargs: Additional keyword arguments passed to the parent class
         """
-        super().__init__(launch=launch, **kwargs)
+        if kwargs.get('test_only'):
+            preset_args = kwargs.get('preset_args', {})
+            kwargs.update(preset_args)
+            args = configargparse.Namespace(**kwargs)
+            
+            self.__dict__.update(vars(args))
+            super().__init__(**kwargs)
+        else:
+            super().__init__(launch=launch, **kwargs)
 
     def get_dataloaders(self) -> None:
         """Override parent's get_dataloaders method to return None.
@@ -136,9 +177,18 @@ class DCTestCustomDataloaderProfiledRGBToProfiledRGB(
         """
         return None
 
+    def instantiate_model(self):
+        self.model = denoise_then_compress.DenoiseThenCompress(
+            self.in_channels,
+            self.arch_enc,
+            self.arch_dec,
+            self.hidden_out_channels,
+            self.bitstream_out_channels
+        )
+
 
 class DenoiseTestCustomDataloaderProfiledRGBToProfiledRGB(
-    train_denoiser_prgb2prgb.DenoiserTrainingProfiledRGBToProfiledRGB
+    DenoiserTrainingProfiledRGBToProfiledRGB
 ):
     """Test subclass for RGB-to-RGB denoiser training with null dataloaders.
     
@@ -167,7 +217,15 @@ class DenoiseTestCustomDataloaderProfiledRGBToProfiledRGB(
             launch: If True, triggers immediate parameter processing
             **kwargs: Additional keyword arguments passed to the parent class
         """
-        super().__init__(launch=launch, **kwargs)
+        if kwargs.get('test_only'):
+            preset_args = kwargs.get('preset_args', {})
+            kwargs.update(preset_args)
+            args = configargparse.Namespace(**kwargs)
+            
+            self.__dict__.update(vars(args))
+            super().__init__(**kwargs)
+        else:
+            super().__init__(launch=launch, **kwargs)
 
     def get_dataloaders(self) -> None:
         """Override parent's get_dataloaders method to return None.
@@ -180,3 +238,6 @@ class DenoiseTestCustomDataloaderProfiledRGBToProfiledRGB(
             None: Instead of the DataLoader objects that the parent would return
         """
         return None
+
+    def instantiate_model(self):
+        self.model = raw_denoiser.UtNet2(self.in_channels, self.funit)

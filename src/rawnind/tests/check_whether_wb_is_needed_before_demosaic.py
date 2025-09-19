@@ -34,22 +34,22 @@ import sys
 import numpy as np
 import cv2
 
-from rawnind.libs import raw
+from ..libs import raw
 
 # Path to the ground truth images in the Natural Image Noise Dataset
-IMAGE_SETS_DPATH = os.path.join("..", "..", "datasets", "rawNIND", "src", "Bayer")
+IMAGE_SETS_DPATH = os.path.join("..", "..", "datasets", "RawNIND", "Bayer")
 
 if __name__ == "__main__":
-    # Container for storing difference measurements across all test images
-    losses = []
-
     # Test multiple demosaicing algorithms to check if results are algorithm-dependent
     for demosaic_algorithm_name, demosaic_algorithm in {
         "COLOR_BayerRGGB2RGB_EA": cv2.COLOR_BayerRGGB2RGB_EA,  # Edge-aware demosaicing (higher quality)
         "COLOR_BayerRGGB2RGB"   : cv2.COLOR_BayerRGGB2RGB,  # Standard demosaicing
     }.items():
         print(f"{demosaic_algorithm_name=}")
-
+        
+        # Container for storing difference measurements for this algorithm
+        losses = []
+        
         # Iterate through all image sets in the dataset
         for aset in os.listdir(IMAGE_SETS_DPATH):
             # Focus on ground truth (clean) images only
@@ -80,7 +80,7 @@ if __name__ == "__main__":
                 )
 
                 # Step 2: Apply demosaicing to white-balanced mono image
-                camRGB_img_wb = raw.demosaic(mono_img_wb, metadata)
+                camRGB_img_wb = raw.demosaic(mono_img_wb, metadata, method=demosaic_algorithm)
 
                 # Step 3: Reverse the white balance on the demosaiced image
                 # This ensures color accuracy while isolating the effect of pre-demosaic white balance

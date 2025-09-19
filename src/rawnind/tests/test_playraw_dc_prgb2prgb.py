@@ -19,18 +19,18 @@ Note:
     This file has several code issues:
     1. It has syntax errors in the dataset creation section (lines 28-35)
     2. It's missing the import for 'rawds_manproc'
-    3. It imports 'rawtestlib' directly instead of from 'rawnind.libs'
+    3. It imports 'rawtestlib' directly instead of from '.libs'
     
     A corrected version would:
-    - Import "from rawnind.libs import rawds_manproc"
+    - Import "from .libs import rawds_manproc"
     - Fix the dataset initialization syntax
     - Follow patterns from test_manproc_playraw_dc_prgb2prgb.py
 """
 
 import sys
 
-import rawnind.libs.rawds_manproc
-from rawnind.tests import rawtestlib
+import .libs.rawds_manproc
+from .tests import rawtestlib
 
 if __name__ == "__main__":
     preset_args = {"test_only": True, "init_step": None}
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     ):
         print(f"Skipping test, best_val is known")
         sys.exit(0)
-    dataset = (rawnind.libs.rawds_manproc.ManuallyProcessedImageTestDataHandler(
+    dataset = (.libs.rawds_manproc.ManuallyProcessedImageTestDataHandler(
         net_input_type="bayer",
         test_descriptor_fpath="../../datasets/extraraw/play_raw_test/manproc_test_descriptor.yaml",
     )

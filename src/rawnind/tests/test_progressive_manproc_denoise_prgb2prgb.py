@@ -1,7 +1,7 @@
 import sys
 
-from rawnind.libs import rawds_manproc
-from rawnind.tests import rawtestlib
+from .libs import rawds_manproc
+from .tests import rawtestlib
 
 MS_SSIM_VALUES = {
     "le": {0.9975, 0.97, 0.99},

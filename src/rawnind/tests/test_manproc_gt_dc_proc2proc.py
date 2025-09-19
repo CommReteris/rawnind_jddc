@@ -9,8 +9,8 @@ import sys
 import torch
 
 from rawnind import train_dc_prgb2prgb
-from rawnind.libs import abstract_trainer
-from rawnind.libs import rawds_manproc
+from .libs import abstract_trainer
+from .libs import rawds_manproc
 
 
 class DCTestCustomDataloaderProfiledRGBToProfiledRGB(

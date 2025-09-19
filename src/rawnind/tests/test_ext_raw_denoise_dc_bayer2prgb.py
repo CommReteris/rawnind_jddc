@@ -7,8 +7,8 @@ Launch with --debug_options output_valtest_images to output images.
 import sys
 import os
 
-from rawnind.libs import rawds_ext_paired_test
-from rawnind.tests import rawtestlib
+from .libs import rawds_ext_paired_test
+from .tests import rawtestlib
 
 if __name__ == "__main__":
     preset_args = {"test_only": True, "init_step": None}

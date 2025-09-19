@@ -1,4 +1,4 @@
-"""Grapher for RawNIND. Also save results to csv.
+"""Grapher for . Also save results to csv.
 Don't forget to run python tools/list_strictly_worse_plotted_models.py
 """
 
@@ -16,7 +16,7 @@ import subprocess
 
 from common.libs import json_saver
 from common.libs import utilities
-from rawnind.tools.test_all_known import (
+from .tools.test_all_known import (
     TESTS,
     MODEL_TYPES,
     MODEL_INPUTS,

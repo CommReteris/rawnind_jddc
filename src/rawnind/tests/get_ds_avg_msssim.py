@@ -35,7 +35,7 @@ import yaml
 
 # Add parent directory to path for imports
 sys.path.append('..')
-from rawnind.libs import rawproc
+from .libs import rawproc
 
 
 def load_dataset_and_test_config():

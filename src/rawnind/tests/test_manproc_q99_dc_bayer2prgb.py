@@ -8,8 +8,8 @@ import configargparse
 import sys
 import torch
 
-from rawnind.libs import rawds_manproc
-from rawnind.tests import rawtestlib
+from .libs import rawds_manproc
+from .tests import rawtestlib
 
 if __name__ == "__main__":
     preset_args = {"test_only": True, "init_step": None}

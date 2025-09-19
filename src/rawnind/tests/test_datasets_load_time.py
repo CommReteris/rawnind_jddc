@@ -39,9 +39,9 @@ import time
 import statistics
 import sys
 
-from rawnind.libs import rawds
-from rawnind.libs import rawproc
-from rawnind.libs import abstract_trainer
+from .libs import rawds
+from .libs import rawproc
+from .libs import abstract_trainer
 
 # Configure log file path
 LOG_FPATH = os.path.join("logs", os.path.basename(__file__) + ".log")

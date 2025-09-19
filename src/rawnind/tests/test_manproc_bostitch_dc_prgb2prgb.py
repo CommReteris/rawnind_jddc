@@ -10,8 +10,8 @@ import torch
 import os
 
 from rawnind import train_dc_prgb2prgb
-from rawnind.libs import abstract_trainer
-from rawnind.libs import rawds_manproc
+from .libs import abstract_trainer
+from .libs import rawds_manproc
 
 RAWNIND_BOSTITCH_TEST_DESCRIPTOR_FPATH = os.path.join(
     "..", "..", "datasets", "RawNIND_Bostitch", "manproc_test_descriptor.yaml"

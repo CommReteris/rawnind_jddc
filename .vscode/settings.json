@@ -1,0 +1,10 @@
+{
+    "testing.followRunningTest": true,
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": true,
+    "pythonTestExplorer.outputs.showOutputsOnRun": true,
+    "evenBetterToml.formatter.compactInlineTables": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "rust-analyzer.cachePriming.enable": false,
+    "typescript.suggest.objectLiteralMethodSnippets.enabled": false
+}
