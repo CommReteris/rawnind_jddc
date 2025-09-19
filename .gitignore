@@ -1,6 +1,7 @@
 .pyc
 .idea
 uv.lock
+**/__pycache__
 /src/rawnind.egg-info/dependency_links.txt
 /src/rawnind.egg-info/PKG-INFO
 /src/rawnind.egg-info/requires.txt
