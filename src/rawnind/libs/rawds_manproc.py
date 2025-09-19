@@ -7,8 +7,8 @@ import torch
 import tqdm
 import yaml
 
-from rawnind.libs import pt_helpers, pt_ops, utilities
-from rawnind.libs import raw, rawds, rawproc
+from . import pt_helpers, pt_ops, utilities
+from . import raw, rawds, rawproc
 from rawnind.tools import make_hdr_extraraw_files, make_hdr_rawnind_files
 
 TEST_DESCRIPTOR_FPATH = os.path.join(
@@ -24,8 +24,8 @@ descriptor listing manually processed images (Darktable/Lightroom-like outputs)
 and prepares tensors and callbacks to post-process neural network outputs to
 match the manual processing pipeline for evaluation.
 
-All heavy lifting for RAW/TIFF I/O is delegated to rawnind.libs.raw and
-rawnind.libs.rawproc; this file focuses on orchestration and convenience.
+All heavy lifting for RAW/TIFF I/O is delegated to ..raw and
+..rawproc; this file focuses on orchestration and convenience.
 """
 
 

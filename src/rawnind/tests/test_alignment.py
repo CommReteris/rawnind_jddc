@@ -1,64 +1,79 @@
-"""Image alignment testing script for the RawNIND image processing pipeline.
+"""
+Test module for image alignment in the RawNIND pipeline.
 
-This script tests the image alignment functionality by finding the optimal alignment between
-two test images and applying the alignment transformation. It demonstrates the use of:
+Objective: To verify that the alignment process correctly computes an optimal integer pixel shift 
+between two images and applies it such that the aligned images exhibit high structural similarity, 
+ensuring they represent the same spatial content for downstream tasks like denoising or quality evaluation.
 
-1. find_best_alignment: Searches for the optimal integer shift (dy, dx) that minimizes
-   the mean L1 difference between two images.
-2. shift_images: Applies the calculated shift to align the images and crops them
-   to ensure they cover the same spatial area.
+Test criteria: 
+- The alignment shift is computed without errors using L1 minimization.
+- Post-alignment, the Structural Similarity Index (SSIM) between the two images exceeds 0.95, 
+  indicating minimal misalignment and perceptual equivalence.
+- No exceptions occur during image loading, alignment computation, or SSIM calculation.
 
-The test uses two sample images from the Moor frog dataset ("Moor_frog_bl.jpg" and
-"Moor_frog_tr.jpg") and evaluates how well they can be aligned. This alignment process
-is critical for:
-- Comparing clean and noisy versions of the same scene
-- Preparing training data for denoising networks
-- Evaluating image quality metrics between reference and processed images
+How testing for this criteria fulfills the purpose: The SSIM assertion directly quantifies the 
+effectiveness of the alignment by measuring structural, luminance, and contrast similarity, 
+replacing subjective manual inspection with an objective, automated metric that detects residual 
+misalignments (e.g., shifts causing feature mismatches) while tolerating expected variations 
+like noise in raw data pairs. This ensures the pipeline's alignment step reliably prepares 
+comparable image pairs, fulfilling the intent of accurate data preprocessing.
 
-The script outputs:
-- The calculated optimal alignment shift as (dy, dx) coordinates
-- Two aligned images saved to the tests_output directory
+No components are mocked, monkeypatched, or are fixtures: This test uses the real 'rawproc' 
+module for alignment functions and 'np_imgops' for image I/O, along with scikit-image for SSIM.
 
-Usage:
-    python test_alignment.py
-
-Expected output:
-    Prints the alignment shift vector and saves aligned images.
-    Small shift values indicate minimal misalignment between source images.
+Reasons for using real components without mocking/patching/fixturing: The test's objective is 
+integration-level validation of the full alignment pipeline (loading -> shift computation -> 
+application -> quality check) to ensure end-to-end correctness in the RawNIND environment. 
+Mocking would abstract away potential issues in real image handling or computation, compromising 
+the test's ability to detect unintended behaviors like numerical instability or I/O errors. 
+Using real components guarantees the assertion reflects actual runtime performance without 
+unnecessary complexity, while keeping the test performant (SSIM is efficient for typical image sizes).
 """
 
 import os
-import sys
+import numpy as np
+from skimage.metrics import structural_similarity as ssim
 
-from .libs import rawproc
-from rawnind.libs import np_imgops
+import pytest
 
-if __name__ == "__main__":
-    # Input file paths for the test images
-    FP1: str = os.path.join("test_data", "Moor_frog_bl.jpg")
-    FP2: str = os.path.join("test_data", "Moor_frog_tr.jpg")
+from rawnind.libs import rawproc, np_imgops
+
+
+def test_image_alignment():
+    """Test image alignment verification using SSIM."""
+    # Input file paths for the test images (assume test_data/ exists in project root or adjust path)
+    fp1 = os.path.join("test_data", "Moor_frog_bl.jpg")
+    fp2 = os.path.join("test_data", "Moor_frog_tr.jpg")
 
     # Load images as floating-point numpy arrays
-    img1 = np_imgops.img_fpath_to_np_flt(FP1)
-    img2 = np_imgops.img_fpath_to_np_flt(FP2)
+    img1 = np_imgops.img_fpath_to_np_flt(fp1)
+    img2 = np_imgops.img_fpath_to_np_flt(fp2)
 
     # Find the optimal alignment between the two images
-    # The verbose flag enables detailed logging of alignment search progress
     best_alignment = rawproc.find_best_alignment(
-        anchor_img=img1, target_img=img2, verbose=True
+        anchor_img=img1, target_img=img2, verbose=False  # Disable verbose for test quietness
     )
-    print(f"Optimal alignment shift (dy, dx): {best_alignment}")
 
     # Apply the calculated alignment to both images
-    # This ensures both images cover the same spatial area after alignment
     img1_aligned, img2_aligned = rawproc.shift_images(img1, img2, best_alignment)
 
-    # Save the aligned images to the output directory
-    output_dir = os.path.join("tests_output")
-    os.makedirs(output_dir, exist_ok=True)
-    np_imgops.np_to_img(
-        img1_aligned, os.path.join(output_dir, "Moor_frog_bl_aligned.png")
+    # Normalize images to [0, 1] range if necessary
+    if img1_aligned.max() > 1.0:
+        img1_aligned = img1_aligned / img1_aligned.max()
+    if img2_aligned.max() > 1.0:
+        img2_aligned = img2_aligned / img2_aligned.max()
+
+    # Compute SSIM for verification (multichannel for RGB)
+    similarity_score = ssim(
+        img1_aligned, img2_aligned, multichannel=True, data_range=1.0
     )
-    np_imgops.np_to_img(
-        img2_aligned, os.path.join(output_dir, "Moor_frog_tr_aligned.png")
+
+    # Assert alignment quality
+    alignment_threshold = 0.95
+    assert similarity_score > alignment_threshold, (
+        f"Alignment verification failed! SSIM score: {similarity_score:.4f} "
+        f"(threshold: {alignment_threshold}). Check shift {best_alignment} or image data."
     )
+
+if __name__ == "__main__":
+    pytest.main([__file__])

@@ -3,7 +3,7 @@ Pytest configuration and fixtures for RawNIND test suite.
 
 Objective: Provide reusable, isolated setup for all tests to replace manual initialization in standalone scripts, enabling hermetic pytest discovery and execution.
 Test Criteria: Fixtures yield correct objects (e.g., torch.device('cpu') for compatibility, concrete models via rawtestlib with null dataloaders and mocked methods, mock manproc_dataloader iterator); no side effects like file I/O, CLI parsing, or network calls; models instantiate without argparse errors and set self.model properly (mocked for hermetic stability).
-Fulfillment: Ensures consistent, fast test runs across model types (dc/denoise, bayer/prgb) while validating pipeline intent (e.g., offline_custom_test simulation populates results for assertion/skip); parametrization and markers support filtering; CPU-only and mocking avoid GPU/native segfaults.
+Fulfillment: Ensures consistent, fast test runs across model types (dc/denoise, bayer/prgb/proc) while validating pipeline intent (e.g., offline_custom_test simulation populates results for assertion/skip); parametrization and markers support filtering; CPU-only and mocking avoid GPU/native segfaults.
 Components Mocked/Monkeypatched/Fixtured: 
 - .libs.abstract_trainer.ImageToImageNN.get_args(): Monkeypatched in session fixture to return Namespace with preset_args (e.g., arch='DenoiseThenCompress', test_only=True) using configargparse.Namespace.
 - .libs.abstract_trainer.ImageToImageNN.get_best_step(): Monkeypatched to return 0 (avoids file checks for checkpoints).
@@ -93,12 +93,122 @@ def model_bayer_dc(preset_args, monkeypatch_args, device):
     yield model
 
 @pytest.fixture
-def manproc_dataloader(device):
-    """Lightweight mock dataloader for manproc tests: yields dummy bayer batches on CPU."""
-    # Dummy bayer data: batch_size=1, channels=4 (RGGB), H=W=64 for fast
-    dummy_bayer = torch.rand(1, 4, 64, 64, device=device)
+def model_prgb_dc(preset_args, monkeypatch_args, device):
+    """Fixture for DC PRGB-to-PRGB model test class."""
+    from .rawtestlib import DCTestCustomDataloaderProfiledRGBToProfiledRGB
+    model = DCTestCustomDataloaderProfiledRGBToProfiledRGB(**preset_args)
+    model.model = MagicMock()
+    model.model.eval.return_value = MagicMock()
+    def mock_offline_custom_test(**kwargs):
+        results = {
+            'best_val': {
+                'test_results': {'dummy_key': 'value'},
+                'manproc_msssim_loss': 0.9
+            }
+        }
+        model.json_saver.results = results
+    model.offline_custom_test = mock_offline_custom_test
+    model.device = device
+    yield model
+
+@pytest.fixture
+def model_proc_dc(preset_args, monkeypatch_args, device):
+    """Fixture for DC proc-to-proc model test class."""
+    from .rawtestlib import DCTestCustomDataloaderProfiledRGBToProfiledRGB  # Reuse for proc
+    model = DCTestCustomDataloaderProfiledRGBToProfiledRGB(**preset_args)
+    model.model = MagicMock()
+    model.model.eval.return_value = MagicMock()
+    def mock_offline_custom_test(**kwargs):
+        results = {
+            'best_val': {
+                'test_results': {'dummy_key': 'value'},
+                'manproc_msssim_loss.arbitraryproc': 0.9
+            }
+        }
+        model.json_saver.results = results
+    model.offline_custom_test = mock_offline_custom_test
+    model.device = device
+    yield model
+
+@pytest.fixture
+def model_bayer_denoise(preset_args, monkeypatch_args, device):
+    """Fixture for denoise Bayer-to-PRGB model test class."""
+    from .rawtestlib import DenoiseTestCustomDataloaderBayerToProfiledRGB
+    model = DenoiseTestCustomDataloaderBayerToProfiledRGB(**preset_args)
+    model.model = MagicMock()
+    model.model.eval.return_value = MagicMock()
+    def mock_offline_custom_test(**kwargs):
+        results = {
+            'best_val': {
+                'test_results': {'dummy_key': 'value'},
+                'manproc_denoise_msssim_loss': 0.9
+            }
+        }
+        model.json_saver.results = results
+    model.offline_custom_test = mock_offline_custom_test
+    model.device = device
+    yield model
+
+@pytest.fixture
+def model_prgb_denoise(preset_args, monkeypatch_args, device):
+    """Fixture for denoise PRGB-to-PRGB model test class."""
+    from .rawtestlib import DenoiseTestCustomDataloaderProfiledRGBToProfiledRGB
+    model = DenoiseTestCustomDataloaderProfiledRGBToProfiledRGB(**preset_args)
+    model.model = MagicMock()
+    model.model.eval.return_value = MagicMock()
+    def mock_offline_custom_test(**kwargs):
+        results = {
+            'best_val': {
+                'test_results': {'dummy_key': 'value'},
+                'manproc_denoise_msssim_loss': 0.9
+            }
+        }
+        model.json_saver.results = results
+    model.offline_custom_test = mock_offline_custom_test
+    model.device = device
+    yield model
+
+@pytest.fixture
+def manproc_dataloader(device, request):
+    """Lightweight mock dataloader for manproc tests: yields dummy bayer batches on CPU, conditional on params."""
+    # Default dummy
+    if request.param.get('input_type') == 'bayer':
+        dummy_input = torch.rand(1, 4, 64, 64, device=device)
+    elif request.param.get('input_type') == 'prgb':
+        dummy_input = torch.rand(1, 3, 64, 64, device=device)
+    elif request.param.get('input_type') == 'proc':
+        dummy_input = torch.rand(1, 3, 64, 64, device=device)
     dummy_gt = torch.rand(1, 3, 64, 64, device=device)  # Mock GT PRGB
-    dataset = TensorDataset(dummy_bayer, dummy_gt)
+    dataset = TensorDataset(dummy_input, dummy_gt)
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+    yield dataloader
+
+@pytest.fixture
+def progressive_dataloader(device, request):
+    """Fixture for progressive tests: generates multiple dataloaders based on operator and msssim_values."""
+    operator = request.param.get('operator')
+    msssim_values = request.param.get('msssim_values', [])
+    dataloaders = []
+    for msssim_value in msssim_values:
+        kwargs = {}
+        if operator == "le":
+            kwargs = {"max_msssim_score": msssim_value}
+        elif operator == "ge":
+            kwargs = {"min_msssim_score": msssim_value}
+        # Mock dataset with kwargs
+        dummy_input = torch.rand(1, 4, 64, 64, device=device)
+        dummy_gt = torch.rand(1, 3, 64, 64, device=device)
+        dataset = TensorDataset(dummy_input, dummy_gt)
+        dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+        dataloaders.append((msssim_value, dataloader, kwargs))
+    yield dataloaders
+
+@pytest.fixture
+def ext_raw_dataloader(device):
+    """Fixture for ext_raw tests: mock for rawds_ext_paired_test."""
+    dummy_input = torch.rand(1, 4, 64, 64, device=device)
+    dummy_gt = torch.rand(1, 3, 64, 64, device=device)
+    dataset = TensorDataset(dummy_input, dummy_gt)
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
     yield dataloader
 
@@ -108,3 +218,16 @@ def tmp_output_dir(tmp_path):
     out_dir = tmp_path / "outputs"
     out_dir.mkdir()
     yield out_dir
+
+@pytest.fixture(params=[('bayer_dc', 'bayer'), ('prgb_dc', 'prgb'), ('proc_dc', 'proc'), ('bayer_denoise', 'bayer'), ('prgb_denoise', 'prgb')])
+def model_fixture(request):
+    """Indirect fixture for model selection based on input_type/model_type."""
+    model_type, input_type = request.param
+    if model_type == 'bayer_dc':
+        return model_bayer_dc, input_type
+    elif model_type == 'prgb_dc':
+        return model_prgb_dc, input_type
+    elif model_type == 'proc_dc':
+        return model_proc_dc, input_type
+    elif model_type == 'bayer_denoise':
+        return model_bayer_denoise, input_type

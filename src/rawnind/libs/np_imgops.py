@@ -60,8 +60,8 @@ except ImportError:
         "np_imgops.py warning: missing OpenImageIO library; falling back to OpenCV which cannot open 16-bit float tiff images"
     )
 
-from rawnind.libs import raw
-from rawnind.libs import libimganalysis
+from . import raw
+from . import libimganalysis
 
 # Directory for temporary files used in testing
 TMP_DPATH = "tmp"

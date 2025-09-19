@@ -24,8 +24,8 @@ import scipy.ndimage
 import torch
 
 #
-from rawnind.libs import np_imgops
-from rawnind.libs import raw
+from . import np_imgops
+from . import raw
 
 # LOSS_THRESHOLD: float = 0.33
 LOSS_THRESHOLD: float = 0.4

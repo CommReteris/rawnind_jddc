@@ -30,14 +30,14 @@ Output:
 
 import os
 import statistics
-import sys
-import numpy as np
-import cv2
 
-from ..libs import raw
+import cv2
+import numpy as np
+
+from src.rawnind.libs import raw
 
 # Path to the ground truth images in the Natural Image Noise Dataset
-IMAGE_SETS_DPATH = os.path.join("..", "..", "datasets", "RawNIND", "Bayer")
+IMAGE_SETS_DPATH = os.path.join("../..", "..", "datasets", "RawNIND", "Bayer")
 
 if __name__ == "__main__":
     # Test multiple demosaicing algorithms to check if results are algorithm-dependent
@@ -46,10 +46,10 @@ if __name__ == "__main__":
         "COLOR_BayerRGGB2RGB"   : cv2.COLOR_BayerRGGB2RGB,  # Standard demosaicing
     }.items():
         print(f"{demosaic_algorithm_name=}")
-        
+
         # Container for storing difference measurements for this algorithm
         losses = []
-        
+
         # Iterate through all image sets in the dataset
         for aset in os.listdir(IMAGE_SETS_DPATH):
             # Focus on ground truth (clean) images only

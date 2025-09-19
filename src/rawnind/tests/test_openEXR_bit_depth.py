@@ -31,7 +31,7 @@ import sys
 import numpy as np
 import os
 
-from .libs import raw
+from ..libs import raw
 
 if __name__ == "__main__":
     # Create a random test image with 3 channels (RGB) and 128x128 resolution

@@ -15,7 +15,7 @@ import torch
 import pytest
 import numpy as np
 
-from .models.denoise_then_compress import DenoiseThenCompress
+from rawnind.models.denoise_then_compress import DenoiseThenCompress
 
 
 @pytest.fixture

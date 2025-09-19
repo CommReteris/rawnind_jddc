@@ -6,7 +6,7 @@ the existing RawNIND test framework.
 """
 
 import torch
-from .models.compression_autoencoders import (
+from ..models.compression_autoencoders import (
     AbstractRawImageCompressor,
     BalleEncoder,
     BalleDecoder

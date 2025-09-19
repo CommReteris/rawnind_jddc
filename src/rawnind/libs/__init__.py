@@ -4,9 +4,9 @@ This package collects utilities for raw I/O, dataset handling, processing helper
 training abstractions, and small test shims.
 
 Note: We intentionally avoid importing submodules at package import time to keep
-`import rawnind.libs` lightweight and free of optional system dependencies.
+`import .` lightweight and free of optional system dependencies.
 Import submodules explicitly where needed, e.g.:
-    from rawnind.libs import rawproc, raw
+    from . import rawproc, raw
 """
 
 __all__ = [
@@ -17,4 +17,5 @@ __all__ = [
     "rawds",
     "rawds_manproc",
     "rawtestlib",
+    "validation"
 ]

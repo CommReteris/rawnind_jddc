@@ -29,7 +29,7 @@ import numpy as np
 import rawpy
 import requests
 
-from rawnind.libs import icc
+from . import icc
 
 # Constants
 BAYER_PATTERNS = {

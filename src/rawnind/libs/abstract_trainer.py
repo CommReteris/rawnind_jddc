@@ -67,9 +67,9 @@ import tqdm
 import yaml
 
 #
-from rawnind.libs import json_saver, locking, pt_helpers, pt_losses, utilities
-from common.tools import save_src
-from rawnind.libs import raw, rawds, rawproc
+from . import json_saver, locking, pt_helpers, pt_losses, utilities
+from rawnind.tools import save_src
+from . import raw, rawds, rawproc
 # from rawnind.extmodels import runet
 # from rawnind.extmodels import edsr
 from rawnind.models import bm3d_denoiser, compression_autoencoders, denoise_then_compress, manynets_compression, \

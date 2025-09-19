@@ -34,7 +34,7 @@ import sys
 import yaml
 
 # Add parent directory to path for imports
-sys.path.append('..')
+sys.path.append('../..')
 from .libs import rawproc
 
 

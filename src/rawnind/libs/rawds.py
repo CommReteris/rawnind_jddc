@@ -21,10 +21,10 @@ import tqdm
 
 import torch
 
-from rawnind.libs import pt_helpers, utilities
-from rawnind.libs import raw
-from rawnind.libs import rawproc
-from rawnind.libs import arbitrary_proc_fun
+from . import pt_helpers, utilities
+from . import raw
+from . import rawproc
+from . import arbitrary_proc_fun
 
 BREAKPOINT_ON_ERROR = True
 
