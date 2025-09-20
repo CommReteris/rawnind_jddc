@@ -302,3 +302,5 @@ def model_fixture(request):
         return model_proc_dc, input_type
     elif model_type == 'bayer_denoise':
         return model_bayer_denoise, input_type
+    elif model_type == 'prgb_denoise':
+        return model_prgb_denoise, input_type
