@@ -1,7 +1,6 @@
 import torch
 import sys
 
-sys.path.append("..")
 from rawnind.libs import raw
 
 assert len(sys.argv) == 3

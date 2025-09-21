@@ -1,0 +1,66 @@
+# =============================================================================
+# Specialized Configuration for Bayer-to-RGB Denoising
+# =============================================================================
+#
+# This configuration file contains specialized parameters for training denoising
+# models that process raw Bayer pattern images (4-channel) and output clean 
+# profiled RGB images. It extends the base configuration in train_denoise.yaml
+# with specific settings optimized for this task.
+#
+# Usage:
+#   This configuration is used by train_denoiser_bayer2prgb.py to train neural
+#   networks that handle the joint demosaicing and denoising of Bayer images.
+#
+# Key specializations:
+#   - Crop sizes optimized for Bayer pattern processing
+#   - Batch sizes balanced for memory efficiency with 4-channel inputs
+#   - U-Net architecture selected for its effectiveness in image restoration
+#   - Gamma22 transfer function appropriate for this color processing pipeline
+#
+# See also:
+#   - train_denoise.yaml: Base configuration with additional parameters
+#   - train_denoise_prgb2prgb.yaml: Alternative configuration for RGB-to-RGB denoising
+
+# =============================================================================
+# Patch and Batch Configuration
+# =============================================================================
+
+# Size of image patches used during training (pixels)
+# - Smaller than validation/test crops for memory efficiency
+# - Must be divisible by 16 for architecture constraints
+crop_size: 256
+
+# Size of validation image patches (pixels)
+# - Larger than training crops to better evaluate global image quality
+val_crop_size: 1024
+
+# Size of test image patches (pixels)
+# - Same as validation for consistent evaluation
+test_crop_size: 1024
+
+# Number of random crops extracted from each training image
+# - Higher values increase training data diversity
+# - Lower values reduce memory usage and processing time
+num_crops_per_image: 4
+
+# Batch size for clean (ground truth) images
+# - Smaller due to higher memory requirements of full-quality images
+batch_size_clean: 1
+
+# Batch size for noisy (input) images
+# - Larger to provide more diverse noise patterns per batch
+batch_size_noisy: 4
+
+# =============================================================================
+# Model Configuration
+# =============================================================================
+
+# Transfer function applied during training
+# - gamma22: Standard gamma correction (power of 1/2.2)
+# - Suitable for Bayer-to-RGB processing where linearity isn't preserved
+transfer_function: gamma22
+
+# Model architecture
+# - unet: U-Net architecture with skip connections
+# - Optimal for image-to-image translation tasks with spatial correspondence
+arch: unet

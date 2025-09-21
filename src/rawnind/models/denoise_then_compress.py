@@ -34,8 +34,8 @@ from typing import Literal, Optional
 
 import torch
 
-from rawnind.libs import rawproc
-# sys.path.append("..")
+from rawnind.dependencies import raw_processing as rawproc
+# 
 from . import raw_denoiser, manynets_compression
 
 
@@ -63,25 +63,25 @@ class DenoiseThenCompress(torch.nn.Module):
     """
     # Denoising architecture to use (U-Net based model)
     DENOISING_ARCH = raw_denoiser.UtNet2
-    
+
     # Path to pre-trained Bayer pattern (4-channel) denoising model
     BAYER_DENOISING_MODEL_FPATH = "../../models/rawnind_denoise/DenoiserTrainingBayerToProfiledRGB_4ch_2024-02-21-bayer_ms-ssim_mgout_notrans_valeither_-4/saved_models/iter_4350000.pt"
-    
+
     # Path to pre-trained profiled RGB (3-channel) denoising model
     PRGB_DENOISING_MODEL_FPATH = "../../models/rawnind_denoise/DenoiserTrainingProfiledRGBToProfiledRGB_3ch_2024-10-09-prgb_ms-ssim_mgout_notrans_valeither_-1/saved_models/iter_3900000.pt"
 
     def __init__(
-        self,
-        in_channels: Literal[3, 4],
-        encoder_cls: Optional[torch.nn.Module],
-        decoder_cls: Optional[torch.nn.Module],
-        device: torch.device,
-        hidden_out_channels: int = 192,
-        bitstream_out_channels: int = 320,
-        num_distributions: int = 64,
-        preupsample: bool = False,
-        *args,
-        **kwargs,
+            self,
+            in_channels: Literal[3, 4],
+            encoder_cls: Optional[torch.nn.Module],
+            decoder_cls: Optional[torch.nn.Module],
+            device: torch.device,
+            hidden_out_channels: int = 192,
+            bitstream_out_channels: int = 320,
+            num_distributions: int = 64,
+            preupsample: bool = False,
+            *args,
+            **kwargs,
     ):
         """Initialize the sequential denoising and compression pipeline.
         
@@ -100,7 +100,7 @@ class DenoiseThenCompress(torch.nn.Module):
             ValueError: If in_channels is not 3 or 4
         """
         super().__init__()
-        
+
         # Initialize compression model (always uses 3-channel input since denoiser outputs RGB)
         self.compressor = manynets_compression.ManyPriors_RawImageCompressor(
             hidden_out_channels=hidden_out_channels,
@@ -117,7 +117,7 @@ class DenoiseThenCompress(torch.nn.Module):
             preupsample=preupsample,
             num_distributions=num_distributions,
         )
-        
+
         # Initialize denoising model with appropriate architecture
         self.denoiser = self.DENOISING_ARCH(in_channels=in_channels, funit=32)
 
@@ -166,10 +166,10 @@ class DenoiseThenCompress(torch.nn.Module):
         #     ),
         #     color_profile="lin_rec2020",
         # )
-        
+
         # Step 1: Apply denoising using the pre-trained denoiser
         x_denoised = self.denoiser(x)
-        
+
         # Commented alternative normalization method
         # # scale to the original values
         # xmin = x.min()
@@ -178,11 +178,11 @@ class DenoiseThenCompress(torch.nn.Module):
         # # check that xmin and x.min() are the same, and xmax and x.max() are the same
         # assert torch.allclose(xmin, x_denoised.min())
         # assert torch.allclose(xmax, x_denoised.max())
-        
+
         # Step 2: Match the gain of the denoised image to the original input
         # This ensures consistent brightness/contrast between input and output
         x_denoised = rawproc.match_gain(x, x_denoised)
-        
+
         # Commented debugging code for saving denoised image
         # raw.hdr_nparray_to_file(
         #     x_denoised[0].detach().cpu().numpy(),
@@ -195,9 +195,9 @@ class DenoiseThenCompress(torch.nn.Module):
 
         # Step 3: Compress the denoised image
         x_compressed = self.compressor(x_denoised)
-        
+
         return x_compressed
-        
+
         # Commented alternative debug return (bypasses denoising)
         # compressed = self.compressor(x)
         # compressed["reconstructed_image"] = x  # dbg

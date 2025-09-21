@@ -17,3 +17,5 @@ tqdm
 torch
 torchvision
 pytorch-msssim
+
+scikit-image>=0.19.0

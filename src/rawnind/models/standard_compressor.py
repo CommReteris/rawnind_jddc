@@ -4,12 +4,11 @@ import os
 import sys
 from typing import Literal, Optional
 
-sys.path.append("..")
 from rawnind.models import compression_autoencoders
-from common.libs import stdcompression
-from common.libs import pt_ops
-from common.libs import pt_helpers
-from common.libs import utilities
+from rawnind.dependencies import compression as stdcompression
+from rawnind.dependencies import pytorch_operations as pt_ops
+from rawnind.dependencies import pytorch_helpers
+from rawnind.dependencies import utilities
 import torch
 
 TMP_INIMG_DPATH = os.path.join("tmp", "inimg")
@@ -67,7 +66,7 @@ class Std_ImageCompressor(compression_autoencoders.AbstractRawImageCompressor):
         return out_results
 
     def get_parameters(
-        self, lr=None, bitEstimator_lr_multiplier: Optional[float] = None
+            self, lr=None, bitEstimator_lr_multiplier: Optional[float] = None
     ):
         param_list = [
             {"params": self.parameters(), "name": "dummy"},
@@ -120,9 +119,9 @@ class Passthrough_ImageCompressor(Std_ImageCompressor):
 
 
 classes_dict = {
-    "bpg": BPG_ImageCompressor,
-    "jpg": JPEG_ImageCompressor,
-    "jxs": JPEGXS_ImageCompressor,
-    "jxl": JPEGXL_ImageCompressor,
+    "bpg"        : BPG_ImageCompressor,
+    "jpg"        : JPEG_ImageCompressor,
+    "jxs"        : JPEGXS_ImageCompressor,
+    "jxl"        : JPEGXL_ImageCompressor,
     "passthrough": Passthrough_ImageCompressor,
 }

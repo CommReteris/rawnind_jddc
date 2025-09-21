@@ -12,9 +12,8 @@ import logging
 import argparse
 from typing import Literal, Optional
 
-sys.path.append("..")
 from rawnind.libs import raw
-from common.libs import utilities
+from rawnind.dependencies import utilities
 
 DATA_DPATH = os.path.join("..", "..", "datasets", "RawNIND")
 DEBUG = True
@@ -48,13 +47,13 @@ def get_args():
 
 
 def proc_dataset(
-    test_images_only: bool = False,
-    gt_only: bool = False,
-    single_set: Optional[str] = None,
-    overwrite: bool = False,
-    num_threads: int = NUM_THREADS,
-    data_dpath: str = DATA_DPATH,
-    test_reserve_fpath=os.path.join("config", "test_reserve.yaml"),
+        test_images_only: bool = False,
+        gt_only: bool = False,
+        single_set: Optional[str] = None,
+        overwrite: bool = False,
+        num_threads: int = NUM_THREADS,
+        data_dpath: str = DATA_DPATH,
+        test_reserve_fpath=os.path.join("config", "test_reserve.yaml"),
 ):
     logging.basicConfig(
         filename=LOG_FPATH,
@@ -98,8 +97,8 @@ def proc_dataset(
                     dest_dpath, set_name, f"{fn}.{PROC_EXTENSION}"
                 )
                 if not overwrite and (
-                    os.path.isfile(dest_fpath)
-                    and utilities.filesize(dest_fpath) > 10000000
+                        os.path.isfile(dest_fpath)
+                        and utilities.filesize(dest_fpath) > 10000000
                 ):  # assuming >= 1 MB is valid
                     continue
                 list_of_src_dest.append((src_fpath, dest_fpath, "lin_rec2020", 16))
@@ -109,7 +108,7 @@ def proc_dataset(
                 dest_dpath, set_name, "gt", f"{fn}.{PROC_EXTENSION}"
             )
             if not overwrite and (
-                os.path.isfile(dest_fpath) and utilities.filesize(dest_fpath) > 10000000
+                    os.path.isfile(dest_fpath) and utilities.filesize(dest_fpath) > 10000000
             ):  # assuming >= 1 MB is valid
                 continue
             list_of_src_dest.append((src_fpath, dest_fpath, "lin_rec2020", 16))
