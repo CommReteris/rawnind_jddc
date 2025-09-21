@@ -79,3 +79,13 @@ uv.lock
 /src/rawnind/models/rawnind_denoise/train_denoise_proc2proc_2024-05-17-proc2proc_ocv3_notrans_valeither_msssim_-4/trainres.yaml
 !/build/**/*
 !/build/*
+src/rawnind/models/weights/README.md
+src/rawnind/models/weights/DenoiserTrainingBayerToProfiledRGB_4ch_2024-02-21-bayer_ms-ssim_mgout_notrans_valeither_-4/saved_models/iter_4350000.pt
+src/rawnind/models/weights/DenoiserTrainingBayerToProfiledRGB_4ch_2024-03-11-bayer_ms-ssim_mgout_preupsample_notrans_valeither_-2/saved_models/iter_4320000.pt
+src/rawnind/models/weights/DenoiserTrainingBayerToProfiledRGB_4ch_2024-06-07-denoise_bayer_nocc_notrans_valeither_msssim_-2/saved_models/iter_4245000.pt
+src/rawnind/models/weights/DenoiserTrainingBayerToProfiledRGB_4ch_2024-10-25-bayer_ms-ssim_mgout_gamma22_-3/saved_models/iter_2370000.pt
+src/rawnind/models/weights/DenoiserTrainingBayerToProfiledRGB_4ch_2024-11-22-bayer_ms-ssim_mgout_notrans_valeither_noowwnpics_mgdef_-1/saved_models/iter_1245000.pt
+src/rawnind/models/weights/DenoiserTrainingProfiledRGBToProfiledRGB_3ch_2024-06-07-denoise_prgb_nocc_notrans_valeither_msssim_-2/saved_models/iter_4980000.pt
+src/rawnind/models/weights/DenoiserTrainingProfiledRGBToProfiledRGB_3ch_2024-10-09-prgb_ms-ssim_mgout_notrans_valeither_-1/saved_models/iter_3900000.pt
+src/rawnind/models/weights/DenoiserTrainingProfiledRGBToProfiledRGB_3ch_2024-10-25-prgb_ms-ssim_mgout_gamma22_-3/saved_models/iter_4305000.pt
+src/rawnind/models/weights/train_denoise_proc2proc_2024-05-17-proc2proc_ocv3_notrans_valeither_msssim_-4/saved_models/iter_3195000.pt

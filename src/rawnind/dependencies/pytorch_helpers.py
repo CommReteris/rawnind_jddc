@@ -86,7 +86,8 @@ def fpath_to_tensor(
     tensor = torch.tensor(tensor, device=device)
 
     if crop_to_multiple:
-        tensor = crop_to_multiple(tensor, crop_to_multiple)
+        from .pytorch_operations import crop_to_multiple as crop_fn
+        tensor = crop_fn(tensor, crop_to_multiple)
 
     if batch:
         tensor = tensor.unsqueeze(0)

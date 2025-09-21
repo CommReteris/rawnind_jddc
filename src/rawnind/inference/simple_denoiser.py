@@ -7,7 +7,7 @@ import torch
 
 from rawnind.inference import image_denoiser
 from rawnind.dependencies import pytorch_helpers
-from rawnind.libs import rawproc
+from rawnind.dependencies import raw_processing as rawproc
 from ..models import raw_denoiser
 
 MODEL_FPATH = os.path.join(os.path.abspath(os.path.curdir),

@@ -187,7 +187,9 @@ def img_fpath_to_np_flt(
         print("img_fpath_to_np_flt warning: ignoring raw image metadata")
         return rggb_img
     if (
-            fpath.lower().endswith(".tif") or fpath.lower().endswith(".tiff")
+            fpath.lower().endswith(".tif") or
+            fpath.lower().endswith(".tiff") or
+            fpath.lower().endswith(".exr")
     ) and TIFF_PROVIDER == "OpenImageIO":
         rgb_img = _oiio_img_fpath_to_np(fpath)
     else:
