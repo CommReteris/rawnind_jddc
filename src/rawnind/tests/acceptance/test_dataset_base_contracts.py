@@ -8,8 +8,8 @@ pytestmark = pytest.mark.acceptance
 
 class _TinyRawDataset(RawImageDataset):
     def __init__(self, *args, **kwargs):
-        # Allow parent to set defaults; override members needed for __getitem__
-        super().__init__(*args, **kwargs)
+        # Initialize base dataset with required args
+        super().__init__(num_crops=2, crop_size=16)
         # Create tiny tensors to represent clean/noisy patches
         self._pairs = [
             (torch.randn(3, 16, 16), torch.randn(3, 16, 16))
@@ -27,16 +27,21 @@ class _TinyRawDataset(RawImageDataset):
 
 def test_random_crops_and_center_crop_shapes():
     ds = _TinyRawDataset()
-    # Random crops (simulate API)
-    rc = ds.random_crops(torch.randn(3, 32, 32), crop_size=16, count=2)
-    assert isinstance(rc, list) and len(rc) == 2
-    for patch in rc:
-        assert isinstance(patch, torch.Tensor)
-        assert patch.shape == torch.Size([3, 16, 16])
 
-    # Center crop
-    cc = ds.center_crop(torch.randn(3, 32, 32), crop_size=16)
-    assert cc.shape == torch.Size([3, 16, 16])
+    ximg = torch.randn(3, 32, 32)
+    mask = torch.ones_like(ximg, dtype=torch.bool)
+
+    # Random crops (API: ximg, yimg=None, whole_img_mask)
+    x_crops, mask_crops = ds.random_crops(ximg, yimg=None, whole_img_mask=mask)
+    assert isinstance(x_crops, torch.Tensor)
+    assert isinstance(mask_crops, torch.Tensor)
+    assert x_crops.shape == torch.Size([ds.num_crops, 3, ds.crop_size, ds.crop_size])
+    assert mask_crops.shape == torch.Size([ds.num_crops, 3, ds.crop_size, ds.crop_size])
+
+    # Center crop (API: ximg, yimg=None, mask)
+    x_center, mask_center = ds.center_crop(ximg, yimg=None, mask=mask)
+    assert x_center.shape == torch.Size([3, ds.crop_size, ds.crop_size])
+    assert mask_center.shape == torch.Size([3, ds.crop_size, ds.crop_size])
 
 
 @pytest.mark.xfail(reason="Specific dataset classes not yet extracted from rawds.py")

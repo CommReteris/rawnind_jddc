@@ -19,10 +19,8 @@ import yaml
 
 from ..dependencies.json_saver import YAMLSaver
 from ..dependencies.pt_losses import losses, metrics
-# Import from dependencies package (will be moved later)
 from ..dependencies.pytorch_helpers import get_device
-# Import raw processing (will be moved to dependencies later)
-from ..libs import rawproc
+from ..dependencies import rawproc
 
 
 class TrainingLoops:

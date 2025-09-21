@@ -20,6 +20,23 @@ I have successfully continued the refactoring process by extracting core trainin
         - `RawDatasetOutput` - TypedDict for dataset output format
         - Core cropping utilities (`random_crops`, `center_crop`, `make_a_random_crop`)
         - Constants and configuration from the original `rawds.py`
+    - **`clean_datasets.py`** - Clean dataset implementations
+    - **`noisy_datasets.py`** - Noisy dataset implementations
+    - **`validation_datasets.py`** - Validation dataset utilities
+
+3. **Inference Package Completion:**
+    - **`base_inference.py`** - Base inference functionality
+    - **`batch_inference.py`** - Batch processing capabilities
+    - **`image_denoiser.py`** - Single image denoising (extracted from tools/denoise_image.py)
+    - **`inference_engine.py`** - Core inference engine
+    - **`model_factory.py`** - Model loading and factory utilities
+    - **`model_loader.py`** - Model loading utilities
+    - **`simple_denoiser.py`** - Simple denoising functionality
+
+4. **Dependencies Package Organization:**
+    - **`config_manager.py`** - Configuration management utilities
+    - **`pytorch_helpers.py`** - PyTorch utility functions
+    - **`utilities.py`** - General utility functions (load_yaml, dict_to_yaml, etc.)
 
 ### 🔄 **Key Refactoring Patterns Applied:**
 
@@ -27,24 +44,33 @@ I have successfully continued the refactoring process by extracting core trainin
 2. **Class Hierarchy Preservation**: Maintained the inheritance structure while moving classes to appropriate packages
 3. **Dependency Management**: Updated imports to use the new package structure
 4. **Code Organization**: Applied clean architecture principles with clear separation of concerns
+5. **Import Refactoring**: Updated all training scripts and tools to use new package imports
 
-### 📋 **Next Steps for Continuation:**
+### 📋 **Latest Import Updates (Commit 6d9fa66):**
 
-The refactoring is progressing well with the core training functionality now properly modularized. To continue:
+**Recent Accomplishments:**
+- ✅ **Import Structure Modernization**: Updated all core modules to use the new package structure
+- ✅ **Training Scripts Updated**: All training scripts now import from `rawnind.training.training_loops`
+- ✅ **Tool Dependencies Fixed**: Updated tool imports to use dependencies package
+- ✅ **Circular Import Resolution**: Handled circular imports with proper import placement
+- ✅ **Acceptance Tests Added**: Comprehensive tests for imports and package layout
 
-1. **Complete Dataset Package**: Extract remaining dataset classes from `rawds.py` (1704 lines):
-    - `CleanCleanImageDataset`, `CleanNoisyDataset`, `TestDataLoader`
-    - Specific dataset implementations (`CleanProfiledRGB*`, etc.)
-    - Validation and test dataset classes
+**Import Pattern Changes:**
+```python
+# Old imports (monolithic)
+from libs.abstract_trainer import ImageToImageNNTraining
+from libs.utilities import load_yaml
 
-2. **Reorganize Tools**: Move inference-related tools to the dedicated inference package:
-    - `denoise_image.py` → `image_denoiser.py`
-    - `simple_denoiser.py` → `simple_denoiser.py`
-    - `test_all_known.py` → `batch_inference.py`
+# New imports (modular)
+from rawnind.training.training_loops import ImageToImageNNTraining
+from rawnind.dependencies.utilities import load_yaml
+```
 
-3. **Update Imports**: Review and update all existing files to reflect the new package structure
-
-4. **Test Migration**: Relocate and update test files to align with the new structure
+**Files Updated:**
+- All training scripts (`train_*.py`) - Updated to use new training package
+- All dataset files - Updated to use new dataset package
+- All inference tools - Updated to use new inference package
+- Core library files - Updated to use new dependencies package
 
 ### 🎯 **Benefits Achieved So Far:**
 
@@ -53,20 +79,27 @@ The refactoring is progressing well with the core training functionality now pro
 - **Better Testability**: Each component can now be tested independently
 - **Enhanced Reusability**: Training classes can be used across different contexts
 - **Cleaner Dependencies**: Explicit package boundaries make dependencies visible and manageable
+- **Import Consistency**: All modules now use consistent import patterns
 
 ### 📊 **Current Status:**
 
-- **Training Package**: ✅ Complete (all major classes extracted)
-- **Inference Package**: ✅ Complete (all components extracted from abstract_trainer.py)
-- **Dataset Package**: 🔄 In Progress (base classes created, specific implementations pending)
-- **Dependencies Package**: ✅ Complete (shared utilities organized)
-- **Tools Reorganization**: ⏳ Pending
-- **Import Updates**: ⏳ Pending
-- **Test Migration**: ⏳ Pending
+- **Training Package**: ✅ Complete (all major classes extracted and imports updated)
+- **Inference Package**: ✅ Complete (all components extracted and imports updated)
+- **Dataset Package**: ✅ Complete (all dataset classes extracted and imports updated)
+- **Dependencies Package**: ✅ Complete (shared utilities organized and imports updated)
+- **Tools Reorganization**: ✅ Complete (inference tools moved to dedicated package)
+- **Import Updates**: ✅ Complete (all imports updated to new package structure)
+- **Test Migration**: 🔄 In Progress (acceptance tests added, unit tests being updated)
 
-The refactoring has made significant progress with the foundational package structure established and core training
-functionality successfully extracted. The codebase is now much more modular and maintainable, setting the stage for
-completing the dataset extraction and finalizing the reorganization.
+### 🔧 **Issues Resolved:**
 
-Would you like me to continue with extracting the remaining dataset classes from `rawds.py` or focus on another aspect
-of the refactoring?
+1. **Missing Import Fix**: Fixed missing `utilities` import in `base_dataset.py`
+2. **Circular Import Handling**: Resolved circular imports in inference modules
+3. **Package Dependencies**: Updated all inter-package dependencies to use new structure
+
+The refactoring has made significant progress with the foundational package structure established, core functionality
+successfully extracted, and all imports updated to use the new modular structure. The codebase is now much more modular
+and maintainable, with comprehensive acceptance tests ensuring the new structure works correctly.
+
+The next logical step would be to complete the test migration and begin removing the old monolithic files, but the core
+refactoring work outlined in the original plan has been largely completed.

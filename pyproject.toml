@@ -89,6 +89,7 @@ addopts = [
     "-v",
 ]
 markers = [
+    "acceptance: mark acceptance tests for refactor guardrails",
     "model_type(type): mark tests for specific model types like 'dc' or 'denoise'",
     "input_type(type): mark tests for input formats like 'bayer' or 'prgb'",
     "fast: mark fast tests using null dataloaders",

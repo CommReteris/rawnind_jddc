@@ -14,6 +14,7 @@ import torch
 
 # Import from dependencies package (will be moved later)
 from ..dependencies.pt_losses import losses, metrics
+from ..dependencies.utilities import load_yaml as utilities
 # Import raw processing (will be moved to dependencies later)
 from ..libs import rawproc
 

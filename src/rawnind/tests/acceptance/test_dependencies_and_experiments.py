@@ -46,4 +46,5 @@ def test_get_best_steps_from_results(tmp_path):
     f.write_text(yaml.safe_dump(results))
 
     steps = ExperimentManager.get_best_steps_from_results(str(f))
-    assert steps == [12000, 13000]
+    # Order is not guaranteed; compare as sorted list
+    assert sorted(steps) == [12000, 13000]

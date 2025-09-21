@@ -9,12 +9,13 @@ This package contains all components related to model inference, including:
 
 from .base_inference import BaseInference
 from .inference_engine import InferenceEngine
-from .model_factory import ModelFactory
+from .model_factory import get_and_load_test_object, get_and_load_model
 from .model_loader import ModelLoader
 
 __all__ = [
     'BaseInference',
     'ModelLoader',
     'InferenceEngine',
-    'ModelFactory'
+    'get_and_load_test_object',
+    'get_and_load_model'
 ]

@@ -8,6 +8,7 @@ import torch
 from rawnind.inference import image_denoiser
 from rawnind.dependencies import pytorch_helpers
 from rawnind.libs import rawproc
+from ..models import raw_denoiser
 
 MODEL_FPATH = os.path.join(os.path.abspath(os.path.curdir),
                            "src/rawnind/models/rawnind_denoise/DenoiserTrainingBayerToProfiledRGB_4ch_2024-11-22"
@@ -48,7 +49,7 @@ if __name__ == "__main__":
             infile, device=device
         )
         input_image = input_image.unsqueeze(0)
-        model = rawnind.models.raw_denoiser.UtNet2(
+        model = raw_denoiser.UtNet2(
             in_channels=4 if model_is_bayer and not infile.endswith(".exr") else 3, funit=32
         )
         model.load_state_dict(
