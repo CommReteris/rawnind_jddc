@@ -65,9 +65,9 @@ import torch
 
 from typing import Union
 from rawnind.models import raw_denoiser
-from rawnind.libs import raw
-from common.libs import pt_helpers
-from common.libs import np_imgops
+from rawnind.dependencies import raw_processing as raw
+from rawnind.dependencies import pytorch_helpers
+from rawnind.dependencies import numpy_operations as np_imgops
 
 TMPDIR = f"tmp_{platform.uname().node}"
 

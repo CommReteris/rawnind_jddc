@@ -25,4 +25,5 @@ Or specific classes can be imported:
 
 # Import statements are commented out to avoid eager loading of dependencies
 # Import specific models as needed in your code
-# from . import raw_denoiser
+from . import bitEstimator, bm3d_denoiser, compression_autoencoders, denoise_then_compress, manynets_compression, raw_denoiser, standard_compressor
+__all__ = [ bitEstimator, bm3d_denoiser, compression_autoencoders, denoise_then_compress, manynets_compression, raw_denoiser, standard_compressor ]

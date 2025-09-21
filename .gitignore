@@ -1,5 +1,11 @@
+*.pyc
 .idea
+.vscode
+.venv
+.envrc
+build
 uv.lock
+**/__pycache__
 /src/rawnind.egg-info/dependency_links.txt
 /src/rawnind.egg-info/PKG-INFO
 /src/rawnind.egg-info/requires.txt
@@ -71,4 +77,5 @@ uv.lock
 /src/rawnind/models/rawnind_denoise/train_denoise_proc2proc_2024-05-17-proc2proc_ocv3_notrans_valeither_msssim_-4/test_cmd.sh
 /src/rawnind/models/rawnind_denoise/train_denoise_proc2proc_2024-05-17-proc2proc_ocv3_notrans_valeither_msssim_-4/train_cmd.sh
 /src/rawnind/models/rawnind_denoise/train_denoise_proc2proc_2024-05-17-proc2proc_ocv3_notrans_valeither_msssim_-4/trainres.yaml
-!/build/
+!/build/**/*
+!/build/*

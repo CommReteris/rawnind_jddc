@@ -13,7 +13,7 @@ import argparse
 from typing import Literal
 
 from rawnind.libs import raw
-from common.libs import utilities
+from rawnind.dependencies import utilities
 
 EXTRARAW_DATA_DPATH = os.path.join("..", "..", "datasets", "extraraw")
 DEBUG = True

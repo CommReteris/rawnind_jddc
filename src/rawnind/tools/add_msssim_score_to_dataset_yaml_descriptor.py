@@ -11,9 +11,9 @@ import tqdm
 import torch
 import argparse
 
-from common.libs import utilities
-from common.libs import pt_losses
-from common.libs import pt_helpers
+from rawnind.dependencies import utilities
+from rawnind.libs import pt_losses
+from rawnind.dependencies import pytorch_helpers
 from rawnind.libs import rawproc
 from rawnind.libs import raw
 

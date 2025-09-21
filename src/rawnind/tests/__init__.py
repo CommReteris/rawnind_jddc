@@ -29,6 +29,6 @@ The test files are organized by test type and functionality:
    - get_*.py: Analysis and metrics computation scripts
 
 """
-from . import rawtestlib
+from ..dependencies import testing_utils as rawtestlib
 
 __all__ = ['rawtestlib']

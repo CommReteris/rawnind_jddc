@@ -36,7 +36,7 @@ from torch.nn import functional as F
 import ptflops
 import numpy as np
 
-from common.extlibs import gdn
+from ..dependencies import external_libraries as gdn
 
 
 # logger = logging.getLogger("ImageCompression")

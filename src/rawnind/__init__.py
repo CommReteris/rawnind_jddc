@@ -1,19 +1,25 @@
 """RawNIND package.
 
-Lightweight package initializer to avoid importing heavyweight subpackages
-(e.g., training stacks that depend on optional system libraries) at import time.
+A modular PyTorch-based framework for RAW image denoising and compression.
+This package provides a clean, maintainable architecture for training and inference
+of neural networks on RAW image data.
 
 Subpackages:
-- rawnind.libs: Core libraries for raw I/O, datasets, processing, and trainers.
-- rawnind.tools: Command-line utilities and dataset preparation scripts.
-- rawnind.models: Model definitions used in experiments.
+- rawnind.dependencies: Shared utilities, configurations, and common functionality
+- rawnind.dataset: Dataset loading, preprocessing, and data handling
+- rawnind.training: Training loops, optimization, and experiment management
+- rawnind.inference: Model inference, loading, and deployment utilities
+- rawnind.models: Neural network model definitions and architectures
+- rawnind.tools: Command-line utilities and dataset preparation scripts
+- rawnind.tests: Comprehensive test suite
 
 Import submodules explicitly where needed, e.g.:
-    from rawnind.libs import rawproc
-    from rawnind.tools import crop_datasets
+    from rawnind.dependencies import raw_processing
+    from rawnind.training import training_loops
+    from rawnind.inference import model_factory
 """
 
-# Intentionally avoid eager imports like `from . import libs, tools, models`
-# to keep `import rawnind` cheap and not require optional runtime deps.
+# Intentionally avoid eager imports to keep `import rawnind` lightweight
+# and avoid requiring optional runtime dependencies at import time.
 
-__all__ = ["libs", "tools", "models"]
+__all__ = ["dependencies", "dataset", "training", "inference", "models", "tools", "tests"]
