@@ -29,7 +29,7 @@ from rawnind.libs.rawproc import (
     EXTRARAW_DS_DPATH,
     DATASETS_ROOT,
 )
-from rawnind.libs import utilities
+from rawnind.dependencies import utilities
 from rawnind.libs import np_imgops
 
 LOG_FPATH = os.path.join("logs", os.path.basename(__file__) + ".log")

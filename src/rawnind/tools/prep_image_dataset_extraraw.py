@@ -9,7 +9,7 @@ import argparse
 import tqdm
 
 from rawnind.libs import raw
-from rawnind.libs import utilities
+from rawnind.dependencies import utilities
 
 from rawnind.libs.rawproc import EXTRARAW_DS_DPATH
 

@@ -10,14 +10,14 @@ from collections.abc import Iterable
 import torch
 import logging
 
-from rawnind.libs import abstract_trainer
+from rawnind.training import training_loops
 
 
 class DCTrainingBayerToProfiledRGB(
-    abstract_trainer.DenoiseCompressTraining,
-    abstract_trainer.BayerImageToImageNNTraining,
+    training_loops.DenoiseCompressTraining,
+    training_loops.BayerImageToImageNNTraining,
 ):
-    CLS_CONFIG_FPATHS = abstract_trainer.DenoiseCompressTraining.CLS_CONFIG_FPATHS + [
+    CLS_CONFIG_FPATHS = training_loops.DenoiseCompressTraining.CLS_CONFIG_FPATHS + [
         os.path.join("config", "train_dc_bayer2prgb.yaml")
     ]
 

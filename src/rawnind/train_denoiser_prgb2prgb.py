@@ -5,16 +5,16 @@ import sys
 from collections.abc import Iterable
 import multiprocessing
 
-from rawnind.libs import abstract_trainer
+from rawnind.training import training_loops
+from rawnind.dependencies import pytorch_helpers
 from rawnind.libs import raw
 from rawnind.libs import rawproc
-from rawnind.libs import pt_helpers
 
 
 class DenoiserTrainingProfiledRGBToProfiledRGB(
-    abstract_trainer.DenoiserTraining, abstract_trainer.PRGBImageToImageNNTraining
+    training_loops.DenoiserTraining, training_loops.PRGBImageToImageNNTraining
 ):
-    CLS_CONFIG_FPATHS = abstract_trainer.DenoiserTraining.CLS_CONFIG_FPATHS + [
+    CLS_CONFIG_FPATHS = training_loops.DenoiserTraining.CLS_CONFIG_FPATHS + [
         os.path.join("config", "train_denoise_prgb2prgb.yaml")
     ]
 

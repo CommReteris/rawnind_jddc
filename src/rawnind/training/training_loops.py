@@ -277,7 +277,7 @@ class ImageToImageNNTraining(TrainingLoops):
         parser.add_argument(
             "--reset_lr",
             help="Reset learning rate of loaded model. (Defaults to true if fallback_load_path is set and init_step "
-            "is 0)",
+                 "is 0)",
             action="store_true",
         )
         parser.add_argument(
@@ -343,7 +343,8 @@ class ImageToImageNNTraining(TrainingLoops):
         )
         parser.add_argument(
             "--fallback_load_path",
-            help="Path (or expname) of model to load if continue_training_from_last_model_if_exists is set but no previous models are found. Latest model is auto-detected from base expname",
+            help="Path (or expname) of model to load if continue_training_from_last_model_if_exists is set but no "
+                 "previous models are found. Latest model is auto-detected from base expname",
         )
         parser.add_argument(
             "--reset_optimizer_on_fallback_load_path",

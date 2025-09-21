@@ -1,14 +1,9 @@
-"""
-Denoise a single image using a trained model.
+"""Single image denoising functionality.
 
-By default save the denoised image in a directory named "denoised_images" in the model's save_dpath,
-with the same filename as the input image and the extension ".denoised.exr".
-Also save the metrics (and the bitrate if applicable) in a directory named "denoised_images_metrics",
-with the same filename as the input image and the extension ".metrics.yaml".
+This module provides tools for denoising individual images using trained models,
+including comprehensive metrics computation and output processing.
 
-egrun python tools/denoise_image.py -i /orb/Pictures/ITookAPicture/2023/05/29_LucieHikeLustinYvoirGR126/DSC04011.ARW --config ../../models/rawnind_dc/DCTrainingProfiledRGBToProfiledRGB_3ch_L4096.0_Balle_Balle_dc_prgb_1_/args.yaml  --device
-
-
+Extracted from tools/denoise_image.py as part of the codebase refactoring.
 """
 
 import argparse
@@ -20,11 +15,17 @@ import configargparse
 import torch
 import yaml
 
-from rawnind.inference import base_inference
-from rawnind.dependencies import pytorch_helpers
-from rawnind.libs import pt_losses
-from rawnind.libs import rawproc
-from rawnind.libs import raw
+# Import from dependencies package (will be moved later)
+from ..dependencies.pt_losses import metrics as pt_losses_metrics
+from ..dependencies.pytorch_helpers import fpath_to_tensor
+from ..dependencies.utilities import load_yaml
+
+# Import raw processing (will be moved to dependencies later)
+from ..libs import rawproc, raw
+
+# Import inference components
+from .model_factory import get_and_load_test_object
+from .base_inference import BaseInference
 
 DENOISED_DN = "denoised_images"
 METRICS_DN = "denoised_images_metrics"
@@ -55,68 +56,20 @@ def add_arguments(parser):
     parser.add_argument(
         "-o", "--out_img_fpath", help="Optional path to save the denoised image"
     )
-    # parser.add_argument("--device", type=int, help="CUDA device number (-1 for CPU)")
     parser.add_argument(
         "--metrics",
         nargs=("*"),
-        help=f"Validation and test metrics: {pt_losses.metrics}",
+        help=f"Validation and test metrics: {pt_losses_metrics}",
         default=["mse", "msssim_loss"],
     )
     parser.add_argument(
         "--nonlinearities",
         nargs=("*"),
-        help=f"Nonlinearities used to compute the metrics, as defined in "
-        f"base_inference.ImageToImageNN.get_transfer_function (ie pq, gamma22)",
+        help="Nonlinearities used to compute the metrics, as defined in "
+        "abstract_trainer.ImageToImageNN.get_transfer_function (ie pq, gamma22)",
         default=["pq", "gamma22"],
     )
-    # parser.add_argument(  # rm?
-    #     "--skip_metrics",
-    #     action="store_true",
-    #     help="Skip computing metrics",
-    # )
 
-
-"""
-GT should be loaded once
-Image should be denoised once
-Metrics should be computed multiple times
-:
-    - load GT
-    - denoise image
-    - compute metrics
-    - save denoised image
-    - save metrics with gt in fn
-
-    
-    
-denoise_image(model, in_img) -> {denoised_image, bpp (opt)}
-
-process_image_base(model, out_img, gt_img (opt), xyz_rgb_matrix (opt)) -> linrec2020_img
-
-apply_nonlinearity(model, img, nonlinearity: str) -> nl_img
-
-compute_metrics(img, gt, metrics, xyz_rgb_matrix (opt), prefix: str = None) -> {metrics_results}
-    calls model's process_net_output
-    loss pre/post non-linearity
-
-save_image(image, fpath)
-
-save_metrics(metrics_results, fpath)
-
-
-"""
-
-
-# Processing Pipeline Overview:
-# This module implements a standardized workflow for single-image denoising:
-# 1. Load ground-truth image (if available for metrics)
-# 2. Load and denoise input image using trained model
-# 3. Process model output to linear Rec.2020 color space
-# 4. Compute metrics with optional perceptual transforms
-# 5. Save denoised image and metrics to organized output directories
-#
-# Key functions provide modular access to each pipeline stage for
-# both standalone script usage and integration with other tools.
 
 def load_image(fpath, device) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
     """Load an image and optional RGB->XYZ matrix for processing.
@@ -128,17 +81,17 @@ def load_image(fpath, device) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
     Returns:
         Tuple (img, rgb_xyz_matrix) where rgb_xyz_matrix may be None.
     """
-    img, metadata = pt_helpers.fpath_to_tensor(
+    img, metadata = fpath_to_tensor(
         fpath, incl_metadata=True, device=device, crop_to_multiple=16
     )
     rgb_xyz_matrix = metadata.get("rgb_xyz_matrix", None)
     if rgb_xyz_matrix is not None:
         rgb_xyz_matrix = torch.tensor(rgb_xyz_matrix).unsqueeze(0)
-    return img, rgb_xyz_matrix  # type: ignore
+    return img, rgb_xyz_matrix
 
 
 def process_image_base(
-        test_obj: base_inference.ImageToImageNN,
+        test_obj: BaseInference,
         out_img: torch.Tensor,
         gt_img: Optional[torch.Tensor] = None,
         in_img: Optional[torch.Tensor] = None,
@@ -202,7 +155,9 @@ def apply_nonlinearity(img: torch.Tensor, nonlinearity: str) -> torch.Tensor:
     Returns:
         Transformed tensor (clone of input).
     """
-    return base_inference.ImageToImageNN.get_transfer_function(nonlinearity)(
+    # Import here to avoid circular imports
+    from ..libs.abstract_trainer import ImageToImageNN
+    return ImageToImageNN.get_transfer_function(nonlinearity)(
         img.clone()
     )
 
@@ -226,7 +181,7 @@ def compute_metrics(
     """
     metrics_results = {}
     for metric in metrics:
-        metrics_results[metric] = float(pt_losses.metrics[metric](in_img, gt_img))
+        metrics_results[metric] = float(pt_losses_metrics[metric](in_img, gt_img))
     if prefix is not None:
         metrics_results = {f"{prefix}_{k}": v for k, v in metrics_results.items()}
     return metrics_results
@@ -258,7 +213,7 @@ def save_metrics(metrics: dict, fpath: str):
 
 
 def denoise_image_from_to_fpath(
-        in_img_fpath: str, out_img_fpath: str, test_obj: base_inference.ImageToImageNN
+        in_img_fpath: str, out_img_fpath: str, test_obj: BaseInference
 ):
     """Denoise a single image file and write the processed output.
 
@@ -297,12 +252,9 @@ def bayer_to_prgb(image, rgb_xyz_matrix):
     return image
 
 
-#############
-
-
 def denoise_image_compute_metrics(
         in_img,
-        test_obj: base_inference.ImageToImageNN,
+        test_obj: BaseInference,
         rgb_xyz_matrix: Optional[torch.Tensor] = None,
         gt_img: Optional[torch.Tensor] = None,
         metrics: list[str] = [],
@@ -359,8 +311,7 @@ def denoise_image_compute_metrics(
 
 def denoise_image_from_fpath_compute_metrics_and_export(
         in_img_fpath: str,
-        # test_obj: Union[base_inference.ImageToImageNN, str],
-        test_obj: Optional[base_inference.ImageToImageNN] = None,
+        test_obj: Optional[BaseInference] = None,
         gt_img_fpath: Optional[str] = None,
         metrics: list[str] = [],
         nonlinearities: list[str] = [],
@@ -370,15 +321,14 @@ def denoise_image_from_fpath_compute_metrics_and_export(
 
     Args:
         in_img_fpath: Input image file path.
-        test_obj: If None, will be created via base_inference.get_and_load_test_object().
+        test_obj: If None, will be created via abstract_trainer.get_and_load_test_object().
         gt_img_fpath: Optional ground-truth image path.
         metrics: Metrics to compute.
         nonlinearities: Perceptual non-linearities to apply before metrics.
         out_img_fpath: Optional explicit output path for the denoised image.
     """
-    # if isinstance(test_obj, str):
     if test_obj is None:
-        test_obj = base_inference.get_and_load_test_object()
+        test_obj = get_and_load_test_object()
     in_img, rgb_xyz_matrix = load_image(in_img_fpath, test_obj.device)
     if gt_img_fpath:
         gt_img = load_image(gt_img_fpath, test_obj.device)
@@ -414,59 +364,6 @@ def denoise_image_from_fpath_compute_metrics_and_export(
         )
 
 
-# def denoise_image_from_fpath_and_compute_metrics(
-#     test_obj, in_img_fpath: str, gt_img_fpath: str, gt_img: Optional[torch.Tensor] = None, metrics: list[str] = [], skip_metrics: bool = False
-# ):
-#     img, metadata = pt_helpers.fpath_to_tensor(in_img_fpath, incl_metadata=True, device=test_obj.device)
-#     if gt_img is None:
-#         gt_img = pt_helpers.fpath_to_tensor(gt_img_fpath, incl_metadata=False, device=test_obj.device)
-#     rgb_xyz_matrix = metadata.get("rgb_xyz_matrix", None)
-#     model_results = test_obj.infer(img, rgb_xyz_matrix)
-
-#     metrics_results = {}
-#     if "bpp" in model_results:
-#         metrics_results["bpp"] = model_results["bpp"]
-
-#     if not skip_metrics and (metrics or metrics_results):
-#         for metric in metrics:
-#             metrics_results[metric] = pt_losses.metrics[metric](metrics_results["proc_img"], img)
-#     if metrics_results:
-#         print(f"{in_img_fpath=}: {metrics_results}")
-#     return model_results, metrics_results
-
-
-# def save_denoising_results(
-#     proc_img: torch.Tensor,
-#     metrics_results: Optional[dict] = None,
-#     test_obj: Optional[abstract_trainer.ImageToImageNN] = None,
-#     in_img_fpath: Optional[str] = None,
-#     out_img_fpath: Optional[str] = None,
-#     out_metrics_fpath: Optional[str] = None,
-# ) -> None:
-#     if out_img_fpath is None:
-#         assert test_obj is not None and in_img_fpath is not None
-#         out_img_dpath = os.path.join(test_obj.save_dpath, DENOISED_DN)
-#         os.makedirs(out_img_dpath, exist_ok=True)
-#         out_img_fpath = os.path.join(
-#             out_img_dpath, os.path.basename(in_img_fpath) + ".denoised.exr"
-#         )
-#     proc_img: np.ndarray = proc_img.squeeze(0).numpy()  # maybe need from "__future__ import annotations"?
-#     raw.hdr_nparray_to_file(proc_img, out_img_fpath, "lin_rec2020")
-#     print(f"output written to {out_img_fpath}")
-#     if not metrics_results:
-#         return
-#     if not out_metrics_fpath:
-#         assert test_obj is not None and in_img_fpath is not None
-#         out_metrics_dpath = os.path.join(test_obj.save_dpath, METRICS_DN)
-#         os.makedirs(out_metrics_dpath, exist_ok=True)
-#         out_metrics_fpath = os.path.join(
-#             out_metrics_dpath, os.path.basename(in_img_fpath) + ".metrics.yaml"
-#         )
-#     with open(out_metrics_fpath, "w") as f:
-#         yaml.dump(metrics_results, f)
-#     print(f"metrics written to {out_metrics_fpath}")
-
-
 if __name__ == "__main__":
     parser = configargparse.argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -476,37 +373,3 @@ if __name__ == "__main__":
     # call denoise_image_compute_metrics with all args except config
     vars(args).pop("config")
     denoise_image_from_fpath_compute_metrics_and_export(**vars(args))
-
-# if __name__ == "__main__":
-#     test_obj = base_inference.get_and_load_test_object()
-#     model = test_obj.model
-
-#     # args =
-#     model_fpath = sys.argv[1]
-#     infpath = sys.argv[2]
-#     outfpath = (
-#         sys.argv[2] + ".denoised.exr" if len(sys.argv) == 3 else sys.argv[3]
-#     )  # sys.argv[3]
-#     in_channels: Literal[3, 4] = 3 if infpath.endswith(".exr") else 4
-#     model: raw_denoiser.Denoiser = raw_denoiser.UtNet2(in_channels=in_channels)
-#     model.load_state_dict(torch.load(model_fpath, map_location="cpu"))
-#     model = model.eval()
-#     with torch.no_grad():
-#         if in_channels == 3:
-#             img: torch.Tensor = torch.from_numpy(
-#                 np_imgops.img_fpath_to_np_flt(infpath)
-#             ).unsqueeze(0)
-#         else:
-#             img, metadata = np_imgops.img_fpath_to_np_flt(infpath, incl_metadata=True)
-#             img = torch.from_numpy(img).unsqueeze(0)
-#             rgb_xyz_matrix = metadata["rgb_xyz_matrix"]
-#         img = pt_ops.crop_to_multiple(img, 16)
-#         output: torch.Tensor = model(img)
-#         output = rawproc.match_gain(img, output)
-#         if in_channels == 4:
-#             output = rawproc.camRGB_to_lin_rec2020_images(
-#                 output, torch.from_numpy(rgb_xyz_matrix).unsqueeze(0)
-#             )
-#         output_np = output.squeeze(0).numpy()
-#     raw.hdr_nparray_to_file(output_np, outfpath, "lin_rec2020")
-#     print(f"output written to {outfpath}")

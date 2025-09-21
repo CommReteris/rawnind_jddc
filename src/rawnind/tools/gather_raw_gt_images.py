@@ -14,7 +14,7 @@ import argparse
 from typing import Union
 
 from rawnind.libs import libimganalysis
-from rawnind.libs import utilities
+from rawnind.dependencies import utilities
 
 ORIG_DPATH = {"trougnouf": os.path.join(os.sep, "orb", "Pictures", "ITookAPicture")}
 DEST_DPATH = os.path.join("..", "..", "datasets", "extraraw")

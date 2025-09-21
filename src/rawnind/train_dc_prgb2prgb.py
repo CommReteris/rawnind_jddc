@@ -9,17 +9,17 @@ import logging
 import sys
 from collections.abc import Iterable
 
-from rawnind.libs import abstract_trainer
+from rawnind.training import training_loops
+from rawnind.dependencies import pytorch_helpers
 from rawnind.libs import raw
 from rawnind.libs import rawproc
-from rawnind.libs import pt_helpers
 
 
 class DCTrainingProfiledRGBToProfiledRGB(
-    abstract_trainer.DenoiseCompressTraining,
-    abstract_trainer.PRGBImageToImageNNTraining,
+    training_loops.DenoiseCompressTraining,
+    training_loops.PRGBImageToImageNNTraining,
 ):
-    CLS_CONFIG_FPATHS = abstract_trainer.DenoiseCompressTraining.CLS_CONFIG_FPATHS + [
+    CLS_CONFIG_FPATHS = training_loops.DenoiseCompressTraining.CLS_CONFIG_FPATHS + [
         os.path.join("config", "train_dc_prgb2prgb.yaml")
     ]
 

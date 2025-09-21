@@ -27,7 +27,7 @@ import shutil
 import sys
 from typing import Optional, List, Tuple
 
-from rawnind.libs import utilities
+from rawnind.dependencies import utilities
 
 SRC_EXTENSIONS: tuple = ("py", "yaml")
 SRC_ROOT_DPATH: str = ".."

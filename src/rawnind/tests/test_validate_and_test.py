@@ -7,7 +7,7 @@ from rawnind import (
     train_denoiser_bayer2prgb,
     train_denoiser_prgb2prgb,
 )
-from rawnind.libs import abstract_trainer
+from rawnind.training import training_loops
 
 """
 Objective: Validate offline_validation and offline_std_test pipeline integrity across all 4 training class variants using parametrized tests for comprehensive coverage without real dataset dependencies.
@@ -31,7 +31,7 @@ def training_class(request):
 @patch("rawnind.libs.abstract_trainer.configargparse.Namespace")
 def test_validate_and_test(training_class, mock_namespace, monkeypatch_args):
     """Parametrized test for validate_and_test across all training classes."""
-    mock_namespace.return_value = abstract_trainer.configargparse.Namespace(
+    mock_namespace.return_value = training_loops.configargparse.Namespace(
         test_only=True,
         init_step=None,
         load_path=None,

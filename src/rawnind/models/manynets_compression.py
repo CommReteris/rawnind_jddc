@@ -17,7 +17,7 @@ import numpy as np
 from typing import Literal, Optional, Union
 
 from rawnind.models import bitEstimator
-from rawnind.libs import pt_helpers
+from rawnind.dependencies import pytorch_helpers
 from rawnind.libs import pt_ops
 from rawnind.models import compression_autoencoders
 

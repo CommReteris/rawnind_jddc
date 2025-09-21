@@ -26,10 +26,10 @@ import argparse
 import random
 
 from rawnind.libs import rawproc  # includes DS_BASE_DPATH
-from rawnind.libs import pt_helpers
+from rawnind.dependencies import pytorch_helpers
 from rawnind.libs import raw
 from rawnind.libs import libimganalysis
-from rawnind.libs import utilities
+from rawnind.dependencies import utilities
 
 # Destination directory for invalid files
 BAD_SRC_FILES_DPATH = os.path.join("..", "..", "datasets", "RawNIND", "bad_src_files")

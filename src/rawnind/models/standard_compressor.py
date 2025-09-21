@@ -7,8 +7,8 @@ from typing import Literal, Optional
 from rawnind.models import compression_autoencoders
 from rawnind.libs import stdcompression
 from rawnind.libs import pt_ops
-from rawnind.libs import pt_helpers
-from rawnind.libs import utilities
+from rawnind.dependencies import pytorch_helpers
+from rawnind.dependencies import utilities
 import torch
 
 TMP_INIMG_DPATH = os.path.join("tmp", "inimg")
