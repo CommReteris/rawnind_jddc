@@ -1,26 +1,21 @@
-"""Train a joint denoise+compress model from profiled RGB to profiled RGB.
-
-This entrypoint wires abstract_trainer mixins, loads defaults from
-config/train_dc_prgb2prgb.yaml, and runs training_loop().
-"""
-import multiprocessing
 import os
+import statistics
 import logging
 import sys
 from collections.abc import Iterable
+import multiprocessing
 
 from rawnind.training import training_loops
 from rawnind.dependencies import pytorch_helpers
-from rawnind.libs import raw
-from rawnind.libs import rawproc
+from rawnind.dependencies import raw_processing as raw
+from rawnind.dependencies import raw_processing as rawproc
 
 
-class DCTrainingProfiledRGBToProfiledRGB(
-    training_loops.DenoiseCompressTraining,
-    training_loops.PRGBImageToImageNNTraining,
+class DenoiserTrainingProfiledRGBToProfiledRGB(
+    training_loops.DenoiserTraining, training_loops.PRGBImageToImageNNTraining
 ):
-    CLS_CONFIG_FPATHS = training_loops.DenoiseCompressTraining.CLS_CONFIG_FPATHS + [
-        os.path.join("config", "train_dc_prgb2prgb.yaml")
+    CLS_CONFIG_FPATHS = training_loops.DenoiserTraining.CLS_CONFIG_FPATHS + [
+        os.path.join("dependencies", "configs", "train_denoise_prgb2prgb.yaml")
     ]
 
     def __init__(self, launch=False, **kwargs):
@@ -33,6 +28,7 @@ class DCTrainingProfiledRGBToProfiledRGB(
 
 
 if __name__ == "__main__":
+    # check if the args contain proc2proc anywhere
     if any("proc2proc" in arg or "opencv" in arg for arg in sys.argv):
         try:
             print("setting multiprocessing.set_start_method('spawn')")
@@ -44,5 +40,5 @@ if __name__ == "__main__":
     #     os.nice(1)
     # except OSError:
     #     pass
-    denoiserTraining = DCTrainingProfiledRGBToProfiledRGB()
+    denoiserTraining = DenoiserTrainingProfiledRGBToProfiledRGB()
     denoiserTraining.training_loop()

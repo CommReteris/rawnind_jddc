@@ -1,32 +1,24 @@
-"""Train a denoiser from Bayer to profiled RGB.
+"""Train a joint denoise+compress model from Bayer to profiled RGB.
 
 This entrypoint wires abstract_trainer mixins, loads defaults from
-config/train_denoise_bayer2prgb.yaml, and runs training_loop().
+config/train_dc_bayer2prgb.yaml, and runs training_loop().
 """
 import os
 import sys
-import statistics
-import time
-import logging
 from typing import Optional
 from collections.abc import Iterable
 import torch
+import logging
 
 from rawnind.training import training_loops
-from rawnind.dependencies import pytorch_helpers
-from rawnind.libs import rawproc
-from rawnind.libs import raw
-
-APPROX_EXPOSURE_DIFF_PENALTY = 1 / 10000
 
 
-class DenoiserTrainingBayerToProfiledRGB(
-    training_loops.DenoiserTraining,
+class DCTrainingBayerToProfiledRGB(
+    training_loops.DenoiseCompressTraining,
     training_loops.BayerImageToImageNNTraining,
-    training_loops.BayerDenoiser,
 ):
-    CLS_CONFIG_FPATHS = training_loops.DenoiserTraining.CLS_CONFIG_FPATHS + [
-        os.path.join("config", "train_denoise_bayer2prgb.yaml")
+    CLS_CONFIG_FPATHS = training_loops.DenoiseCompressTraining.CLS_CONFIG_FPATHS + [
+        os.path.join("dependencies", "configs", "train_dc_bayer2prgb.yaml")
     ]
 
     def __init__(self, launch=False, **kwargs) -> None:
@@ -43,5 +35,6 @@ if __name__ == "__main__":
     #     os.nice(1)
     # except OSError:
     #     pass
-    denoiserTraining = DenoiserTrainingBayerToProfiledRGB()
+    # logging.getLogger().setLevel(logging.DEBUG)
+    denoiserTraining = DCTrainingBayerToProfiledRGB()
     denoiserTraining.training_loop()

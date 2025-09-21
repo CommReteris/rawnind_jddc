@@ -1,24 +1,21 @@
-mport unittest
-import sys
+import pytest
 import torch
 
-from rawnind.libs import raw
-from rawnind.libs import rawproc
+from rawnind.dependencies import raw_processing as raw
+from rawnind.dependencies import raw_processing as rawproc
 
 
-class TestRawproc(unittest.TestCase):
+class TestRawproc:
     def test_scenelin_to_pq(self):
         """Test that scenelin_to_pq pytorch matches numpy colour_science library."""
         ptbatch = torch.rand(5, 3, 256, 256) * 1.1 - 0.1
         npbatch = ptbatch.numpy()
         nptransformed = rawproc.scenelin_to_pq(npbatch)
         pttransformed = rawproc.scenelin_to_pq(ptbatch)
-        self.assertTrue(
-            torch.allclose(
-                pttransformed,
-                torch.from_numpy(nptransformed).to(torch.float32),
-                atol=1e-05,
-            )
+        assert torch.allclose(
+            pttransformed,
+            torch.from_numpy(nptransformed).to(torch.float32),
+            atol=1e-05,
         )
 
     def test_match_gain(self):
@@ -41,12 +38,12 @@ class TestRawproc(unittest.TestCase):
         matched_batch_1 = rawproc.match_gain(
             anchor_img=anchor_batch_1, other_img=rand_batch
         )
-        self.assertAlmostEqual(matched_single_0.mean().item(), 0.0, places=5)
-        self.assertAlmostEqual(matched_single_1.mean().item(), 1.0, places=5)
-        self.assertAlmostEqual(matched_batch_0.mean().item(), 0.0, places=5)
-        self.assertAlmostEqual(matched_batch_1.mean().item(), 1.0, places=5)
-        self.assertAlmostEqual(matched_single_0.shape, (3, 256, 256))
-        self.assertAlmostEqual(matched_batch_1.shape, (5, 3, 256, 256))
+        assert abs(matched_single_0.mean().item() - 0.0) < 1e-5
+        assert abs(matched_single_1.mean().item() - 1.0) < 1e-5
+        assert abs(matched_batch_0.mean().item() - 0.0) < 1e-5
+        assert abs(matched_batch_1.mean().item() - 1.0) < 1e-5
+        assert matched_single_0.shape == (3, 256, 256)
+        assert matched_batch_1.shape == (5, 3, 256, 256)
 
     def test_camRGB_to_rec2020_batch_conversion(self):
         """Ensure the output of rawproc.camRGB_to_lin_rec2020_images (pytorch batched) is the same as that of raw.camRGB_to_profiledRGB_img (numpy single)."""
@@ -91,28 +88,28 @@ class TestRawproc(unittest.TestCase):
                 {"rgb_xyz_matrix": rgb_xyz_matrix_1.numpy()},
                 "lin_rec2020",
             )
-        )
+        ).float()
         img2_rec2020 = torch.from_numpy(
             raw.camRGB_to_profiledRGB_img(
                 img2_camRGB.numpy(),
                 {"rgb_xyz_matrix": rgb_xyz_matrix_2.numpy()},
                 "lin_rec2020",
             )
-        )
+        ).float()
         img3_rec2020 = torch.from_numpy(
             raw.camRGB_to_profiledRGB_img(
                 img3_camRGB.numpy(),
                 {"rgb_xyz_matrix": rgb_xyz_matrix_3.numpy()},
                 "lin_rec2020",
             )
-        )
+        ).float()
         img4_rec2020 = torch.from_numpy(
             raw.camRGB_to_profiledRGB_img(
                 img4_camRGB.numpy(),
                 {"rgb_xyz_matrix": rgb_xyz_matrix_4.numpy()},
                 "lin_rec2020",
             )
-        )
+        ).float()
         images_rec2020 = rawproc.camRGB_to_lin_rec2020_images(
             images_camRGB, rgb_xyz_matrices
         )
@@ -120,8 +117,4 @@ class TestRawproc(unittest.TestCase):
             (img1_rec2020, img2_rec2020, img3_rec2020, img4_rec2020)
         )
 
-        self.assertTrue(torch.allclose(individual_outputs, images_rec2020, atol=1e-06))
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert torch.allclose(individual_outputs, images_rec2020, atol=1e-06)

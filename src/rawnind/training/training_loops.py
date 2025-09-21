@@ -850,3 +850,14 @@ class DenoiserTraining(ImageToImageNNTraining):
     def _mk_expname(self, args) -> str:
         """Generate experiment name for denoising training."""
         return f"{type(self).__name__}_{args.in_channels}ch"
+
+
+class BayerDenoiser:
+    """Mixin class for Bayer-specific denoising functionality.
+
+    This mixin provides Bayer-specific processing capabilities for denoising models.
+    It can be combined with training classes to enable Bayer pattern processing.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)

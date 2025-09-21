@@ -1499,6 +1499,44 @@ def get_best_alignment_compute_gain_and_make_loss_mask(kwargs: dict) -> dict:
     }
 
 
+def camRGB_to_profiledRGB_img(
+        camRGB_img: np.ndarray, metadata: dict, profile: str = "lin_rec2020"
+) -> np.ndarray:
+    """Convert a single camera RGB image to profiled RGB space.
+
+    Args:
+        camRGB_img: NumPy array of shape [3, H, W] in camera RGB space (linear).
+        metadata: Dictionary containing 'rgb_xyz_matrix' key with the camera's RGB->XYZ matrix.
+        profile: Target color profile ("lin_rec2020", "lin_sRGB", etc.).
+
+    Returns:
+        NumPy array of shape [3, H, W] in the target profiled RGB space.
+    """
+    rgb_xyz_matrix = metadata["rgb_xyz_matrix"]
+    cam_to_xyz = np.linalg.inv(rgb_xyz_matrix[:3])
+
+    if profile == "lin_rec2020":
+        xyz_to_profile = np.array([
+            [1.71666343, -0.35567332, -0.25336809],
+            [-0.66667384, 1.61645574, 0.0157683],
+            [0.01764248, -0.04277698, 0.94224328],
+        ])
+    elif profile == "lin_sRGB":
+        xyz_to_profile = np.array([
+            [3.24100326, -1.53739899, -0.49861587],
+            [-0.96922426, 1.87592999, 0.04155422],
+            [0.05563942, -0.2040112, 1.05714897],
+        ])
+    else:
+        raise NotImplementedError(f"Unsupported profile: {profile}")
+
+    transform = xyz_to_profile @ cam_to_xyz
+    orig_shape = camRGB_img.shape
+    profiled_img = (transform @ camRGB_img.reshape(3, -1)).reshape(orig_shape)
+
+    return profiled_img
+
+
 def camRGB_to_lin_rec2020_images(
         camRGB_images: torch.Tensor, rgb_xyz_matrices: torch.Tensor
 ) -> torch.Tensor:

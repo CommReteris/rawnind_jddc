@@ -25,9 +25,9 @@ from torch.utils.data import DataLoader, TensorDataset
 import configargparse
 
 # Local project
-from rawnind.libs.pt_helpers import get_device
-from .rawtestlib import DCTestCustomDataloaderBayerToProfiledRGB
-from ..libs.abstract_trainer import ImageToImageNN
+from rawnind.dependencies.pytorch_helpers import get_device
+from ..dependencies.testing_utils import DCTestCustomDataloaderBayerToProfiledRGB
+from ..inference.base_inference import ImageToImageNN
 
 @pytest.fixture(scope="function")
 def monkeypatch_args(monkeypatch):

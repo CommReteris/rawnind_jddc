@@ -9,7 +9,7 @@ Reasons for Mocking/Fixturing: Original script performs real file I/O, causing n
 import pytest
 from unittest.mock import patch, MagicMock
 import numpy as np
-from src.rawnind.libs import raw
+from rawnind.dependencies import raw_processing as raw
 
 @pytest.mark.parametrize("bit_depth", [16, 32])
 def test_openEXR_bit_depth(bit_depth):
@@ -21,7 +21,7 @@ def test_openEXR_bit_depth(bit_depth):
     mock_hdr_to_file = MagicMock()
 
     with patch("numpy.random.random", mock_random):
-        with patch("src.rawnind.libs.raw.hdr_nparray_to_file", mock_hdr_to_file):
+        with patch("rawnind.dependencies.raw_processing.hdr_nparray_to_file", mock_hdr_to_file):
             # Simulate script logic: create dummy image and export
             dummy_image = mock_random()
             mock_hdr_to_file(dummy_image, f"test_openEXR_bit_depth_{bit_depth}.exr", bit_depth=bit_depth, color_profile="lin_rec2020")

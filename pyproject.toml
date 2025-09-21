@@ -83,8 +83,6 @@ testpaths = [
 addopts = [
     "--strict-markers",
     "--cov=src/rawnind",
-    "--cov-report=html",
-    "--cov-report=term-missing",
     "--cov-fail-under=0",
     "-v",
 ]
