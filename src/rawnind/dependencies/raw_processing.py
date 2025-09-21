@@ -964,8 +964,7 @@ def gamma_pt(img: torch.Tensor, gamma_val: float = GAMMA, in_place: bool = False
     return res
 
 
-def scenelin_to_p
-q(
+def scenelin_to_pq(
         img: Union[np.ndarray, torch.Tensor], compat=True
 ) -> Union[np.ndarray, torch.Tensor]:
     """

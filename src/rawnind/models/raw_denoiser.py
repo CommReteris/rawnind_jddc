@@ -15,7 +15,7 @@ import torch
 from torch import nn
 
 # 
-from rawnind.libs import rawproc
+from rawnind.dependencies import raw_processing as rawproc
 
 
 class Denoiser(nn.Module):

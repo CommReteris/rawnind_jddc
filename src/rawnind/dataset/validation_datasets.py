@@ -24,7 +24,7 @@ from ..dependencies.utilities import dict_to_yaml, load_yaml
 from ..dependencies.pt_losses import losses, metrics
 
 # Import raw processing (will be moved to dependencies later)
-from ..libs import raw, rawproc, arbitrary_proc_fun
+from ..dependencies import raw_processing as raw, raw_processing as rawproc, arbitrary_processing as arbitrary_proc_fun
 
 # Import base classes
 from .base_dataset import RawImageDataset, TestDataLoader

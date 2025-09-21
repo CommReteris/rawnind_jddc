@@ -27,8 +27,8 @@ import numpy as np
 import torch
 import torchvision
 
-# 
-from . import rawproc, raw
+#
+from . import raw_processing as raw
 
 TONEMAPPING_FUN: Literal["reinhard", "drago", "log"] = "log"
 # Reinhard tonemapping parameters range

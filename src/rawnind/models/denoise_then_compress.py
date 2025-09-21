@@ -34,7 +34,7 @@ from typing import Literal, Optional
 
 import torch
 
-from rawnind.libs import rawproc
+from rawnind.dependencies import raw_processing as rawproc
 # 
 from . import raw_denoiser, manynets_compression
 

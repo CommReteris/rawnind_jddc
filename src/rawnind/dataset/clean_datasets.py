@@ -21,7 +21,7 @@ from ..dependencies.pt_losses import losses, metrics
 from ..dependencies.utilities import load_yaml as utilities
 from ..dependencies.pytorch_helpers import fpath_to_tensor as pt_helpers
 # Import raw processing (will be moved to dependencies later)
-from ..libs import arbitrary_proc_fun
+from ..dependencies import arbitrary_processing as arbitrary_proc_fun
 
 BREAKPOINT_ON_ERROR = True
 COLOR_PROFILE = "lin_rec2020"

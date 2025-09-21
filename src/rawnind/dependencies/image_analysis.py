@@ -35,8 +35,8 @@ import sys
 #    from . import tf_helpers
 # except ModuleNotFoundError as e:
 #    print("libimganalysis: warning: {}".format(e))
-from . import pt_helpers
-from . import rawproc
+from . import pytorch_helpers as pt_helpers
+from . import raw_processing as rawproc
 
 VALID_IMG_EXT = ["png", "jpg", "jpeg", "bmp", "gif", "tiff", "ppm", "j2k", "webp"]
 
