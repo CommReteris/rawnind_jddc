@@ -15,7 +15,6 @@ import random
 import torch
 import sys
 
-sys.path.append("..")
 sys.path.append("../..")
 from rawnind.libs import raw
 
@@ -67,10 +66,10 @@ def capture_image(camera, out_dpath: str, fn_prefix: str, delay: int = 0) -> str
 
 
 def set_iso(
-    camera: gp.camera.Camera,
-    cfg: gp.widget.CameraWidget,
-    iso_value: str,
-    first_attempt=True,
+        camera: gp.camera.Camera,
+        cfg: gp.widget.CameraWidget,
+        iso_value: str,
+        first_attempt=True,
 ) -> None:
     cfg.get_child_by_name("iso").set_value(iso_value)
     camera.set_config(cfg)

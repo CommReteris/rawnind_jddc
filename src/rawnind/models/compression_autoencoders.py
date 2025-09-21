@@ -36,8 +36,8 @@ from torch.nn import functional as F
 import ptflops
 import numpy as np
 
-sys.path.append("..")
-from common.extlibs import gdn
+from ..dependencies import external_libraries as gdn
+
 
 # logger = logging.getLogger("ImageCompression")
 
@@ -59,15 +59,16 @@ class AbstractRawImageCompressor(nn.Module):
     
     Derived classes must implement the forward method to complete this pipeline.
     """
+
     def __init__(
-        self,
-        device: torch.device,
-        in_channels: int,
-        hidden_out_channels: Optional[int] = None,
-        bitstream_out_channels: Optional[int] = None,
-        encoder_cls: Optional[Type[nn.Module]] = None,
-        decoder_cls: Optional[Type[nn.Module]] = None,
-        preupsample=False,
+            self,
+            device: torch.device,
+            in_channels: int,
+            hidden_out_channels: Optional[int] = None,
+            bitstream_out_channels: Optional[int] = None,
+            encoder_cls: Optional[Type[nn.Module]] = None,
+            decoder_cls: Optional[Type[nn.Module]] = None,
+            preupsample=False,
     ):
         """
         Initialize the compression model with encoder and decoder components.
@@ -165,12 +166,12 @@ class BalleEncoder(nn.Module):
     """
 
     def __init__(
-        self,
-        device: torch.device,
-        hidden_out_channels: int = 192,
-        bitstream_out_channels: int = 320,
-        in_channels: Literal[3, 4] = 3,
-        preupsample: bool = False,
+            self,
+            device: torch.device,
+            hidden_out_channels: int = 192,
+            bitstream_out_channels: int = 320,
+            in_channels: Literal[3, 4] = 3,
+            preupsample: bool = False,
     ):
         """
         Initialize the encoder network.
@@ -294,10 +295,10 @@ class BalleDecoder(nn.Module):
     """
 
     def __init__(
-        self,
-        device: torch.device,
-        hidden_out_channels: int = 192,
-        bitstream_out_channels: int = 320,
+            self,
+            device: torch.device,
+            hidden_out_channels: int = 192,
+            bitstream_out_channels: int = 320,
     ):
         """
         Initialize the decoder network.
@@ -391,7 +392,7 @@ class BalleDecoder(nn.Module):
         x = self.igdn1(self.deconv1(x))  # First upsampling + inverse GDN
         x = self.igdn2(self.deconv2(x))  # Second upsampling + inverse GDN
         x = self.igdn3(self.deconv3(x))  # Third upsampling + inverse GDN
-        return self.output_module(x)      # Final upsampling to RGB
+        return self.output_module(x)  # Final upsampling to RGB
 
 
 class BayerPSDecoder(BalleDecoder):
@@ -411,11 +412,12 @@ class BayerPSDecoder(BalleDecoder):
     This approach effectively doubles the spatial resolution compared to the
     standard BalleDecoder, making it suitable for Bayer pattern processing.
     """
+
     def __init__(
-        self,
-        device: torch.device,
-        hidden_out_channels: int = 192,
-        bitstream_out_channels: int = 320,
+            self,
+            device: torch.device,
+            hidden_out_channels: int = 192,
+            bitstream_out_channels: int = 320,
     ):
         """
         Initialize the Bayer pattern decoder with PixelShuffle upsampling.
@@ -437,7 +439,7 @@ class BayerPSDecoder(BalleDecoder):
         )
         torch.nn.init.xavier_normal_(deconv4.weight.data, (math.sqrt(2 * 1)))
         torch.nn.init.constant_(deconv4.bias.data, 0.01)
-        
+
         # 1x1 convolution to generate 12 channels (4 Bayer pixels x 3 RGB channels)
         finalconv = torch.nn.Conv2d(hidden_out_channels, 4 * 3, 1)
         torch.nn.init.xavier_normal_(
@@ -452,10 +454,10 @@ class BayerPSDecoder(BalleDecoder):
             ),
         )
         torch.nn.init.constant_(finalconv.bias.data, 0.01)
-        
+
         # Replace output_module with sequence ending in PixelShuffle for 2x upsampling
         self.output_module = nn.Sequential(deconv4, finalconv, nn.PixelShuffle(2))
-        
+
     # Uses the parent class forward method, which processes through the custom output_module
 
 
@@ -476,11 +478,12 @@ class BayerTCDecoder(BalleDecoder):
     This approach provides an alternative to PixelShuffle while still achieving
     the 2x spatial resolution needed for Bayer pattern processing.
     """
+
     def __init__(
-        self,
-        device: torch.device,
-        hidden_out_channels: int = 192,
-        bitstream_out_channels: int = 320,
+            self,
+            device: torch.device,
+            hidden_out_channels: int = 192,
+            bitstream_out_channels: int = 320,
     ):
         """
         Initialize the Bayer pattern decoder with transposed convolution upsampling.
@@ -502,10 +505,10 @@ class BayerTCDecoder(BalleDecoder):
         )
         torch.nn.init.xavier_normal_(deconv4.weight.data, (math.sqrt(2 * 1)))
         torch.nn.init.constant_(deconv4.bias.data, 0.01)
-        
+
         # Additional activation after extra convolution
         final_act = nn.LeakyReLU()
-        
+
         # Final transposed convolution to generate RGB at 2x resolution
         finalconv = nn.ConvTranspose2d(
             hidden_out_channels,
@@ -530,9 +533,8 @@ class BayerTCDecoder(BalleDecoder):
 
         # Replace output_module with sequence of additional layers
         self.output_module = nn.Sequential(deconv4, final_act, finalconv)
-        
-    # Uses the parent class forward method, which processes through the custom output_module
 
+    # Uses the parent class forward method, which processes through the custom output_module
 
 # class RawImageEncoder(nn.Module):
 #     def __init__(self):

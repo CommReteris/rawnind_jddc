@@ -1,48 +1,56 @@
-# RawNIND
+# RawNIND: Modular Image Processing Framework
 
-## Requirements
+RawNIND provides a modular framework for joint image denoising, demosaicing, and compression using deep learning. The codebase has been refactored into a clean, maintainable architecture organized into four main packages:
 
-### Arch:
+- **inference/**: Model loading, prediction, and deployment tools
+- **training/**: Training loops, optimization, and experiment management
+- **dataset/**: Dataset loading, preprocessing, and validation
+- **dependencies/**: Shared utilities, configurations, and core libraries
 
-* `python-pytorch-opt-rocm` and `python-torchvision-rocm` or `python-pytorch-opt-cuda` and `python-torchvision-cuda`
-* `libraw python-rawpy python-openexr python-opencv python-colour-science python-pytorch-msssim-git python-configargparse python-rawpy python-pytorch-piqa-git python-tqdm python-colorspacious python-ptflops openimageio`
+## Installation
 
-### Other distributions / pip:
-pip3 install colour-science pytorch-msssim ConfigArgParse tqdm pypng opencv-python matplotlib piqa rawpy requests pyyaml ptflops
-pip3 install https://download.pytorch.org/whl/cu111/torchvision-0.11.3%2Bcu111-cp38-cp38-linux_x86_64.whl https://download.pytorch.org/whl/cu111/torch-1.10.2%2Bcu111-cp38-cp38-linux_x86_64.whl  # latest version that matches Cuda 1.11.1, feel free to use newer versions of both; get relevant command on https://pytorch.org/
-git clone https://github.com/sanguinariojoe/pip-openexr.git
-cd pip-openexr
-pip3 install .
+### Core Dependencies
 
-Install https://github.com/jamesbowman/openexrpython (`openexr` on `pip`). If it fails you probably need to install OpenEXR manually and apply the patches used in https://aur.archlinux.org/cgit/aur.git/tree/?h=python-openexr , change setup.py to include the local include/lib directories, and run "pip install .". Finally in a local installation you will likely need to run `LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/.local/lib python [args]`
+```bash
+# PyTorch (adjust for your CUDA version)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
-### Slurm:
+# Core processing libraries
+pip install colour-science pytorch-msssim ConfigArgParse rawpy imageio
+pip install opencv-python numpy scipy matplotlib tqdm requests pyyaml ptflops
+```
 
-module load GCC CUDA LibTIFF PyYAML PyTorch libpng libjpeg-turbo 
+### Optional Dependencies
 
-mkdir ~/tmp/cloned/python-openexr
-cd ~/tmp/cloned/python-openexr
-wget https://files.pythonhosted.org/packages/7c/c4/76bf884f59d3137847edf8b93aaf40f6257d8315d0064e8b1a606ad80b1b/OpenEXR-1.3.2.tar.gz
-tar -xvf OpenEXR-1.3.2.tar.gz
-cd OpenEXR-1.3.2/
-patch -p1 <../fix1.patch 
+For OpenEXR support:
+```bash
+pip install OpenEXR
+# Alternative for some systems:
+pip install https://github.com/jamesbowman/openexrpython/archive/master.zip
+```
 
+For development:
+```bash
+pip install pytest pytest-cov black isort mypy
+```
 
-The following fails
-PYVER=3.11.1
-mkdir -p tmp/cloned
-wget "https://www.python.org/ftp/python/${PYVER}/Python-${PYVER}.tgz"
-tar -xvf "Python-${PYVER}.tgz"
-cd "Python-${PYVER}"
-mkdir ~/.localpython
-./configure --prefix /home/ucl/elen/brummer/.localpython --enable-optimizations
-make
-make install
+### System-specific Installation
 
+#### Arch Linux:
+```bash
+# PyTorch with ROCm or CUDA
+pacman -S python-pytorch-opt-rocm python-torchvision-rocm  # or cuda versions
 
-git clone https://github.com/sanguinariojoe/pip-openexr.git
-cd pip-openexr
-pip3 install .
+# Additional libraries
+pacman -S libraw python-rawpy python-openexr python-opencv python-colour-science
+pacman -S python-pytorch-msssim-git python-configargparse python-pytorch-piqa-git
+pacman -S python-tqdm python-colorspacious python-ptflops openimageio
+```
+
+#### Slurm Environment:
+```bash
+module load GCC CUDA LibTIFF PyYAML PyTorch libpng libjpeg-turbo
+```
 
 
 ## Datasets
@@ -55,139 +63,296 @@ It can be downloaded with the following commands: `curl -s "https://dataverse.uc
 
 This will download a flat structure. The data loaders and pre-processors in this work expect the structure described in the following subsection (datasets/src/<Bayer or X-Trans>/<SET_NAME>/<"gt/" if applicable><IMAGE.EXT>).
 
-### Prepare the RawNIND dataset (Clean-noisy / paired images)
+## Dataset Preparation
 
-RawNIND files are organized as follow in `../../datasets/RawNIND`:
+### RawNIND Dataset (Clean-noisy / paired images)
+
+RawNIND files are organized as follows in `../../datasets/RawNIND`:
 
 - `src/<Bayer or X-Trans>/<SET_NAME>/<IMAGEY>.<EXT>`
 - `src/<Bayer or X-Trans>/<SET_NAME>/gt/<IMAGEX>.<EXT>`
 - `proc/lin_rec2020/<SET_NAME>/<IMAGEY.EXT>`
 - `proc/lin_rec2020/<SET_NAME>/gt/<IMAGEX>.<EXT>`
-- `proc/lin_rec2020/<SET_NAME>/gt/<IMAGEX>.<EXT>.xmp` (processing pipeline for testing; each test-set ground-truth image has one)
+- `proc/lin_rec2020/<SET_NAME>/gt/<IMAGEX>.<EXT>.xmp` (processing pipeline for testing)
 - `proc/dt/<SET_NAME>/<IMAGEY>_aligned_to_<IMAGEX>.<EXT>` (manually processed test images)
-- `proc/dt/<SET_NAME>/gt/<IMAGEX>_aligned_to_<IMAGEY>.<EXT>` (Ground-truths are aligned against one another. When that is the case, we don't place the "IMAGEY" ground-truth in the "gt" directory in order to avoid namespace conflict with different proccessing pipelines.)
+- `proc/dt/<SET_NAME>/gt/<IMAGEX>_aligned_to_<IMAGEY>.<EXT>`
 - `masks/<IMAGEX-IMAGEY.EXT>.png`
 - `metadata/xProfiledRGB_yBayer.yaml`
 - `metadata/xProfiledRGB_yProfiledRGB.yaml`
 
 ```bash
-# python tools/make_hdr_rawnind_files.py  # optional: full-size images are not needed by the model
-# Demosaic X-Trans files and convert them to pRGB OpenEXR files with darktable-cli 
-python tools/xtrans_to_openexr_dataset.py
-# Pre-crop dataset images (raw and pRGB, RawNIND) for faster loading during training
-python tools/crop_datasets.py --dataset rawnind
+# Optional: full-size images (not needed by the model)
+# python -m src.rawnind.tools.make_hdr_rawnind_files
+
+# Demosaic X-Trans files and convert to pRGB OpenEXR with darktable-cli
+python -m src.rawnind.tools.xtrans_to_openexr_dataset
+
+# Pre-crop dataset images for faster training loading
+python -m src.rawnind.tools.crop_datasets --dataset rawnind
+
 # Compute images alignment, masks, gains
-python tools/prep_image_dataset.py
-# python tools/prep_image_dataset.py --dataset RawNIND_Bostitch # for additional camera / test images
+python -m src.rawnind.tools.prep_image_dataset
+
+# For additional camera/test images
+# python -m src.rawnind.tools.prep_image_dataset --dataset RawNIND_Bostitch
+
+# Copy mask overwrites
 cp ../../datasets/RawNIND/masks_overwrite/* ../../datasets/RawNIND/masks/
 ```
 
-#### Optional: compute MS-SSIM loss (for filtered testing)
+#### Optional: Compute MS-SSIM Loss (for filtered testing)
 
-```
-Run the following:
-`python tools/add_msssim_score_to_dataset_yaml_descriptor.py`
-```
-
-### Prepare the RawNIND manual processing test images
-Generate the dataset descriptor: `python libs/rawds_manproc.py`
-Compute the MS-SSIM losses (for filtered testing): `python tools/add_msssim_score_to_dataset_yaml_descriptor.py --dataset_descriptor_fpath ../../datasets/RawNIND/manproc_test_descriptor.yaml`
-
-
-### Optional: prepare the additional camera train/test images
-#### Req. for training
-Pre-crop dataset images (raw and pRGB, RawNIND) for faster loading during training: `python tools/crop_datasets.py --dataset RawNIND_Bostitch`
-Compute images alignment, masks, gains: `python tools/prep_image_dataset.py --dataset RawNIND_Bostitch`
-Optional, to get the full-size debayered images: `python tools/make_hdr_rawnind_files.py --data_dpath ../../datasets/RawNIND_Bostitch`
-#### Req. for testing
-Make the manproc descriptor: `python libs/rawds_manproc.py --test_descriptor_fpath ../../datasets/RawNIND_Bostitch/manproc_test_descriptor.yaml --rawnind_content_fpath ../../datasets/RawNIND_Bostitch/RawNIND_Bostitch_masks_and_alignments.yaml --test_reserve_fpath config/test_reserve_extdata.yaml`
-Compute MS-SSIM scores on manproc descriptor (for filtered testing): `python tools/add_msssim_score_to_dataset_yaml_descriptor.py --dataset_descriptor_fpath ../../datasets/RawNIND_Bostitch/manproc_test_descriptor.yaml`
-
-
-
-#### Optional: prepare the external paired dataset (deprecated)
-
-Ensure that the dataset is in the `../../datasets/ext_raw_denoise_<train/test>/src/Bayer/<SET_NAME>/[gt]` directory, with noisy images in SET_NAME and ground-truths in gt.
 ```bash
-python tools/crop_datasets.py --dataset ext_raw_denoise_test
-python tools/crop_datasets.py --dataset ext_raw_denoise_train
-
+python -m src.rawnind.tools.add_msssim_score_to_dataset_yaml_descriptor
 ```
 
-### Prepare the `extraraw` dataset (Clean-clean / unpaired images) for training
+### RawNIND Manual Processing Test Images
 
-**pixl-us**
-
-Run `rsync -avL rsync://raw.pixls.us/data/ raw-pixls-us-data/` from within `<TEMPORARY_DIRECTORY>`, multiple times as needed until the resulting files take up approximately 41 GB.
-
-then run `python tools/gather_raw_gt_images.py --orig_dpath <TEMPORARY_DIRECTORY>/raw-pixls-us-data/ --orig_name raw-pixls`
-
-**trougnouf-ISO_LE_100 (ie your own raw images)**
-
-Adapt orig_dpath and orig_name according to your raw pictures directory
 ```bash
-#eg first run:
-python tools/gather_raw_gt_images.py --orig_name trougnouf --orig_dpath /orb/Pictures/ITookAPicture # change path to point to your image library
+# Generate dataset descriptor
+python -m src.rawnind.dataset.manual_processing
 
-#eg update:
-python tools/gather_raw_gt_images.py --overwrite --orig_name trougnouf --orig_dpath '/orb/Pictures/ITookAPicture/2022/'
+# Compute MS-SSIM losses for filtered testing
+python -m src.rawnind.tools.add_msssim_score_to_dataset_yaml_descriptor \
+    --dataset_descriptor_fpath ../../datasets/RawNIND/manproc_test_descriptor.yaml
 ```
 
-**Then for all of the above**
+### Additional Camera Train/Test Images
 
-Once clean-clean images have all been gathered, remove the duplicate files as follow:
+#### Training Requirements:
+```bash
+# Pre-crop dataset images
+python -m src.rawnind.tools.crop_datasets --dataset RawNIND_Bostitch
 
+# Compute alignment, masks, gains
+python -m src.rawnind.tools.prep_image_dataset --dataset RawNIND_Bostitch
+
+# Optional: full-size debayered images
+python -m src.rawnind.tools.make_hdr_rawnind_files \
+    --data_dpath ../../datasets/RawNIND_Bostitch
+```
+
+#### Testing Requirements:
+```bash
+# Create manual processing descriptor
+python -m src.rawnind.dataset.manual_processing \
+    --test_descriptor_fpath ../../datasets/RawNIND_Bostitch/manproc_test_descriptor.yaml \
+    --rawnind_content_fpath ../../datasets/RawNIND_Bostitch/RawNIND_Bostitch_masks_and_alignments.yaml \
+    --test_reserve_fpath config/test_reserve_extdata.yaml
+
+# Compute MS-SSIM scores
+python -m src.rawnind.tools.add_msssim_score_to_dataset_yaml_descriptor \
+    --dataset_descriptor_fpath ../../datasets/RawNIND_Bostitch/manproc_test_descriptor.yaml
+```
+
+
+
+
+### ExtraRaw Dataset (Clean-clean / unpaired images) for Training
+
+#### PIXL.US Dataset
+
+```bash
+# Download from PIXL.US (run multiple times until ~41GB)
+cd <TEMPORARY_DIRECTORY>
+rsync -avL rsync://raw.pixls.us/data/ raw-pixls-us-data/
+
+# Process downloaded images
+python -m src.rawnind.tools.gather_raw_gt_images \
+    --orig_dpath <TEMPORARY_DIRECTORY>/raw-pixls-us-data/ \
+    --orig_name raw-pixls
+```
+
+#### Custom Raw Images (e.g., trougnouf-ISO_LE_100)
+
+```bash
+# Initial run
+python -m src.rawnind.tools.gather_raw_gt_images \
+    --orig_name trougnouf \
+    --orig_dpath /path/to/your/raw/images
+
+# Update with new images
+python -m src.rawnind.tools.gather_raw_gt_images \
+    --overwrite \
+    --orig_name trougnouf \
+    --orig_dpath '/path/to/new/images/2022/'
+```
+
+#### Dataset Cleanup and Processing
+
+Remove duplicate files:
 ```bash
 cd ../../datasets/extraraw
 rmlint . -S l
-./rmlint.sh sh:remove  # add -d or user input will be required
-rm rmlint.*  # rm the rmlint files too
+./rmlint.sh sh:remove  # Use -d for non-interactive mode
+rm rmlint.*  # Clean up rmlint files
 cd ../../src/rawnind/
 ```
 
-Process all of the ground-truth images into linear rec.2020 profile (ground-truth):
-
+Process ground-truth images to linear Rec.2020:
 ```bash
-python tools/make_hdr_extraraw_files.py
-bash logs/make_hdr_extraraw_files.py.log  # delete any file that couldn't be read
+python -m src.rawnind.tools.make_hdr_extraraw_files
+# Review and delete any files that couldn't be read
+bash logs/make_hdr_extraraw_files.py.log
 ```
 
-and check the dataset integrity with `python tools/check_dataset.py`
-
+Validate dataset integrity:
 ```bash
-# Pre-crop dataset images (raw and pRGB, extraraw) for faster loading during training
-python tools/crop_datasets.py --dataset extraraw
-python tools/prep_image_dataset_extraraw.py  # Generate list of crops
+python -m src.rawnind.tools.check_dataset
 ```
 
+Pre-crop for faster training:
+```bash
+# Crop extraraw dataset
+python -m src.rawnind.tools.crop_datasets --dataset extraraw
+python -m src.rawnind.tools.prep_image_dataset_extraraw
+```
 
-`extraraw` files are organized as follow in ``../../datasets/extraraw`:
+**ExtraRaw file organization** in `../../datasets/extraraw`:
 - `<SET_NAME>/src/<Bayer or X-Trans>/<IMAGE.EXT>`
 - `<SET_NAME>/src/proc/lin_rec2020/<IMAGE.EXT>.exr`
 
-and crop the extraraw dataset with `python tools/crop_datasets.py --dataset extraraw` (or without argument to crop both extraraw and RawNIND)
+### ExtraRaw PlayRaw (Unpaired) Manual Processing for Testing
 
-### Prepare the `extraraw` `playraw` (unpaired) manually processed images for testing
+```bash
+# Generate linear Rec.2020 images and crop list
+python -m src.rawnind.tools.make_hdr_extraraw_files
+python -m src.rawnind.tools.prep_image_dataset_extraraw
 
-If not already done, generate the linear rec.2020 images (same as in the training prep) with `python tools/make_hdr_extraraw_files.py` and create the list of crops with `python tools/prep_image_dataset_extraraw.py`
-Then create the manually processed dataset descriptor with `python libs/rawds_manproc.py --rawnind_content_fpath ../../datasets/extraraw/play_raw_test/crops_metadata.yaml --test_descriptor_fpath ../../datasets/extraraw/play_raw_test/manproc_test_descriptor.yaml --unpaired_images --test_reserve_fpath ""`
+# Create manual processing dataset descriptor
+python -m src.rawnind.dataset.manual_processing \
+    --rawnind_content_fpath ../../datasets/extraraw/play_raw_test/crops_metadata.yaml \
+    --test_descriptor_fpath ../../datasets/extraraw/play_raw_test/manproc_test_descriptor.yaml \
+    --unpaired_images \
+    --test_reserve_fpath ""
+```
 
 
-# Tests
-Add results to TODO
-TODO
+## Testing
 
+Run the test suite using pytest:
 
-# Generate plots
+```bash
+# Run all tests
+pytest
 
-First test all of the models with `bash scripts/test_all_needed.sh` (it will run for days), then generate the plots with `python tests/grapher.py`
+# Run specific package tests
+pytest src/rawnind/inference/tests/
+pytest src/rawnind/training/tests/
+pytest src/rawnind/dataset/tests/
+pytest src/rawnind/dependencies/tests/
 
-# Troubleshooting
+# Run with coverage
+pytest --cov=src/rawnind --cov-report=html
+```
 
-## Installing (python-)OpenEXR
+## Model Evaluation and Plotting
 
-If "pip install OpenEXR" fails, try installing the patches from "python-openexr" (aur repository). Don't forget to add the local OpenEXR paths to the library and include arrays in setup.py, then "pip install ."
+Test all trained models (this may take several days):
 
-# Known bugs
+```bash
+# Run comprehensive model testing
+bash scripts/test_all_needed.sh
 
-- images converted from X-Trans are saved with the wrong fpath in the yaml dataset descriptor (eg: actual fn: DSCF1735.RAF.exr, descriptor fn: DSCF1735.exr)
+# Generate evaluation plots
+python -m src.rawnind.tests.grapher
+```
+
+## Usage Examples
+
+### Training a Model
+
+```bash
+# Train a denoiser for Bayer-to-profiledRGB conversion
+python -m src.rawnind.train_denoiser_bayer2prgb
+
+# Train a denoiser for profiledRGB-to-profiledRGB conversion
+python -m src.rawnind.train_denoiser_prgb2prgb
+
+# Train joint denoising and compression
+python -m src.rawnind.train_dc_bayer2prgb
+python -m src.rawnind.train_dc_prgb2prgb
+```
+
+### Running Inference
+
+```bash
+# Denoise an image using a trained model
+python -m src.rawnind.inference.image_denoiser --input image.raw --model path/to/model
+```
+
+## Project Structure
+
+```
+src/rawnind/
+├── inference/          # Model inference and deployment
+│   ├── __init__.py
+│   ├── base_inference.py
+│   ├── image_denoiser.py
+│   ├── inference_engine.py
+│   ├── model_factory.py
+│   ├── model_loader.py
+│   └── tests/
+├── training/           # Training loops and optimization
+│   ├── __init__.py
+│   ├── denoise_compress_trainer.py
+│   ├── denoiser_trainer.py
+│   ├── experiment_manager.py
+│   ├── training_loops.py
+│   └── tests/
+├── dataset/            # Dataset handling and preprocessing
+│   ├── __init__.py
+│   ├── base_dataset.py
+│   ├── bayer_datasets.py
+│   ├── clean_datasets.py
+│   ├── manual_processing.py
+│   ├── rgb_datasets.py
+│   ├── test_dataloaders.py
+│   ├── validation_datasets.py
+│   └── tests/
+├── dependencies/       # Shared utilities and configurations
+│   ├── __init__.py
+│   ├── config_manager.py
+│   ├── json_saver.py
+│   ├── pt_losses.py
+│   ├── pytorch_helpers.py
+│   ├── utilities.py
+│   └── tests/
+├── models/             # Neural network architectures
+├── config/             # Configuration files
+├── tools/              # Utility scripts
+└── tests/              # Integration tests
+```
+
+## Troubleshooting
+
+### OpenEXR Installation Issues
+
+If `pip install OpenEXR` fails:
+
+1. Try installing from the AUR repository with patches:
+   ```bash
+   # On Arch Linux
+   yay -S python-openexr
+   ```
+
+2. For manual installation:
+   - Install OpenEXR system libraries
+   - Add local OpenEXR paths to library and include directories in setup.py
+   - Include arrays in setup.py configuration
+   - Run `pip install .`
+
+3. For local installations, you may need to set:
+   ```bash
+   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/.local/lib
+   ```
+
+### Dataset Issues
+
+- **X-Trans conversion filename bug**: Images converted from X-Trans format may be saved with incorrect filenames in YAML dataset descriptors (e.g., `DSCF1735.RAF.exr` saved as `DSCF1735.exr`)
+
+### Performance Tips
+
+- Pre-crop datasets for faster training loading
+- Use appropriate batch sizes for your GPU memory
+- Consider using mixed precision training for faster convergence
