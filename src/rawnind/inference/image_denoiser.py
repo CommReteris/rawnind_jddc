@@ -20,12 +20,13 @@ from ..dependencies.pt_losses import metrics as pt_losses_metrics
 from ..dependencies.pytorch_helpers import fpath_to_tensor
 from ..dependencies.utilities import load_yaml
 
-# Import raw processing (will be moved to dependencies later)
-from ..libs import rawproc, raw
+# Import raw processing from dependencies
+from ..dependencies import raw_processing as rawproc
+from ..dependencies import raw_processing as raw
 
 # Import inference components
 from .model_factory import get_and_load_test_object
-from .base_inference import BaseInference
+from .base_inference import ImageToImageNN
 
 DENOISED_DN = "denoised_images"
 METRICS_DN = "denoised_images_metrics"
@@ -91,7 +92,7 @@ def load_image(fpath, device) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
 
 
 def process_image_base(
-        test_obj: BaseInference,
+        test_obj: ImageToImageNN,
         out_img: torch.Tensor,
         gt_img: Optional[torch.Tensor] = None,
         in_img: Optional[torch.Tensor] = None,
@@ -213,7 +214,7 @@ def save_metrics(metrics: dict, fpath: str):
 
 
 def denoise_image_from_to_fpath(
-        in_img_fpath: str, out_img_fpath: str, test_obj: BaseInference
+        in_img_fpath: str, out_img_fpath: str, test_obj: ImageToImageNN
 ):
     """Denoise a single image file and write the processed output.
 
@@ -254,7 +255,7 @@ def bayer_to_prgb(image, rgb_xyz_matrix):
 
 def denoise_image_compute_metrics(
         in_img,
-        test_obj: BaseInference,
+        test_obj: ImageToImageNN,
         rgb_xyz_matrix: Optional[torch.Tensor] = None,
         gt_img: Optional[torch.Tensor] = None,
         metrics: list[str] = [],
@@ -311,7 +312,7 @@ def denoise_image_compute_metrics(
 
 def denoise_image_from_fpath_compute_metrics_and_export(
         in_img_fpath: str,
-        test_obj: Optional[BaseInference] = None,
+        test_obj: Optional[ImageToImageNN] = None,
         gt_img_fpath: Optional[str] = None,
         metrics: list[str] = [],
         nonlinearities: list[str] = [],

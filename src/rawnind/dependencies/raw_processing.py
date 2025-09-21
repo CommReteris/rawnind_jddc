@@ -522,12 +522,15 @@ class HdrExporter:
                 spec.attribute("oiio:ColorSpace", "lin_srgb")
                 spec.attribute("chromaticities", oiio.TypeDesc("float[8]"), [0.64, 0.33, 0.30, 0.60, 0.15, 0.06, 0.3127, 0.3290])
 
-            with oiio.ImageOutput.create(str(path)) as output:
+            output = oiio.ImageOutput.create(str(path))
+            try:
                 if not output.open(str(path), spec):
                     raise IOError(f"Failed to open EXR output: {path}")
                 hwc_img = np.ascontiguousarray(img.transpose(1, 2, 0))
                 if not output.write_image(hwc_img):
                     raise IOError(f"Failed to write EXR: {output.geterror()}")
+            finally:
+                output.close()
 
         elif self.exr_provider == "OpenEXR":
             import OpenEXR
@@ -1574,27 +1577,120 @@ def camRGB_to_lin_rec2020_images(
     return lin_rec2020_images
 
 
-def demosaic(rggb_img: torch.Tensor) -> torch.Tensor:
-    """Demosaic an RGGB Bayer mosaic to camera RGB.
-
-    Supports both single images [4, H, W] and batches [N, 4, H, W]. The output
-    preserves the input device and dtype when converting back to torch.
+def rggb_to_mono(rggb_image: torch.Tensor) -> np.ndarray:
+    """Convert RGGB tensor to mono Bayer numpy array.
 
     Args:
-        rggb_img: Tensor with channel order [R, G(R), G(B), B] in the first dimension.
+        rggb_image: Tensor of shape [4, H, W] or [N, 4, H, W] with RGGB channel order.
 
     Returns:
-        Tensor of shape [3, H, W] or [N, 3, H, W] in camera RGB.
+        Numpy array of shape [1, H*2, W*2] or [N, 1, H*2, W*2].
     """
-    mono_img: np.ndarray = rggb_to_mono(rggb_img)
-    if len(mono_img.shape) == 3:
-        return torch.from_numpy(demosaic(mono_img, {"bayer_pattern": "RGGB"}))
-    new_shape: list[int] = list(mono_img.shape)
-    new_shape[-3] = 3
-    demosaiced_image: np.ndarray = np.empty_like(mono_img, shape=new_shape)
-    for i, img in enumerate(mono_img):
-        demosaiced_image[i] = demosaic(mono_img[i], {"bayer_pattern": "RGGB"})
-    return torch.from_numpy(demosaiced_image).to(rggb_img.device)
+    if rggb_image.dim() == 3:  # Single image [4, H, W]
+        assert rggb_image.shape[0] == 4, f"Expected 4-channel RGGB: {rggb_image.shape}"
+        h2, w2 = rggb_image.shape[1:]
+        h, w = h2 * 2, w2 * 2
+
+        mono = np.zeros((h, w), dtype=np.float32)
+        # Convert to numpy for interleaving
+        rggb_np = rggb_image.cpu().numpy()
+        mono[0::2, 0::2] = rggb_np[0]  # R
+        mono[0::2, 1::2] = rggb_np[1]  # G1
+        mono[1::2, 0::2] = rggb_np[2]  # G2
+        mono[1::2, 1::2] = rggb_np[3]  # B
+        return mono[np.newaxis]  # Add channel dimension to make (1, H, W)
+
+    elif rggb_image.dim() == 4:  # Batch [N, 4, H, W]
+        assert rggb_image.shape[1] == 4, f"Expected 4-channel RGGB: {rggb_image.shape}"
+        n, _, h2, w2 = rggb_image.shape
+        h, w = h2 * 2, w2 * 2
+
+        mono = np.zeros((n, h, w), dtype=np.float32)
+        rggb_np = rggb_image.cpu().numpy()
+        for i in range(n):
+            mono[i, 0::2, 0::2] = rggb_np[i, 0]  # R
+            mono[i, 0::2, 1::2] = rggb_np[i, 1]  # G1
+            mono[i, 1::2, 0::2] = rggb_np[i, 2]  # G2
+            mono[i, 1::2, 1::2] = rggb_np[i, 3]  # B
+        return mono[:, np.newaxis]  # Add channel dimension to make (N, 1, H, W)
+
+    else:
+        raise ValueError(f"Unsupported tensor shape: {rggb_image.shape}")
+
+
+def demosaic_mono(
+    mono_img: np.ndarray, metadata: dict, method=cv2.COLOR_BayerRGGB2RGB_EA
+) -> np.ndarray:
+    """
+    Transform mono image to camRGB colors.
+
+    Debayering methods include COLOR_BayerRGGB2RGB, COLOR_BayerRGGB2RGB_EA.
+    """
+    assert method in (
+        cv2.COLOR_BayerRGGB2RGB,
+        cv2.COLOR_BayerRGGB2RGB_EA,
+    ), f"Wrong debayering method: {method}"
+    assert mono_img.shape[0] == 1, f"{mono_img.shape=}"
+    assert metadata["bayer_pattern"] == "RGGB", f'{metadata["bayer_pattern"]=}'
+    mono_img: np.ndarray = mono_img.copy()
+    dbg_img = mono_img.copy()
+    # convert to uint16 and scale to ensure we don't lose negative / large values
+    black_offset: float = 0.0 if mono_img.min() >= 0.0 else -mono_img.min()
+    mono_img += black_offset
+    assert (
+        mono_img >= 0
+    ).all(), f"{black_offset=}, {dbg_img.min()=}, {mono_img.min()=}"
+    max_value: float = 1.0 if mono_img.max() <= 1.0 else mono_img.max()
+    mono_img /= max_value
+    try:
+        assert mono_img.min() >= 0 and mono_img.max() <= 1.0, (
+            f"demosaic: image is out of bound; destructive operation. {mono_img.min()=}, "
+            f"{mono_img.max()=}"
+        )
+    except AssertionError as e:
+        print(f"{e}; {dbg_img.min()=}, {dbg_img.max()=}")
+        breakpoint()
+    mono_img *= 65535
+    mono_img = mono_img.astype(np.uint16).reshape(mono_img.shape[1:] + (1,))
+    rgb_img = cv2.demosaicing(mono_img, method)
+    rgb_img = rgb_img.transpose(2, 0, 1)  #  opencv h, w, ch to numpy ch, h, w
+    rgb_img = rgb_img.astype(np.float32) / 65535.0 * max_value - black_offset
+    return rgb_img
+
+
+def demosaic(rggb_img: torch.Tensor) -> torch.Tensor:
+    """Convert RGGB Bayer tensor to RGB tensor using proper demosaicing.
+
+    Args:
+        rggb_img: Tensor of shape [4, H, W] or [N, 4, H, W] with RGGB channel order.
+
+    Returns:
+        Tensor of shape [3, H*2, W*2] or [N, 3, H*2, W*2] in RGB (demosaiced resolution).
+    """
+    # Create minimal metadata for demosaic function
+    metadata = {"bayer_pattern": "RGGB"}
+
+    if rggb_img.dim() == 3:  # Single image [4, H, W]
+        # Convert to mono Bayer first
+        mono_img = rggb_to_mono(rggb_img.unsqueeze(0))  # Add batch dim, get [1, 1, H*2, W*2]
+        # Remove batch dim for demosaic
+        mono_img = mono_img[0]  # [1, H*2, W*2]
+        rgb = demosaic_mono(mono_img, metadata)
+        return torch.from_numpy(rgb).to(rggb_img.device)
+
+    elif rggb_img.dim() == 4:  # Batch [N, 4, H, W]
+        rgb_images = []
+        for i in range(rggb_img.shape[0]):
+            # Convert to mono Bayer first
+            mono_img = rggb_to_mono(rggb_img[i:i+1])  # [1, 1, H*2, W*2]
+            # Remove batch dim for demosaic
+            mono_img = mono_img[0]  # [1, H*2, W*2]
+            rgb = demosaic_mono(mono_img, metadata)
+            rgb_images.append(torch.from_numpy(rgb).to(rggb_img.device))
+        return torch.stack(rgb_images, dim=0)
+
+    else:
+        raise ValueError(f"Unsupported tensor shape: {rggb_img.shape}")
 
 
 def dt_proc_img(src_fpath: str, dest_fpath: str, xmp_fpath: str, compression: bool = True) -> None:

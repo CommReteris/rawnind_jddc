@@ -92,4 +92,7 @@ markers = [
     "input_type(type): mark tests for input formats like 'bayer' or 'prgb'",
     "fast: mark fast tests using null dataloaders",
     "integration: mark tests requiring real datasets",
+    "slow: mark tests that are slow to run",
+    "requires_real_model: mark tests that require trained models to be available",
+    "requires_gpu: mark tests that require CUDA GPU availability",
 ]
