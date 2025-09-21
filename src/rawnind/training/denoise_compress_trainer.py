@@ -14,8 +14,8 @@ import logging
 
 from . import training_loops
 from ..dependencies import pytorch_helpers
-from ..libs import rawproc
-from ..libs import raw
+from ..dependencies import rawproc
+from ..dependencies import raw_processing as raw
 
 
 class DCTrainingBayerToProfiledRGB(
@@ -29,7 +29,7 @@ class DCTrainingBayerToProfiledRGB(
     """
 
     CLS_CONFIG_FPATHS = training_loops.DenoiseCompressTraining.CLS_CONFIG_FPATHS + [
-        os.path.join("config", "train_dc_bayer2prgb.yaml")
+        os.path.join("dependencies", "configs", "train_dc_bayer2prgb.yaml")
     ]
 
     def __init__(self, launch=False, **kwargs) -> None:
@@ -52,7 +52,7 @@ class DCTrainingProfiledRGBToProfiledRGB(
     """
 
     CLS_CONFIG_FPATHS = training_loops.DenoiseCompressTraining.CLS_CONFIG_FPATHS + [
-        os.path.join("config", "train_dc_prgb2prgb.yaml")
+        os.path.join("dependencies", "configs", "train_dc_prgb2prgb.yaml")
     ]
 
     def __init__(self, launch=False, **kwargs):

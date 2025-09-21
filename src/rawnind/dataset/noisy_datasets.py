@@ -15,8 +15,10 @@ import torch
 # Import base classes
 from .base_dataset import CleanNoisyDataset, ProfiledRGBBayerImageDataset, \
     ProfiledRGBProfiledRGBImageDataset, RawDatasetOutput
-# Import from dependencies package (will be moved later)
+# Import from dependencies package
 from ..dependencies.pt_losses import losses, metrics
+from ..dependencies.utilities import load_yaml as utilities
+from ..dependencies.pytorch_helpers import fpath_to_tensor as pt_helpers
 # Import raw processing (will be moved to dependencies later)
 from ..libs import arbitrary_proc_fun, rawproc
 

@@ -16,8 +16,8 @@ import torch
 
 from . import training_loops
 from ..dependencies import pytorch_helpers
-from ..libs import rawproc
-from ..libs import raw
+from ..dependencies import rawproc
+from ..dependencies import raw_processing as raw
 
 APPROX_EXPOSURE_DIFF_PENALTY = 1 / 10000
 
@@ -34,7 +34,7 @@ class DenoiserTrainingBayerToProfiledRGB(
     """
 
     CLS_CONFIG_FPATHS = training_loops.DenoiserTraining.CLS_CONFIG_FPATHS + [
-        os.path.join("config", "train_denoise_bayer2prgb.yaml")
+        os.path.join("dependencies", "configs", "train_denoise_bayer2prgb.yaml")
     ]
 
     def __init__(self, launch=False, **kwargs) -> None:
@@ -57,7 +57,7 @@ class DenoiserTrainingProfiledRGBToProfiledRGB(
     """
 
     CLS_CONFIG_FPATHS = training_loops.DenoiserTraining.CLS_CONFIG_FPATHS + [
-        os.path.join("config", "train_denoise_prgb2prgb.yaml")
+        os.path.join("dependencies", "configs", "train_denoise_prgb2prgb.yaml")
     ]
 
     def __init__(self, launch=False, **kwargs):

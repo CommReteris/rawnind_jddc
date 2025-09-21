@@ -21,6 +21,7 @@ from ..dependencies.json_saver import YAMLSaver
 from ..dependencies.pt_losses import losses, metrics
 from ..dependencies.pytorch_helpers import get_device
 from ..dependencies import rawproc
+from ..dependencies import raw_processing as raw
 
 
 class TrainingLoops:

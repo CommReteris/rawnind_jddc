@@ -1,269 +1,105 @@
-"""Validation and test dataset implementations.
+"""Test dataloader classes for dataset validation and evaluation.
 
-This module contains dataset classes for validation and testing scenarios,
-including center-crop datasets and test dataloaders.
-
-Extracted from rawds.py as part of the codebase refactoring.
+This module contains dataloader classes specifically designed for testing and
+validation purposes, providing efficient iteration over test datasets.
 """
 
-import random
 import logging
 import os
 import sys
-import math
-import time
-import unittest
-from typing import Literal, NamedTuple, Optional, Union, TypedDict
-import tqdm
+from typing import Optional
 
 import torch
 
-# Import from dependencies package
-from ..dependencies.pytorch_helpers import get_device, fpath_to_tensor as pt_helpers
-from ..dependencies.utilities import dict_to_yaml, load_yaml
-from ..dependencies.pt_losses import losses, metrics
-
-# Import raw processing (will be moved to dependencies later)
-from ..libs import raw, rawproc, arbitrary_proc_fun
-
-# Import base classes
-from .base_dataset import RawImageDataset, TestDataLoader
+from .base_dataset import RawImageDataset
 from .noisy_datasets import CleanProfiledRGBNoisyBayerImageCropsDataset, \
     CleanProfiledRGBNoisyProfiledRGBImageCropsDataset
-
-BREAKPOINT_ON_ERROR = True
-COLOR_PROFILE = "lin_rec2020"
-TOY_DATASET_LEN = 25  # debug option
+from ..dependencies.pytorch_helpers import fpath_to_tensor as pt_helpers
+from ..dependencies.utilities import load_yaml as utilities
+# Import raw processing (will be moved to dependencies later)
+from ..libs import rawproc, arbitrary_proc_fun
 
 # Constants from original rawds.py
-MAX_MASKED: float = 0.5
-MAX_RANDOM_CROP_ATTEMPS = 10
-MASK_MEAN_MIN = 0.8
 ALIGNMENT_MAX_LOSS = 0.035
-OVEREXPOSURE_LB = 0.99
+MASK_MEAN_MIN = 0.8
 
 
-class CleanProfiledRGBNoisyProfiledRGBImageCropsValidationDataset(
-    CleanProfiledRGBNoisyProfiledRGBImageCropsDataset
-):
-    """Validation dataset for profiled RGB denoising models.
+class TestDataLoader:
+    """Mixin-like helper that yields processed images without using PyTorch DataLoader.
 
-    This class extends the training dataset to provide deterministic center crops
-    for validation and evaluation purposes. Instead of random crops, it consistently
-    selects the middle crop from each image's crop list, ensuring reproducible
-    validation metrics across training runs.
-
-    The validation dataset supports the same data pairing modes and processing
-    options as the training dataset but provides single crops per image rather
-    than multiple random crops, making it suitable for consistent model evaluation
-    during training and final performance assessment.
+    Classes inheriting this should implement get_images(), which yields dictionaries
+    with keys like x_crops, y_crops, mask_crops, and optionally rgb_xyz_matrix.
     """
+    OUTPUTS_IMAGE_FILES = False
 
-    def __init__(
-            self,
-            content_fpaths: list[str],
-            crop_size: int,
-            test_reserve,
-            bayer_only: bool,
-            alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
-            mask_mean_min: float = MASK_MEAN_MIN,
-            toy_dataset: bool = False,
-            match_gain: bool = False,
-            arbitrary_proc_method: bool = False,
-            data_pairing: Literal["x_y", "x_x", "y_y"] = "x_y",
-    ):
-        super().__init__(
-            content_fpaths=content_fpaths,
-            num_crops=1,
-            crop_size=crop_size,
-            test_reserve=test_reserve,
-            alignment_max_loss=alignment_max_loss,
-            mask_mean_min=mask_mean_min,
-            test=True,
-            bayer_only=bayer_only,
-            toy_dataset=toy_dataset,
-            match_gain=match_gain,
-            arbitrary_proc_method=arbitrary_proc_method,
-            data_pairing=data_pairing,
-        )
-
-    def __getitem__(self, i: int):
-        """Returns a center crop triplet (ximage, yimage, mask).
-
-        Args:
-            i (int): Image index
-
-        Returns:
-            tuple[torch.Tensor, torch.Tensor, torch.BoolTensor]: center crop triplet
-        """
-        image: dict = self._dataset[i]
-        crop_n = len(image["crops"]) // 2
-        crop = image["crops"][crop_n]
-
-        if self.data_pairing == "x_y":
-            gt_img = pt_helpers.fpath_to_tensor(crop["gt_linrec2020_fpath"])
-            noisy_img = pt_helpers.fpath_to_tensor(crop["f_linrec2020_fpath"])
-
-            gt_img, noisy_img = rawproc.shift_images(
-                gt_img, noisy_img, image["best_alignment"]
-            )
-            whole_img_mask = pt_helpers.fpath_to_tensor(image["mask_fpath"])[
-                :,
-                crop["coordinates"][1]: crop["coordinates"][1] + gt_img.shape[1],
-                crop["coordinates"][0]: crop["coordinates"][0] + gt_img.shape[2],
-            ]
-            try:
-                whole_img_mask = whole_img_mask.expand(gt_img.shape)
-            except RuntimeError as e:
-                logging.error(e)
-                breakpoint()
-        elif self.data_pairing == "x_x":
-            gt_img = pt_helpers.fpath_to_tensor(crop["gt_linrec2020_fpath"])
-            noisy_img = pt_helpers.fpath_to_tensor(crop["gt_linrec2020_fpath"])
-            whole_img_mask = torch.ones_like(gt_img)
-        elif self.data_pairing == "y_y":
-            gt_img = pt_helpers.fpath_to_tensor(crop["f_linrec2020_fpath"])
-            noisy_img = pt_helpers.fpath_to_tensor(crop["f_linrec2020_fpath"])
-            whole_img_mask = torch.ones_like(gt_img)
-
-        if self.crop_size == 0:
-            height, width = gt_img.shape[-2:]
-            height = height - height % 256
-            width = width - width % 256
-            min_crop_size = 256
-            x_crop = gt_img[..., :height, :width]
-            noisy_img = y_crop = noisy_img[..., :height, :width]
-            whole_img_mask = mask_crop = whole_img_mask[..., :height, :width]
-        else:
-            min_crop_size = self.crop_size
-            x_crop, y_crop, mask_crop = self.center_crop(
-                gt_img, noisy_img, whole_img_mask
-            )
-        if x_crop.shape[-1] < min_crop_size or x_crop.shape[-2] < min_crop_size:
-            logging.warning(
-                f"CleanProfiledRGBNoisyProfiledRGBImageCropsValidationDataset.__getitem__: not enough pixels in "
-                f"{crop['gt_linrec2020_fpath']}; deleting from dataset"
-            )
-            self._dataset[i]["crops"].remove(crop)
-            return self.__getitem__(i)
-
-        output = {
-            "x_crops"   : x_crop.float(),
-            "y_crops"   : y_crop.float(),
-            "mask_crops": mask_crop,
-            "gt_fpath"  : crop["gt_linrec2020_fpath"],
-            "y_fpath"   : crop["f_linrec2020_fpath"],
-        }
-        if self.match_gain:
-            output["y_crops"] *= image["rgb_gain"]
-            output["gain"] = 1.0
-        else:
-            output["gain"] = image["rgb_gain"]
-        if self.arbitrary_proc_method:
-            output["x_crops"] = arbitrary_proc_fun.arbitrarily_process_images(
-                output["x_crops"],
-                randseed=crop["gt_linrec2020_fpath"],
-                method=self.arbitrary_proc_method,
-            )
-            output["y_crops"] = arbitrary_proc_fun.arbitrarily_process_images(
-                output["y_crops"],
-                randseed=crop["gt_linrec2020_fpath"],
-                method=self.arbitrary_proc_method,
-            )
-        return output
-
-
-class CleanProfiledRGBNoisyBayerImageCropsValidationDataset(
-    CleanProfiledRGBNoisyBayerImageCropsDataset
-):
-    """Dataset of clean (profiled RGB) - noisy (Bayer) images from rawNIND."""
-
-    def __init__(
-            self,
-            content_fpaths: list[str],
-            crop_size: int,
-            test_reserve,
-            bayer_only: bool,
-            alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
-            mask_mean_min: float = MASK_MEAN_MIN,
-            toy_dataset=False,
-            match_gain: bool = False,
-            data_pairing: Literal["x_y", "x_x", "y_y"] = "x_y",
-    ):
-        super().__init__(
-            content_fpaths=content_fpaths,
-            num_crops=1,
-            crop_size=crop_size,
-            test_reserve=test_reserve,
-            alignment_max_loss=alignment_max_loss,
-            mask_mean_min=mask_mean_min,
-            test=True,
-            bayer_only=bayer_only,
-            toy_dataset=toy_dataset,
-            match_gain=match_gain,
-            data_pairing=data_pairing,
-        )
+    def __init__(self, **kwargs):
+        """Accept arbitrary keyword arguments for configuration; subclasses may consume them."""
+        pass
 
     def __getitem__(self, i):
-        image: dict = self._dataset[i]
-        crop_n = len(image["crops"]) // 2
-        crop = image["crops"][crop_n]
+        """Disabled random access; use the iterator or get_images() instead."""
+        raise TypeError(
+            f"{type(self).__name__} is its own data loader: "
+            "call get_images instead of __getitem__ (or use built-in __iter__)."
+        )
 
-        if self.data_pairing == "x_y":
-            gt_img = pt_helpers.fpath_to_tensor(crop["gt_linrec2020_fpath"])
-            noisy_img = pt_helpers.fpath_to_tensor(crop["f_bayer_fpath"])
+    def __iter__(self):
+        """Iterator alias for get_images()."""
+        return self.get_images()
 
-            gt_img, noisy_img = rawproc.shift_images(
-                gt_img, noisy_img, image["best_alignment"]
-            )
-            whole_img_mask = pt_helpers.fpath_to_tensor(image["mask_fpath"])[
-                :,
-                crop["coordinates"][1]: crop["coordinates"][1] + gt_img.shape[1],
-                crop["coordinates"][0]: crop["coordinates"][0] + gt_img.shape[2],
-            ]
-            whole_img_mask = whole_img_mask.expand(gt_img.shape)
-        elif self.data_pairing == "x_x":
-            gt_img = pt_helpers.fpath_to_tensor(crop["gt_linrec2020_fpath"])
-            noisy_img = pt_helpers.fpath_to_tensor(crop["f_bayer_fpath"])
-            whole_img_mask = torch.ones_like(gt_img)
-        elif self.data_pairing == "y_y":
-            gt_img = pt_helpers.fpath_to_tensor(crop["f_linrec2020_fpath"])
-            noisy_img = pt_helpers.fpath_to_tensor(crop["f_bayer_fpath"])
-            whole_img_mask = torch.ones_like(gt_img)
+    def batched_iterator(self):
+        """Yield batched tensors by adding a batch dimension when needed.
 
-        if self.crop_size == 0:
-            height, width = gt_img.shape[-2:]
-            height = height - height % 256
-            width = width - width % 256
-            min_crop_size = 256
-            x_crop = gt_img[..., :height, :width]
-            noisy_img = y_crop = noisy_img[..., : height // 2, : width // 2]
-            whole_img_mask = mask_crop = whole_img_mask[..., :height, :width]
+        If get_images() yields per-image tensors of shape [C,H,W], they are expanded
+        to [1,C,H,W]; if they already include [N,C,H,W], they are passed through.
+        """
+        single_to_batch = lambda x: torch.unsqueeze(x, 0)
+        identity = lambda x: x
+        if hasattr(
+                self, "get_images"
+        ):  # TODO should combine this ifelse with an iterator selection
+            for res in self.get_images():
+                batch_fun = single_to_batch if res["y_crops"].dim() == 3 else identity
+                res["y_crops"] = batch_fun(res["y_crops"]).float()
+                res["x_crops"] = batch_fun(res["x_crops"]).float()
+                res["mask_crops"] = batch_fun(res["mask_crops"])
+                if "rgb_xyz_matrix" in res:
+                    res["rgb_xyz_matrix"] = batch_fun(res["rgb_xyz_matrix"])
+                yield res
         else:
-            min_crop_size = self.crop_size
-            x_crop, y_crop, mask_crop = self.center_crop(
-                gt_img, noisy_img, whole_img_mask
-            )
-        if x_crop.shape[-1] < min_crop_size or x_crop.shape[-2] < min_crop_size:
-            logging.warning(
-                f"CleanProfiledRGBNoisyBayerImageCropsValidationDataset.__getitem__: not enough pixels in {crop['gt_linrec2020_fpath']}; deleting from dataset"
-            )
-            self._dataset[i]["crops"].remove(crop)
-            return self.__getitem__(i)
-        output = {
-            "x_crops"       : x_crop.float(),
-            "y_crops"       : y_crop.float(),
-            "mask_crops"    : mask_crop,
-            "rgb_xyz_matrix": torch.tensor(image["rgb_xyz_matrix"]),
-            "gt_fpath"      : crop["gt_linrec2020_fpath"],
-            "y_fpath"       : crop["f_bayer_fpath"],
-        }
-        if self.match_gain:
-            output["y_crops"] *= image["raw_gain"]
-            output["gain"] = 1.0
-        else:
-            output["gain"] = image["raw_gain"]
-        return output
+            for i in range(len(self._dataset)):
+                res = self.__getitem__(i)
+                batch_fun = single_to_batch if res["y_crops"].dim() == 3 else identity
+                res["y_crops"] = batch_fun(res["y_crops"]).float()
+                res["x_crops"] = batch_fun(res["x_crops"]).float()
+                res["mask_crops"] = batch_fun(res["mask_crops"])
+                if "rgb_xyz_matrix" in res:
+                    res["rgb_xyz_matrix"] = batch_fun(res["rgb_xyz_matrix"])
+                yield res
+
+    @staticmethod
+    def _content_fpaths_to_test_reserve(content_fpaths: list[str]) -> list[str]:
+        """Extract test reserve directory names from dataset content files.
+
+        Parses YAML content files to extract directory names (excluding 'gt' directories)
+        that should be reserved for testing purposes, ensuring proper train/test splits.
+
+        Args:
+            content_fpaths: List of paths to YAML files containing dataset metadata.
+
+        Returns:
+            List of directory names to reserve for testing.
+        """
+        # add all images to test_reserve:
+        test_reserve = []
+        for content_fpath in content_fpaths:
+            for image in utilities.load_yaml(content_fpath, error_on_404=True):
+                # get the directory name of the image (not the full path)
+                dn = os.path.basename(os.path.dirname(image["f_fpath"]))
+                if dn == "gt":
+                    continue
+                test_reserve.append(dn)
+        return test_reserve
 
 
 class CleanProfiledRGBNoisyBayerImageCropsTestDataloader(
