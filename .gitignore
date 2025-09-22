@@ -89,3 +89,4 @@ src/rawnind/models/weights/DenoiserTrainingProfiledRGBToProfiledRGB_3ch_2024-06-
 src/rawnind/models/weights/DenoiserTrainingProfiledRGBToProfiledRGB_3ch_2024-10-09-prgb_ms-ssim_mgout_notrans_valeither_-1/saved_models/iter_3900000.pt
 src/rawnind/models/weights/DenoiserTrainingProfiledRGBToProfiledRGB_3ch_2024-10-25-prgb_ms-ssim_mgout_gamma22_-3/saved_models/iter_4305000.pt
 src/rawnind/models/weights/train_denoise_proc2proc_2024-05-17-proc2proc_ocv3_notrans_valeither_msssim_-4/saved_models/iter_3195000.pt
+src/rawnind/tests/test_data/raw_samples/Bayer_D60-2_GT_ISO100_sha1=29f5b93638b1cf60d4afbd83fb2c1caca5c1ac38.crw
