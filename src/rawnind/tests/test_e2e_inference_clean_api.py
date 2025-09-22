@@ -59,7 +59,7 @@ class TestCleanInferenceAPI:
         """Test creating a compression model with minimal parameters."""
         # Should create a basic compressor ready for inference
         compressor = create_compressor(
-            architecture='standard',
+            architecture='ManyPriors',  # Use valid compression architecture
             device='cpu'
         )
         

@@ -6,12 +6,10 @@ including comprehensive metrics computation and output processing.
 Extracted from tools/denoise_image.py as part of the codebase refactoring.
 """
 
-import argparse
 import os
 import sys
 from typing import Optional
 
-import configargparse
 import torch
 import yaml
 
@@ -32,44 +30,9 @@ DENOISED_DN = "denoised_images"
 METRICS_DN = "denoised_images_metrics"
 
 
-def add_arguments(parser):
-    """Register CLI arguments for single-image denoising.
+# CLI interface removed - use clean API functions instead:
+# from rawnind.inference import create_rgb_denoiser, load_model_from_checkpoint, compute_image_metrics
 
-    Args:
-        parser: An argparse.ArgumentParser to which options will be added.
-    """
-    parser.add_argument(
-        "--config",
-        dest="config",
-        required=True,
-        help="trained model's config file in yaml format",
-    )
-    parser.add_argument(
-        "-i",
-        "--in_img_fpath",
-        required=True,
-        help="Path of the image to denoise",
-    )
-    parser.add_argument(
-        "--gt_img_fpath",
-        help="Path to the ground-truth image (optional)",
-    )
-    parser.add_argument(
-        "-o", "--out_img_fpath", help="Optional path to save the denoised image"
-    )
-    parser.add_argument(
-        "--metrics",
-        nargs=("*"),
-        help=f"Validation and test metrics: {pt_losses_metrics}",
-        default=["mse", "msssim_loss"],
-    )
-    parser.add_argument(
-        "--nonlinearities",
-        nargs=("*"),
-        help="Nonlinearities used to compute the metrics, as defined in "
-        "abstract_trainer.ImageToImageNN.get_transfer_function (ie pq, gamma22)",
-        default=["pq", "gamma22"],
-    )
 
 
 def load_image(fpath, device) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
@@ -367,12 +330,5 @@ def denoise_image_from_fpath_compute_metrics_and_export(
         )
 
 
-if __name__ == "__main__":
-    parser = configargparse.argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    add_arguments(parser)
-    args = parser.parse_known_args()[0]
-    # call denoise_image_compute_metrics with all args except config
-    vars(args).pop("config")
-    denoise_image_from_fpath_compute_metrics_and_export(**vars(args))
+# CLI interface removed - use clean API functions instead:
+# from rawnind.inference import create_rgb_denoiser, load_model_from_checkpoint, compute_image_metrics

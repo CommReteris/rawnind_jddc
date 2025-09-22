@@ -709,12 +709,18 @@ class TestHyperparameterManagement:
         # Initial learning rate should match config
         assert trainer.get_current_learning_rate() == 1e-3
         
-        # Simulate poor validation performance to trigger LR decay
+        # First establish good performance baseline
         trainer.update_learning_rate(
-            validation_metrics={'loss': 0.9},  # Poor performance
-            step=60  # Past patience window
+        validation_metrics={'loss': 0.1},  # Good performance
+        step=20
         )
         
+        # Then simulate poor validation performance to trigger LR decay
+        trainer.update_learning_rate(
+            validation_metrics={'loss': 0.9},  # Poor performance
+            step=80  # Past patience window (20 + 40 = 60, so 80 > 60)
+        )
+
         # Learning rate should have decayed
         new_lr = trainer.get_current_learning_rate()
         assert new_lr < 1e-3  # Should be reduced
@@ -1107,8 +1113,9 @@ class TestTrainingModelArchitectures:
         
         # Verify UNet-specific properties
         assert trainer.model_architecture == "unet"
-        assert hasattr(trainer.model, 'down_path')  # UNet-specific attribute
-        assert hasattr(trainer.model, 'up_path')    # UNet-specific attribute
+        assert hasattr(trainer.model, 'convs1')  # UNet encoder level 1
+        assert hasattr(trainer.model, 'up1')     # UNet decoder level 1
+        assert hasattr(trainer.model, 'output_module')  # UNet output layer
     
     def test_autoencoder_architecture_training(self):
         """Test training with autoencoder architecture for compression."""
