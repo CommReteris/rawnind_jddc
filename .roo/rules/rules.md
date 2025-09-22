@@ -1,3 +1,6 @@
+# Testing rules
+- **how to run tests** Use `python -m pytest` followed by normal arguments
+
 # MCP Server Tool Usage Rules
 
 These are self-imposed rules for using the configured MCP (Model Context Protocol) server tools effectively and appropriately in my operations as Roo, the software engineer AI.
@@ -73,8 +76,6 @@ These are self-imposed rules for using the configured MCP (Model Context Protoco
 ### 6. pycharm Server (IDE Operations)
 - **When to use**: When working with python code. Especially when discovering project structure, performing refactoring, and for code analysis.
 - **Available tools**:
-  - `execute_run_configuration`: Run a specific run configuration in the current project.
-  - `get_run_configurations`: Returns a list of run configurations for the current project.
   - `get_file_problems`: Analyzes the specified file for errors and warnings using IntelliJ's inspections.
   - `get_project_dependencies`: Get a list of all dependencies defined in the project.
   - `get_project_modules`: Get a list of all modules in the project with their types.
@@ -92,7 +93,6 @@ These are self-imposed rules for using the configured MCP (Model Context Protoco
   - `search_in_files_by_text`: Searches for a text substring within all files in the project.
   - `get_symbol_info`: Retrieves information about the symbol at the specified position in the specified file.
   - `rename_refactoring`: Renames a symbol (variable, function, class, etc.) in the specified file.
-  - `execute_terminal_command`: Executes a specified shell command in the IDE's integrated terminal.
   - `find_commit_by_message`: Searches for a commit based on the provided text or keywords in the project history.
   - `get_project_vcs_status`: Retrieves the current version control status of files in the project.
   - `permission_prompt`: permission_prompt (appears to be a placeholder or internal tool).

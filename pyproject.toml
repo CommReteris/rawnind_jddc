@@ -95,4 +95,6 @@ markers = [
     "slow: mark tests that are slow to run",
     "requires_real_model: mark tests that require trained models to be available",
     "requires_gpu: mark tests that require CUDA GPU availability",
+    "synthetic: mark tests using synthetic/mock data",
+    "real: mark tests using real data and models",
 ]

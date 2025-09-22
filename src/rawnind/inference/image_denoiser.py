@@ -182,7 +182,9 @@ def compute_metrics(
     """
     metrics_results = {}
     for metric in metrics:
-        metrics_results[metric] = float(pt_losses_metrics[metric](in_img, gt_img))
+        # Instantiate the metric class first, then call it
+        metric_fn = pt_losses_metrics[metric]()
+        metrics_results[metric] = float(metric_fn(in_img, gt_img))
     if prefix is not None:
         metrics_results = {f"{prefix}_{k}": v for k, v in metrics_results.items()}
     return metrics_results
@@ -199,7 +201,7 @@ def save_image(image, fpath: str, src_fpath: Optional[str] = None):
     assert image.shape[-3] == 3
     if len(image.shape) == 4:
         image = image.squeeze(0)
-    raw.hdr_nparray_to_file(image.numpy(), fpath, "lin_rec2020", src_fpath=src_fpath)
+    raw.hdr_nparray_to_file(image.numpy(), fpath, "lin_rec2020")
 
 
 def save_metrics(metrics: dict, fpath: str):

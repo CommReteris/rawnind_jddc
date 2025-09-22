@@ -37,32 +37,29 @@ class ImageToImageNN:
         """Initialize the image-to-image neural network framework.
 
         This constructor sets up the entire infrastructure for inference with
-        image-to-image neural networks, including argument parsing, logging configuration,
-        device setup, model instantiation, and metric initialization.
-
-        The initialization process follows these steps:
-        1. Skip initialization if already initialized (for multiple inheritance)
-        2. Parse and process command-line and config file arguments
-        3. Set up logging infrastructure
-        4. Create directory structure for experiment outputs
-        5. Back up source code for reproducibility
-        6. Instantiate the neural network model
-        7. Load pre-trained weights if specified
-        8. Initialize evaluation metrics
+        image-to-image neural networks. It supports both CLI-based initialization
+        (for scripts) and direct programmatic initialization (for tests/API usage).
 
         Args:
-            **kwargs: Keyword arguments that can override command-line arguments.
-                Common parameters include:
+            **kwargs: Keyword arguments for direct initialization. Common parameters:
                 - test_only: Boolean flag for evaluation-only mode
                 - preset_args: Dictionary of arguments to override parsed arguments
-                - device: String specifying the computation device ("cuda" or "cpu")
+                - device: String/int specifying computation device ("cuda", "cpu", or device number)
+                - arch: Model architecture (required unless using CLI)
+                - match_gain: When to match gains ("input", "output", "never") 
+                - load_path: Path to pre-trained model
+                - save_dpath: Directory for saving outputs
+                - in_channels: Number of input channels (3 or 4)
+                - funit: Filter units multiplier
+                - metrics: List of metrics to compute
+                - debug_options: List of debug flags
+                - use_cli: If True, parse command line arguments (default: False for test_only)
 
         Notes:
-            - The method modifies the instance state extensively, adding all parsed
-              arguments as instance attributes
-            - For subclasses, the instantiate_model() method must be implemented
-            - The logger is configured to output to both file and console
-            - In test_only mode, model saving and certain training preparations are skipped
+            - For programmatic usage, provide required parameters directly in kwargs
+            - For CLI usage, set use_cli=True or don't set test_only=True
+            - The method modifies instance state extensively, adding all arguments as attributes
+            - Subclasses must implement instantiate_model() method
         """
         # skip if already initialized, by checking for self.device
         if hasattr(self, "device"):
@@ -70,59 +67,112 @@ class ImageToImageNN:
 
         # initialize subclasses-initialized variables to satisfy the linter
         self.save_dpath: str = None  # type: ignore
-        # get args
-        if "test_only" in kwargs:
-            self.test_only = kwargs["test_only"]
-        args = self.get_args(
-            ignore_unknown_args=hasattr(self, "test_only") and self.test_only
-        )
-        if "preset_args" in kwargs:
-            vars(args).update(kwargs["preset_args"])
-            vars(self).update(kwargs["preset_args"])
-        self.__dict__.update(
-            vars(args)
-        )  # needed here because _get_resume_suffix uses self.loss
-        self.autocomplete_args(args)
-        self.__dict__.update(vars(args))
+        
+        # Determine if we should use CLI parsing or direct initialization
+        test_only = kwargs.get("test_only", False)
+        use_cli = kwargs.get("use_cli", not test_only)
+        
+        if use_cli:
+            # Legacy CLI-based initialization
+            if "test_only" in kwargs:
+                self.test_only = kwargs["test_only"]
+            args = self.get_args(
+                ignore_unknown_args=hasattr(self, "test_only") and self.test_only
+            )
+            if "preset_args" in kwargs:
+                vars(args).update(kwargs["preset_args"])
+                vars(self).update(kwargs["preset_args"])
+            self.__dict__.update(vars(args))
+            self.autocomplete_args(args)
+            self.__dict__.update(vars(args))
+        else:
+            # Direct programmatic initialization
+            self._init_from_kwargs(kwargs)
+            # Create a mock args object for compatibility
+            from types import SimpleNamespace
+            args = SimpleNamespace(**self.__dict__)
+            
         if not hasattr(self, "test_only"):
             self.test_only = kwargs.get("test_only", False)
+        
+        # Update with any additional kwargs
+        self.__dict__.update(kwargs)
+        
+        # Setup logging and directories only for non-test modes
         if not self.test_only:
-            self.save_args(args)
-        self.save_cmd()
-        self.device = get_device(args.device)
+            if use_cli:
+                self.save_args(args)
+                self.save_cmd()
+            self._setup_logging()
+            os.makedirs(os.path.join(self.save_dpath, "saved_models"), exist_ok=True)
+        
+        # Setup device
+        self.device = get_device(getattr(self, 'device', None))
         if "cuda" in str(self.device):
             torch.backends.cudnn.benchmark = True  # type: ignore
-        # torch.autograd.set_detect_anomaly(True)
-        self.__dict__.update(kwargs)
-
-        # get logger
-        for handler in logging.root.handlers[:]:
-            logging.root.removeHandler(handler)
-        logging.basicConfig(
-            filename=os.path.join(
-                self.save_dpath, f"{'test' if self.test_only else 'train'}.log"
-            ),
-            datefmt="%Y-%m-%d %H:%M:%S",
-            format="%(asctime)s %(levelname)-8s %(message)s",
-            level=logging.DEBUG if self.debug_options else logging.INFO,
-            filemode="w",
-        )
-        logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
-        logging.info(" ".join(sys.argv))
-        logging.info(f"PID: {os.getpid()}")
-
-        os.makedirs(os.path.join(self.save_dpath, "saved_models"), exist_ok=True)
 
         # instantiate model
         self.instantiate_model()
-        if self.load_path:
+        if getattr(self, 'load_path', None):
             self.load_model(self.model, self.load_path, device=self.device)
 
         # init metrics
         metrics_dict = {}
-        for metric in self.metrics:
+        for metric in getattr(self, 'metrics', []):
             metrics_dict[metric] = metrics[metric]()
         self.metrics = metrics_dict
+    
+    def _init_from_kwargs(self, kwargs):
+        """Initialize instance attributes directly from kwargs for programmatic usage."""
+        # Set required defaults for inference
+        defaults = {
+            'arch': 'unet',  # Default architecture
+            'match_gain': 'never',  # Default gain matching
+            'loss': 'msssim',  # Default loss (for Denoiser subclasses)
+            'in_channels': 3,  # Default input channels
+            'funit': 48,  # Default filter units
+            'device': -1,  # Default to CPU
+            'metrics': [],  # Default metrics
+            'debug_options': [],  # Default debug options
+            'save_dpath': '/tmp/rawnind_test',  # Default save directory for tests
+            'load_path': None,  # No pre-trained model by default
+            'init_step': 0,  # Start from step 0
+            'expname': 'test_inference',  # Default experiment name
+        }
+        
+        # Apply defaults first
+        for key, value in defaults.items():
+            setattr(self, key, value)
+            
+        # Override with provided kwargs
+        for key, value in kwargs.items():
+            if not key.startswith('_'):  # Skip private attributes
+                setattr(self, key, value)
+                
+    def _setup_logging(self):
+        """Setup logging configuration."""
+        # get logger
+        for handler in logging.root.handlers[:]:
+            logging.root.removeHandler(handler)
+        
+        # Only setup file logging if save_dpath exists and is not a temp directory
+        if self.save_dpath and not self.save_dpath.startswith('/tmp'):
+            os.makedirs(self.save_dpath, exist_ok=True)
+            logging.basicConfig(
+                filename=os.path.join(
+                    self.save_dpath, f"{'test' if self.test_only else 'train'}.log"
+                ),
+                datefmt="%Y-%m-%d %H:%M:%S",
+                format="%(asctime)s %(levelname)-8s %(message)s",
+                level=logging.DEBUG if getattr(self, 'debug_options', []) else logging.INFO,
+                filemode="w",
+            )
+        
+        # Always add console logging
+        logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
+        if hasattr(self, 'save_dpath') and not self.save_dpath.startswith('/tmp'):
+            logging.info(" ".join(sys.argv))
+            logging.info(f"PID: {os.getpid()}")
 
     @staticmethod
     def load_model(model: torch.nn.Module, path: str, device=None) -> None:
