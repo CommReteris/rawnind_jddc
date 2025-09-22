@@ -100,6 +100,95 @@ def real_inference_engine(real_model):
 
 
 @pytest.fixture
+def real_rgb_model():
+    """Load a real trained RGB model for testing using the new clean interface."""
+    # Try to load a real model from the weights directory
+    weights_dir = Path("src/rawnind/models/weights")
+    model_dirs = list(weights_dir.glob("*ProfiledRGBToProfiledRGB*"))
+
+    if not model_dirs:
+        pytest.skip("No trained RGB models found for testing")
+
+    model_dir = model_dirs[0]
+    # Look for both .pt and .pt.opt files
+    pt_files = list(model_dir.glob("saved_models/*.pt")) + list(model_dir.glob("saved_models/*.pt.opt"))
+
+    if not pt_files:
+        pytest.skip("No model checkpoint found")
+
+    # Load model configuration from args.yaml
+    args_path = model_dir / "args.yaml"
+    if not args_path.exists():
+        pytest.skip("Model args.yaml not found")
+
+    with open(args_path) as f:
+        config = yaml.safe_load(f)
+
+    # Create model instance using the new clean interface
+    from rawnind.inference.model_factory import Denoiser
+    
+    # Use programmatic initialization with required parameters
+    model = Denoiser(
+        test_only=True,
+        arch=config.get('arch', 'unet'),
+        in_channels=config.get('in_channels', 3),
+        funit=config.get('funit', 48),
+        match_gain=config.get('match_gain', 'never'),
+        loss=config.get('loss', 'msssim'),
+        device=-1,  # CPU for testing
+        load_path=str(pt_files[0]),  # Load the checkpoint
+        save_dpath='/tmp/test_rgb_model'
+    )
+    
+    return model
+
+
+@pytest.fixture
+def real_bayer_model():
+    """Load a real trained Bayer model for testing using the new clean interface."""
+    # Try to load a real Bayer model from the weights directory
+    weights_dir = Path("src/rawnind/models/weights")
+    model_dirs = list(weights_dir.glob("*BayerToProfiledRGB*"))
+
+    if not model_dirs:
+        pytest.skip("No trained Bayer models found for testing")
+
+    model_dir = model_dirs[0]
+    # Look for both .pt and .pt.opt files
+    pt_files = list(model_dir.glob("saved_models/*.pt")) + list(model_dir.glob("saved_models/*.pt.opt"))
+
+    if not pt_files:
+        pytest.skip("No Bayer model checkpoint found")
+
+    # Load model configuration from args.yaml
+    args_path = model_dir / "args.yaml"
+    if not args_path.exists():
+        pytest.skip("Bayer model args.yaml not found")
+
+    with open(args_path) as f:
+        config = yaml.safe_load(f)
+
+    # Create model instance using the new clean interface
+    from rawnind.inference.model_factory import BayerDenoiser
+    
+    # Use programmatic initialization with required parameters
+    model = BayerDenoiser(
+        test_only=True,
+        arch=config.get('arch', 'unet'),
+        in_channels=config.get('in_channels', 4),
+        funit=config.get('funit', 48),
+        match_gain=config.get('match_gain', 'never'),
+        loss=config.get('loss', 'msssim'),
+        device=-1,  # CPU for testing
+        load_path=str(pt_files[0]),  # Load the checkpoint
+        save_dpath='/tmp/test_bayer_model',
+        preupsample=config.get('preupsample', False)
+    )
+    
+    return model
+
+
+@pytest.fixture
 def real_rgb_base_inference(real_rgb_model):
     """Create a real RGB BaseInference object."""
     # Return the ImageToImageNN object directly since it has infer method

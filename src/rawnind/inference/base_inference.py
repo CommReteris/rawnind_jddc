@@ -32,6 +32,14 @@ class ImageToImageNN:
     CLS_CONFIG_FPATHS = [
         os.path.join("config", "test_reserve.yaml"),
     ]
+    
+    # Base architectures - subclasses should override
+    ARCHS = {
+        "identity": None,  # Placeholder - subclasses must override
+    }
+    
+    # Base models directory - subclasses should override  
+    MODELS_BASE_DPATH = os.path.join("..", "..", "models", "rawnind_base")
 
     def __init__(self, **kwargs):
         """Initialize the image-to-image neural network framework.
@@ -121,6 +129,42 @@ class ImageToImageNN:
         for metric in getattr(self, 'metrics', []):
             metrics_dict[metric] = metrics[metric]()
         self.metrics = metrics_dict
+    
+    def instantiate_model(self):
+        """Instantiate the neural network model.
+        
+        This method should be implemented by subclasses to create the specific
+        model architecture. The base implementation raises NotImplementedError.
+        """
+        raise NotImplementedError("Subclasses must implement instantiate_model()")
+    
+    def _get_resume_suffix(self) -> str:
+        """Get the suffix for determining the best model checkpoint.
+        
+        This method should be implemented by subclasses to specify which metric
+        to use when finding the best model checkpoint. For example, 'msssim' for
+        denoising models or 'combined' for compression models.
+        
+        Returns:
+            str: The metric suffix for model resume/loading
+        """
+        return "default"
+    
+    def _mk_expname(self, args):
+        """Generate experiment name from arguments.
+        
+        This method creates a standardized experiment name based on the model
+        configuration and training parameters.
+        
+        Args:
+            args: Argument namespace containing model configuration
+            
+        Returns:
+            str: Generated experiment name
+        """
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y-%m-%d")
+        return f"{self.__class__.__name__}_{args.arch}_{timestamp}"
     
     def _init_from_kwargs(self, kwargs):
         """Initialize instance attributes directly from kwargs for programmatic usage."""
