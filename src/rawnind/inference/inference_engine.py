@@ -66,8 +66,11 @@ class InferenceEngine:
             - Dictionary output may contain additional metrics like bits-per-pixel (bpp) for compression models
         """
         with torch.no_grad():
+            # Track if we need to squeeze output
+            squeeze_output = False
             if len(img.shape) == 3:
                 img = img.unsqueeze(0)
+                squeeze_output = True
 
             # Get input channels from the tensor
             in_channels = img.shape[1]
@@ -81,12 +84,36 @@ class InferenceEngine:
 
             img = img.to(self.device)
             output = self.model.eval()(img)
+            
+            # Extract the main result
+            if isinstance(output, dict):
+                result = output["reconstructed_image"]
+            else:
+                result = output
+            
+            # Remove batch dimension if we added it
+            if squeeze_output:
+                result = result.squeeze(0)
+                if isinstance(output, dict):
+                    output["reconstructed_image"] = result
 
             if return_dict:
                 if isinstance(output, torch.Tensor):
-                    return {"reconstructed_image": output}
+                    return {"reconstructed_image": result}
                 return output
-            return output["reconstructed_image"] if isinstance(output, dict) else output
+            return result
+
+    def process(self, img: torch.Tensor, return_dict: bool = False) -> Union[torch.Tensor, Dict[str, Any]]:
+        """Alias for infer method to provide consistent API.
+        
+        Args:
+            img: Input image tensor
+            return_dict: If True, return dict with additional info
+            
+        Returns:
+            Processed image tensor or dict
+        """
+        return self.infer(img, return_dict=return_dict)
 
     @staticmethod
     def get_transfer_function(fun_name: str) -> callable:

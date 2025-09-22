@@ -325,7 +325,8 @@ class YAMLSaver(JSONSaver):
             Uses error_on_404=False to silently use default when file is not found,
             rather than raising an error.
         """
-        return utilities.load_yaml(fpath, default=default, error_on_404=False)
+        result = utilities.load_yaml(fpath, error_on_404=False)
+        return result if result is not None else default
 
     def write(self) -> None:
         """Write the current results to the YAML file.

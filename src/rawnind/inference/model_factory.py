@@ -57,22 +57,7 @@ class DenoiseCompress(ImageToImageNN):
             preupsample=vars(self).get("preupsample", False),
         ).to(self.device)
 
-    def add_arguments(self, parser):
-        super().add_arguments(parser)
-        parser.add_argument(
-            "--arch_enc",
-            help="Encoder architecture",
-            required=True,
-            choices=self.ARCHS_ENC.keys(),
-        )
-        parser.add_argument(
-            "--arch_dec",
-            help="Decoder architecture",
-            required=True,
-            choices=self.ARCHS_DEC.keys(),
-        )
-        parser.add_argument("--hidden_out_channels", type=int)
-        parser.add_argument("--bitstream_out_channels", type=int)
+    # CLI interface removed - use clean factory functions instead
 
     def _get_resume_suffix(self) -> str:
         return "combined"
@@ -114,14 +99,7 @@ class Denoiser(ImageToImageNN):
             preupsample=vars(self).get("preupsample", False),
         ).to(self.device)
 
-    def add_arguments(self, parser):
-        super().add_arguments(parser)
-        parser.add_argument(
-            "--loss",
-            help="Distortion loss function",
-            choices=["msssim", "psnr", "l1", "l2"],  # Simplified for inference
-            required=True,
-        )
+    # CLI interface removed - use clean factory functions instead
 
 
 class BayerDenoiser(Denoiser, BayerImageToImageNN):
@@ -131,69 +109,32 @@ class BayerDenoiser(Denoiser, BayerImageToImageNN):
         super().__init__(**kwargs)
 
 
-def get_and_load_test_object(
-        **kwargs,
-) -> ImageToImageNN:  # only used in denoise_image.py
-    """Parse config file or arch parameter to get the class name, ie Denoiser or DenoiseCompress.
+# CLI interface removed - use clean factory functions instead:
+# from rawnind.inference import create_rgb_denoiser, create_bayer_denoiser, load_model_from_checkpoint
 
-    This function creates a test object based on the architecture specified in the
-    configuration or command line arguments. It handles both denoiser and
-    denoise+compress models for different input channel configurations.
-
-    Args:
-        **kwargs: Additional arguments passed to the model constructor
-
-    Returns:
-        ImageToImageNN: Configured model instance ready for testing/inference
-
+def get_and_load_test_object(**kwargs) -> ImageToImageNN:
+    """DEPRECATED: Use clean factory functions instead.
+    
+    This function is kept for backward compatibility but should not be used.
+    Use the clean API factory functions instead:
+    - create_rgb_denoiser() for RGB denoising
+    - create_bayer_denoiser() for Bayer denoising
+    - load_model_from_checkpoint() for loading trained models
+    
     Raises:
-        NotImplementedError: If the specified architecture is not supported
+        DeprecationWarning: This function is deprecated
     """
-    import configargparse
-
-    # Parse arguments
-    parser = configargparse.ArgumentParser(
-        description=__doc__,
-        config_file_parser_class=configargparse.YAMLConfigFileParser,
+    import warnings
+    warnings.warn(
+        "get_and_load_test_object() is deprecated. Use clean factory functions: "
+        "create_rgb_denoiser(), create_bayer_denoiser(), or load_model_from_checkpoint()",
+        DeprecationWarning,
+        stacklevel=2
     )
-    parser.add_argument(
-        "--config",
-        is_config_file=True,
-        dest="config",
-        required=False,
-        help="config in yaml format",
+    raise NotImplementedError(
+        "CLI-based model loading removed. Use clean factory functions: "
+        "create_rgb_denoiser(), create_bayer_denoiser(), or load_model_from_checkpoint()"
     )
-    parser.add_argument(
-        "--arch",
-        help="Model architecture",
-        required=True,
-        choices=Denoiser.ARCHS.keys() | DenoiseCompress.ARCHS.keys(),
-    )
-    parser.add_argument(
-        "--in_channels",
-        type=int,
-        help="Number of input channels (3 for profiled RGB, 4 for Bayer)",
-        choices=[3, 4],
-        required=True,
-    )
-    args, _ = parser.parse_known_args()
-
-    if args.arch in Denoiser.ARCHS.keys():
-        if args.in_channels == 4:
-            test_obj = BayerDenoiser(test_only=True, **kwargs)
-        else:
-            test_obj = Denoiser(test_only=True, **kwargs)
-    elif args.arch in DenoiseCompress.ARCHS.keys():
-        if args.in_channels == 4:
-            test_obj = BayerDenoiseCompress(test_only=True, **kwargs)
-        else:
-            test_obj = DenoiseCompress(test_only=True, **kwargs)
-    else:
-        raise NotImplementedError(f"Unknown architecture {args.arch}")
-
-    # Set model to evaluation mode
-    test_obj.model = test_obj.model.eval()
-    return test_obj
 
 
 def get_and_load_model(**kwargs):

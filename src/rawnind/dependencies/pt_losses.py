@@ -85,6 +85,44 @@ class MS_SSIM_metric(pytorch_msssim.MS_SSIM):
         super().__init__(data_range=data_range, **kwargs)
 
 
+class PSNR_metric(torch.nn.Module):
+    """Peak Signal-to-Noise Ratio metric for evaluation.
+    
+    PSNR is a commonly used metric in image processing that measures the ratio
+    between the maximum possible power of a signal and the power of corrupting noise.
+    Higher values indicate better image quality.
+    
+    PSNR = 20 * log10(MAX_PIXEL_VALUE / sqrt(MSE))
+    """
+    
+    def __init__(self, data_range=1.0, **kwargs):
+        """Initialize the PSNR metric.
+        
+        Args:
+            data_range: Value range of input images (usually 1.0 for normalized images)
+            **kwargs: Additional arguments (for compatibility)
+        """
+        super().__init__()
+        self.data_range = data_range
+        
+    def forward(self, input, target):
+        """Calculate PSNR between input and target images.
+        
+        Args:
+            input: Predicted images, shape [N, C, H, W]
+            target: Ground truth images, shape [N, C, H, W]
+            
+        Returns:
+            PSNR value in dB (higher is better)
+        """
+        mse = torch.nn.functional.mse_loss(input, target)
+        if mse == 0:
+            return torch.tensor(float('inf'), device=input.device)
+        
+        psnr = 20 * torch.log10(self.data_range / torch.sqrt(mse))
+        return psnr
+
+
 # class SSIM_loss(piqa.SSIM):
 #     def __init__(self, **kwargs):
 #         r""""""
@@ -114,7 +152,8 @@ losses = {
 metrics = {
     "msssim"     : MS_SSIM_metric,  # Direct MS-SSIM metric (higher = better)
     "mse"        : torch.nn.MSELoss,  # Mean Squared Error (lower = better)
-    "msssim_loss": MS_SSIM_loss  # MS-SSIM loss (lower = better)
+    "msssim_loss": MS_SSIM_loss,  # MS-SSIM loss (lower = better)
+    "psnr"       : PSNR_metric  # Peak Signal-to-Noise Ratio (higher = better)
     # "dists": DISTS_loss,  # DISTS metric commented out due to dependency issues
 }
 

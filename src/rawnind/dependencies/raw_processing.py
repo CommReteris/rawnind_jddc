@@ -802,60 +802,8 @@ def libraw_process(raw_path: str, out_path: str) -> None:
     imageio.imsave(out_path, img)
 
 
-# CLI (Unchanged but improved args)
-def get_args():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("-i", "--raw_fpath", help="Input RAW path")
-    parser.add_argument("-o", "--out_base_path", help="Output base path")
-    parser.add_argument("--no_wb", action="store_true", help="Disable WB")
-    return parser.parse_args()
-
-
-if __name__ == "__main__":
-    args = get_args()
-    if not args.raw_fpath:
-        args.raw_fpath = get_sample_raw_file()
-    if not args.out_base_path:
-        args.out_base_path = Path("tests_output") / "raw.py.main"
-    args.out_base_path = str(args.out_base_path)
-
-    config = ProcessingConfig()
-    loader = RawLoader(config)
-    mono, metadata = loader.load(args.raw_fpath)
-    logger.info(f"Loaded {args.raw_fpath} with metadata keys: {list(metadata._fields)}")
-
-    processor = BayerProcessor(config)
-    if not args.no_wb:
-        mono = processor.apply_white_balance(mono, metadata, in_place=True) or mono
-
-    rggb = processor.mono_to_rggb(mono, metadata)
-    cam_rgb = processor.demosaic(mono, metadata)  # Note: WB already applied if enabled
-
-    # Reverse WB for camRGB if applied
-    if not args.no_wb:
-        cam_rgb_nowb = processor.apply_white_balance(cam_rgb, metadata, reverse=True, in_place=False) or cam_rgb
-    else:
-        cam_rgb_nowb = cam_rgb
-
-    transformer = ColorTransformer()
-    lin_rec2020 = transformer.cam_rgb_to_profiled(cam_rgb_nowb, metadata, "lin_rec2020")
-    lin_srgb = transformer.cam_rgb_to_profiled(cam_rgb_nowb, metadata, "lin_sRGB")
-    gamma_srgb = transformer.cam_rgb_to_profiled(cam_rgb_nowb, metadata, "gamma_sRGB")
-
-    Path("tests_output").mkdir(exist_ok=True)
-    exporter = HdrExporter()
-
-    exporter.save(lin_rec2020, f"{args.out_base_path}.lin_rec2020.exr", "lin_rec2020")
-    exporter.save(lin_srgb, f"{args.out_base_path}.lin_sRGB.exr", "lin_sRGB")
-    exporter.save(gamma_srgb, f"{args.out_base_path}.gamma_sRGB.tif", "gamma_sRGB")
-    exporter.save(cam_rgb, f"{args.out_base_path}.camRGB.exr", None)
-
-    # Use new function for libraw output if needed, but keep original
-    libraw_process(args.raw_fpath, f"{args.out_base_path}.libraw.tif")
-    logger.info(f"Outputs saved to {args.out_base_path}.*")
-
-    # Legacy call for compatibility (now defined)
-    hdr_nparray_to_file(lin_rec2020, f"{args.out_base_path}.lin_rec2020_hdr.exr", color_profile="lin_rec2020")
+# CLI interface removed - use clean class-based API instead:
+# from rawnind.dependencies.raw_processing import RawLoader, BayerProcessor, ColorTransformer, HdrExporter
 
 
 
