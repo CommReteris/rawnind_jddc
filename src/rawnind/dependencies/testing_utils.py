@@ -6,10 +6,10 @@ without requiring access to full datasets.
 """
 
 import configargparse
-from ..training.train_dc_bayer2prgb import DCTrainingBayerToProfiledRGB
-from ..training.train_dc_prgb2prgb import DCTrainingProfiledRGBToProfiledRGB
-from ..training.train_denoiser_bayer2prgb import DenoiserTrainingBayerToProfiledRGB
-from ..training.train_denoiser_prgb2prgb import DenoiserTrainingProfiledRGBToProfiledRGB
+from ..training.denoise_compress_trainer import DCTrainingBayerToProfiledRGB
+from ..training.denoise_compress_trainer import DCTrainingProfiledRGBToProfiledRGB
+from ..training.denoiser_trainer import DenoiserTrainingBayerToProfiledRGB
+from ..training.denoiser_trainer import DenoiserTrainingProfiledRGBToProfiledRGB
 from ..models import denoise_then_compress, raw_denoiser
 
 

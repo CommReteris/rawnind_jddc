@@ -1,7 +1,11 @@
 """Training classes for pure denoising models.
 
 This module contains trainer classes for models that perform only denoising,
-extracted from the original training scripts.
+extracted from the original training scripts per the partition plan.
+
+Consolidated from:
+- train_denoiser_bayer2prgb.py
+- train_denoiser_prgb2prgb.py
 """
 
 import os
@@ -9,14 +13,14 @@ import statistics
 import time
 import logging
 import sys
+import multiprocessing
 from typing import Optional
 from collections.abc import Iterable
-import multiprocessing
 import torch
 
 from . import training_loops
 from ..dependencies import pytorch_helpers
-from ..dependencies import rawproc
+from ..dependencies import raw_processing as rawproc
 from ..dependencies import raw_processing as raw
 
 APPROX_EXPOSURE_DIFF_PENALTY = 1 / 10000
@@ -25,7 +29,6 @@ APPROX_EXPOSURE_DIFF_PENALTY = 1 / 10000
 class DenoiserTrainingBayerToProfiledRGB(
     training_loops.DenoiserTraining,
     training_loops.BayerImageToImageNNTraining,
-    training_loops.BayerDenoiser,
 ):
     """Train a denoiser from Bayer to profiled RGB.
 
@@ -69,7 +72,36 @@ class DenoiserTrainingProfiledRGBToProfiledRGB(
         super().autocomplete_args(args)
 
 
-if __name__ == "__main__":
+# Clean API factory functions (no CLI dependencies)
+def create_bayer_denoiser_trainer(**kwargs) -> DenoiserTrainingBayerToProfiledRGB:
+    """Create a Bayer-to-RGB denoiser trainer with clean API.
+    
+    Args:
+        **kwargs: Training configuration parameters
+        
+    Returns:
+        Configured DenoiserTrainingBayerToProfiledRGB instance
+    """
+    return DenoiserTrainingBayerToProfiledRGB(launch=False, **kwargs)
+
+
+def create_rgb_denoiser_trainer(**kwargs) -> DenoiserTrainingProfiledRGBToProfiledRGB:
+    """Create an RGB-to-RGB denoiser trainer with clean API.
+    
+    Args:
+        **kwargs: Training configuration parameters
+        
+    Returns:
+        Configured DenoiserTrainingProfiledRGBToProfiledRGB instance
+    """
+    return DenoiserTrainingProfiledRGBToProfiledRGB(launch=False, **kwargs)
+
+
+# Legacy CLI support (for backward compatibility, but deprecated)
+def _legacy_cli_main():
+    """Legacy CLI entry point - deprecated in favor of clean API."""
+    logging.warning("Legacy CLI interface is deprecated. Use clean API factory functions instead.")
+    
     # Handle multiprocessing for proc2proc or opencv arguments
     if any("proc2proc" in arg or "opencv" in arg for arg in sys.argv):
         try:
@@ -77,17 +109,16 @@ if __name__ == "__main__":
             multiprocessing.set_start_method("spawn")
         except RuntimeError:
             print("multiprocessing.set_start_method('spawn') failed")
-            pass
-
-    # try:
-    #     os.nice(1)
-    # except OSError:
-    #     pass
+            logging.info("multiprocessing.set_start_method('spawn') failed - method already set")
 
     # Determine which trainer to use based on arguments
     if any("bayer" in arg.lower() for arg in sys.argv):
-        denoiserTraining = DenoiserTrainingBayerToProfiledRGB()
+        trainer = DenoiserTrainingBayerToProfiledRGB()
     else:
-        denoiserTraining = DenoiserTrainingProfiledRGBToProfiledRGB()
+        trainer = DenoiserTrainingProfiledRGBToProfiledRGB()
 
-    denoiserTraining.training_loop()
+    trainer.training_loop()
+
+
+if __name__ == "__main__":
+    _legacy_cli_main()

@@ -297,6 +297,9 @@ class CleanDataset:
         if hasattr(self._underlying_dataset, '__len__'):
             return len(self._underlying_dataset)
         return 0  # Unknown length for iterators
+
+
+
     
     def _standardize_batch_format(self, batch: Any) -> Dict[str, Any]:
         """Standardize batch format to consistent structure.
@@ -768,3 +771,182 @@ def validate_training_type_and_dataset_config(training_type: str, dataset_config
             raise ValueError("RGB training requires 3 input channels")
     else:
         raise ValueError(f"Unsupported training type: {training_type}")
+
+
+
+def create_training_datasets(input_channels: int, output_channels: int,
+                           crop_size: int, batch_size: int,
+                           clean_dataset_yamlfpaths: List[str],
+                           noise_dataset_yamlfpaths: List[str],
+                           test_reserve: Optional[List[str]] = None,
+                           **dataset_config) -> Dict[str, Any]:
+    """Create complete training/validation/test datasets using real dataset classes.
+    
+    This function creates real datasets using the extracted dataset classes,
+    providing the interface that training package expects.
+    
+    Args:
+        input_channels: Number of input channels (3 for RGB, 4 for Bayer)
+        output_channels: Number of output channels
+        crop_size: Size of image crops
+        batch_size: Batch size for training
+        clean_dataset_yamlfpaths: YAML files describing clean image datasets
+        noise_dataset_yamlfpaths: YAML files describing noisy image datasets
+        test_reserve: List of images to reserve for testing
+        **dataset_config: Additional configuration (toy_dataset, etc.)
+        
+    Returns:
+        Dictionary with train_dataloader, validation_dataloader, test_dataloader
+    """
+    # Import real dataset classes from the extracted dataset package
+    from . import clean_datasets, noisy_datasets, validation_datasets
+    
+    if test_reserve is None:
+        test_reserve = []
+        
+    # Extract configuration parameters
+    num_crops_per_image = dataset_config.get('num_crops_per_image', 1)
+    toy_dataset = dataset_config.get('toy_dataset', False)
+    bayer_only = dataset_config.get('bayer_only', False)
+    data_pairing = dataset_config.get('data_pairing', 'x_y')
+    arbitrary_proc_method = dataset_config.get('arbitrary_proc_method', None)
+    match_gain_input = dataset_config.get('match_gain', 'never') == 'input'
+    
+    # Prepare class-specific arguments
+    class_specific_arguments = {}
+    if arbitrary_proc_method:
+        class_specific_arguments["arbitrary_proc_method"] = arbitrary_proc_method
+    
+    # Select appropriate dataset classes based on input channels
+    if input_channels == 3:  # RGB
+        cleanclean_dataset_class = clean_datasets.CleanProfiledRGBCleanProfiledRGBImageCropsDataset
+        cleannoisy_dataset_class = noisy_datasets.CleanProfiledRGBNoisyProfiledRGBImageCropsDataset
+        val_dataset_class = validation_datasets.CleanProfiledRGBNoisyProfiledRGBImageCropsValidationDataset
+    elif input_channels == 4:  # Bayer
+        cleanclean_dataset_class = clean_datasets.CleanProfiledRGBCleanBayerImageCropsDataset
+        cleannoisy_dataset_class = noisy_datasets.CleanProfiledRGBNoisyBayerImageCropsDataset
+        val_dataset_class = validation_datasets.CleanProfiledRGBNoisyBayerImageCropsValidationDataset
+    else:
+        raise ValueError(f"Unsupported number of input channels: {input_channels}")
+    
+    # Create training datasets using the real dataset classes
+    cleanclean_dataset = cleanclean_dataset_class(
+        content_fpaths=clean_dataset_yamlfpaths,
+        num_crops=num_crops_per_image,
+        crop_size=crop_size,
+        toy_dataset=toy_dataset,
+        **class_specific_arguments,
+    )
+    
+    cleannoisy_dataset = cleannoisy_dataset_class(
+        content_fpaths=noise_dataset_yamlfpaths,
+        num_crops=num_crops_per_image,
+        crop_size=crop_size,
+        test_reserve=test_reserve,
+        bayer_only=bayer_only,
+        toy_dataset=toy_dataset,
+        data_pairing=data_pairing,
+        match_gain=match_gain_input,
+        **class_specific_arguments,
+    )
+    
+    # Create validation dataset
+    val_crop_size = dataset_config.get('val_crop_size', crop_size)
+    cleannoisy_val_dataset = val_dataset_class(
+        content_fpaths=noise_dataset_yamlfpaths,
+        crop_size=val_crop_size,
+        test_reserve=test_reserve,
+        bayer_only=bayer_only,
+        toy_dataset=toy_dataset,
+        match_gain=match_gain_input,
+        data_pairing=data_pairing,
+        **class_specific_arguments,
+    )
+    
+    # Handle batch size configuration
+    batch_size_clean = dataset_config.get('batch_size_clean', 1)
+    batch_size_noisy = dataset_config.get('batch_size_noisy', batch_size - 1)
+    
+    # Adjust if batch sizes are invalid
+    if batch_size_clean == 0:
+        cleanclean_dataset = cleannoisy_dataset
+        batch_size_clean = 1
+        batch_size_noisy = batch_size_noisy - 1
+    elif batch_size_noisy == 0:
+        cleannoisy_dataset = cleanclean_dataset
+        batch_size_noisy = 1
+        batch_size_clean = batch_size_clean - 1
+    
+    # Configure number of workers based on options
+    debug_options = dataset_config.get('debug_options', [])
+    if "1thread" in debug_options:
+        num_threads_cc = 0
+        num_threads_cn = 0
+    elif "minimize_threads" in debug_options:
+        num_threads_cc = batch_size_clean
+        num_threads_cn = batch_size_noisy
+    else:
+        num_threads_cc = max(batch_size_clean + 1, batch_size_clean * 2, 3)
+        num_threads_cn = max(batch_size_noisy + 1, int(batch_size_noisy * 1.5))
+    
+    # Create PyTorch DataLoaders using the real datasets
+    train_cleanclean_dataloader = torch.utils.data.DataLoader(
+        dataset=cleanclean_dataset,
+        batch_size=batch_size_clean,
+        shuffle=True,
+        pin_memory=True,
+        num_workers=num_threads_cc,
+    )
+    
+    train_cleannoisy_dataloader = torch.utils.data.DataLoader(
+        dataset=cleannoisy_dataset,
+        batch_size=batch_size_noisy,
+        shuffle=True,
+        pin_memory=True,
+        num_workers=num_threads_cn,
+    )
+    
+    validation_dataloader = torch.utils.data.DataLoader(
+        dataset=cleannoisy_val_dataset,
+        batch_size=1,
+        shuffle=False,
+    )
+    
+    # Create test dataloader if test dataset class is available
+    test_dataloader = None
+    try:
+        from . import test_dataloaders
+        if input_channels == 3:
+            test_dataloader_class = test_dataloaders.CleanProfiledRGBNoisyProfiledRGBImageCropsTestDataloader
+        else:
+            test_dataloader_class = test_dataloaders.CleanProfiledRGBNoisyBayerImageCropsTestDataloader
+            
+        test_crop_size = dataset_config.get('test_crop_size', crop_size)
+        test_dataloader = test_dataloader_class(
+            content_fpaths=noise_dataset_yamlfpaths,
+            crop_size=test_crop_size,
+            test_reserve=test_reserve,
+            bayer_only=bayer_only,
+            toy_dataset=toy_dataset,
+            match_gain=match_gain_input,
+            **class_specific_arguments,
+        )
+    except (ImportError, FileNotFoundError) as e:
+        logging.warning(f"Test dataloader creation failed: {e}")
+    
+    return {
+        'train_dataloader': train_cleannoisy_dataloader,  # Primary training dataloader
+        'train_cleanclean_dataloader': train_cleanclean_dataloader,  # Clean-clean training
+        'validation_dataloader': validation_dataloader,
+        'test_dataloader': test_dataloader,
+        'config_used': {
+            'input_channels': input_channels,
+            'output_channels': output_channels,
+            'crop_size': crop_size,
+            'val_crop_size': val_crop_size,
+            'test_crop_size': dataset_config.get('test_crop_size', crop_size),
+            'num_crops_per_image': num_crops_per_image,
+            'batch_size_clean': batch_size_clean,
+            'batch_size_noisy': batch_size_noisy
+        }
+    }

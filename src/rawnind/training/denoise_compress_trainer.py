@@ -1,20 +1,24 @@
 """Training classes for joint denoise+compress models.
 
 This module contains trainer classes for models that perform both denoising
-and compression, extracted from the original training scripts.
+and compression, extracted from the original training scripts per the partition plan.
+
+Consolidated from:
+- train_dc_bayer2prgb.py
+- train_dc_prgb2prgb.py
 """
 
 import multiprocessing
 import os
 import sys
+import logging
 from typing import Optional
 from collections.abc import Iterable
 import torch
-import logging
 
 from . import training_loops
 from ..dependencies import pytorch_helpers
-from ..dependencies import rawproc
+from ..dependencies import raw_processing as rawproc
 from ..dependencies import raw_processing as raw
 
 
@@ -64,7 +68,36 @@ class DCTrainingProfiledRGBToProfiledRGB(
         super().autocomplete_args(args)
 
 
-if __name__ == "__main__":
+# Clean API factory functions (no CLI dependencies)
+def create_dc_bayer_trainer(**kwargs) -> DCTrainingBayerToProfiledRGB:
+    """Create a Bayer-to-RGB denoising+compression trainer with clean API.
+    
+    Args:
+        **kwargs: Training configuration parameters
+        
+    Returns:
+        Configured DCTrainingBayerToProfiledRGB instance
+    """
+    return DCTrainingBayerToProfiledRGB(launch=False, **kwargs)
+
+
+def create_dc_rgb_trainer(**kwargs) -> DCTrainingProfiledRGBToProfiledRGB:
+    """Create an RGB-to-RGB denoising+compression trainer with clean API.
+    
+    Args:
+        **kwargs: Training configuration parameters
+        
+    Returns:
+        Configured DCTrainingProfiledRGBToProfiledRGB instance
+    """
+    return DCTrainingProfiledRGBToProfiledRGB(launch=False, **kwargs)
+
+
+# Legacy CLI support (for backward compatibility, but deprecated)
+def _legacy_cli_main():
+    """Legacy CLI entry point - deprecated in favor of clean API."""
+    logging.warning("Legacy CLI interface is deprecated. Use clean API factory functions instead.")
+    
     # Handle multiprocessing for proc2proc or opencv arguments
     if any("proc2proc" in arg or "opencv" in arg for arg in sys.argv):
         try:
@@ -72,17 +105,16 @@ if __name__ == "__main__":
             multiprocessing.set_start_method("spawn")
         except RuntimeError:
             print("multiprocessing.set_start_method('spawn') failed")
-            pass
-
-    # try:
-    #     os.nice(1)
-    # except OSError:
-    #     pass
+            logging.info("multiprocessing.set_start_method('spawn') failed - method already set")
 
     # Determine which trainer to use based on arguments
     if any("bayer" in arg.lower() for arg in sys.argv):
-        denoiserTraining = DCTrainingBayerToProfiledRGB()
+        trainer = DCTrainingBayerToProfiledRGB()
     else:
-        denoiserTraining = DCTrainingProfiledRGBToProfiledRGB()
+        trainer = DCTrainingProfiledRGBToProfiledRGB()
 
-    denoiserTraining.training_loop()
+    trainer.training_loop()
+
+
+if __name__ == "__main__":
+    _legacy_cli_main()

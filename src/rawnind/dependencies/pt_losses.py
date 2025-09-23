@@ -144,16 +144,16 @@ class PSNR_metric(torch.nn.Module):
 # Dictionary mapping loss function names to their implementation classes
 losses = {
     "mse"        : torch.nn.MSELoss,  # Standard Mean Squared Error loss
-    "msssim_loss": MS_SSIM_loss  # Perceptual MS-SSIM loss (1 - MS_SSIM)
+    "ms_ssim_loss": MS_SSIM_loss  # Perceptual MS-SSIM loss (1 - MS_SSIM)
 }  # "dists": DISTS_loss is commented out due to dependency issues
 
 # Dictionary mapping metric names to their implementation classes
 # Note: Python 3.8/3.10 compatibility workaround (can't use | operator for dict merging)
 metrics = {
-    "msssim"     : MS_SSIM_metric,  # Direct MS-SSIM metric (higher = better)
+    "ms_ssim"    : MS_SSIM_metric,  # Multi-Scale Structural Similarity metric (higher = better)
+    "ms_ssim_loss": MS_SSIM_loss,  # MS-SSIM loss function (lower = better) 
     "mse"        : torch.nn.MSELoss,  # Mean Squared Error (lower = better)
-    "msssim_loss": MS_SSIM_loss,  # MS-SSIM loss (lower = better)
-    "psnr"       : PSNR_metric  # Peak Signal-to-Noise Ratio (higher = better)
+    "psnr"       : PSNR_metric,  # Peak Signal-to-Noise Ratio (higher = better)
     # "dists": DISTS_loss,  # DISTS metric commented out due to dependency issues
 }
 

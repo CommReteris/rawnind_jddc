@@ -48,7 +48,7 @@ class TestTrainingFactoryFunctions:
             output_channels=3,
             learning_rate=1e-4,
             batch_size=4,
-            crop_size=128,
+            crop_size=192,  # >160 required for ms_ssim due to 4 downsamplings
             total_steps=1000,
             validation_interval=100,
             patience=500,
@@ -105,7 +105,7 @@ class TestTrainingFactoryFunctions:
             output_channels=3,
             learning_rate=1e-4,
             batch_size=4,
-            crop_size=128,
+            crop_size=192,  # >160 required for ms_ssim due to 4 downsamplings
             total_steps=1000,
             validation_interval=100,
             loss_function="ms_ssim",
@@ -277,7 +277,7 @@ class TestCleanTrainingWorkflow:
                 output_channels=3,  # RGB output
                 learning_rate=1e-4,
                 batch_size=2,
-                crop_size=64,
+                crop_size=192,  # >160 required for ms_ssim due to 4 downsamplings  
                 total_steps=10,
                 validation_interval=5,
                 loss_function="ms_ssim",
@@ -300,9 +300,9 @@ class TestCleanTrainingWorkflow:
             def mock_bayer_dataloader():
                 for i in range(5):
                     batch = {
-                        'clean_images': torch.randn(2, 3, 64, 64),  # Ground truth RGB
-                        'noisy_images': torch.randn(2, 4, 64, 64),  # Noisy Bayer
-                        'masks': torch.ones(2, 3, 64, 64),
+                        'clean_images': torch.randn(2, 3, 80, 80),  # Ground truth RGB
+                        'noisy_images': torch.randn(2, 4, 80, 80),  # Noisy Bayer
+                        'masks': torch.ones(2, 3, 80, 80),
                         'rgb_xyz_matrices': torch.randn(2, 3, 3),  # Color transformation matrices
                         'image_paths': [f'bayer_{i}_clean.jpg', f'bayer_{i}_noisy.raw']
                     }
@@ -789,7 +789,7 @@ class TestTrainingMetrics:
             output_channels=3,
             learning_rate=1e-4,
             batch_size=2,
-            crop_size=64,
+            crop_size=192,  # >160 required for ms_ssim due to 4 downsamplings
             total_steps=10,
             validation_interval=5,
             loss_function="ms_ssim",
@@ -802,9 +802,9 @@ class TestTrainingMetrics:
         )
         
         # Test loss computation directly
-        pred_images = torch.randn(2, 3, 64, 64)
-        gt_images = torch.randn(2, 3, 64, 64)
-        masks = torch.ones(2, 3, 64, 64)
+        pred_images = torch.randn(2, 3, 192, 192, requires_grad=True)  # Need grad for training loss
+        gt_images = torch.randn(2, 3, 192, 192)
+        masks = torch.ones(2, 3, 192, 192)
         
         loss_value = trainer.compute_loss(
             predictions=pred_images,
@@ -878,7 +878,7 @@ class TestJointDenoiseCompressTraining:
             output_channels=3,
             learning_rate=1e-4,
             batch_size=2,
-            crop_size=128,
+            crop_size=192,  # >160 required for ms_ssim due to 4 downsamplings
             total_steps=100,
             validation_interval=25,
             loss_function="ms_ssim",
@@ -910,7 +910,7 @@ class TestJointDenoiseCompressTraining:
             output_channels=3,
             learning_rate=1e-4,
             batch_size=2,
-            crop_size=64,
+            crop_size=192,  # >160 required for ms_ssim due to 4 downsamplings
             total_steps=10,
             validation_interval=5,
             loss_function="ms_ssim",
@@ -924,9 +924,9 @@ class TestJointDenoiseCompressTraining:
         )
         
         # Mock model output with compression
-        pred_images = torch.randn(2, 3, 64, 64)
-        gt_images = torch.randn(2, 3, 64, 64)
-        masks = torch.ones(2, 3, 64, 64)
+        pred_images = torch.randn(2, 3, 192, 192, requires_grad=True)  # >160 for ms_ssim
+        gt_images = torch.randn(2, 3, 192, 192)
+        masks = torch.ones(2, 3, 192, 192)  # Match prediction size
         bpp = torch.tensor(2.5)  # Bits per pixel
         
         total_loss, loss_components = trainer.compute_joint_loss(
@@ -1125,7 +1125,7 @@ class TestTrainingModelArchitectures:
             output_channels=3,
             learning_rate=1e-4,
             batch_size=2,
-            crop_size=64,
+            crop_size=192,  # >160 required for ms_ssim due to 4 downsamplings
             total_steps=5,
             validation_interval=5,
             loss_function="ms_ssim",

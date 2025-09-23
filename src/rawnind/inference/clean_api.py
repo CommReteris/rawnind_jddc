@@ -837,7 +837,7 @@ def compute_image_metrics(
             
         try:
             # Check image size constraints for MS-SSIM
-            if metric_name in ['msssim', 'msssim_loss']:
+            if metric_name in ['ms_ssim', 'ms_ssim_loss']:
                 min_size = min(predicted_image.shape[-2:])  # Get minimum of H,W
                 if min_size < 162:  # MS-SSIM requires at least 162x162 due to 4 downsamplings
                     logging.warning(f"Skipping {metric_name}: image size {min_size} too small (need ≥162)")

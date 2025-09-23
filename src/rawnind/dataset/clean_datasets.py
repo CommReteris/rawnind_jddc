@@ -18,7 +18,7 @@ from .base_dataset import CleanCleanImageDataset, ProfiledRGBBayerImageDataset, 
     ProfiledRGBProfiledRGBImageDataset, RawDatasetOutput
 # Import from dependencies package
 from ..dependencies.pt_losses import losses, metrics
-from ..dependencies.utilities import load_yaml as utilities
+from ..dependencies import utilities
 from ..dependencies.pytorch_helpers import fpath_to_tensor as pt_helpers
 # Import raw processing (will be moved to dependencies later)
 from ..dependencies import arbitrary_processing as arbitrary_proc_fun

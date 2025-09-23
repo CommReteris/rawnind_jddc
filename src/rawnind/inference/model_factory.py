@@ -80,6 +80,7 @@ class Denoiser(ImageToImageNN):
     ARCHS = {
         "unet"    : raw_denoiser.UtNet2,
         "utnet3"  : raw_denoiser.UtNet3,
+        "autoencoder": raw_denoiser.UtNet2,  # Alias for testing
         # "runet": runet.Runet,
         "identity": raw_denoiser.Passthrough,
         # "edsr": edsr.EDSR,
