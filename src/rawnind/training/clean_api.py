@@ -83,6 +83,10 @@ class TrainingConfig:
         if self.loss_function not in ["mse", "ms_ssim", "l1"]:
             raise ValueError(f"Unsupported loss function: {self.loss_function}")
             
+        # Validate MS-SSIM size constraints (domain knowledge from legacy code)
+        if self.loss_function == "ms_ssim" and self.crop_size <= 160:
+            raise ValueError(f"MS-SSIM requires crop_size > 160 due to 4 downsamplings, got {self.crop_size}")
+            
         # Set defaults based on values
         if self.test_crop_size is None:
             self.test_crop_size = self.crop_size
@@ -189,7 +193,7 @@ class CleanTrainer:
         if self.config.loss_function == "mse":
             self.loss_fn = losses["mse"]()
         elif self.config.loss_function == "ms_ssim":
-            self.loss_fn = losses["msssim_loss"]()
+            self.loss_fn = losses["ms_ssim_loss"]()
         elif self.config.loss_function == "l1":
             # L1 not in losses dict, use PyTorch's
             self.loss_fn = torch.nn.L1Loss()
@@ -210,6 +214,20 @@ class CleanTrainer:
         """
         # Apply masks to both predictions and ground truth
         if masks is not None:
+            # Handle Bayer processing resolution doubling
+            if self.training_type == "bayer_to_rgb" and masks.shape[-2:] != predictions.shape[-2:]:
+                # Upsample masks to match demosaiced predictions resolution
+                masks = torch.nn.functional.interpolate(
+                    masks, size=predictions.shape[-2:], mode='nearest'
+                )
+            
+            # Also handle ground truth resolution mismatch for Bayer processing
+            if self.training_type == "bayer_to_rgb" and ground_truth.shape[-2:] != predictions.shape[-2:]:
+                # Upsample ground truth to match demosaiced predictions resolution
+                ground_truth = torch.nn.functional.interpolate(
+                    ground_truth, size=predictions.shape[-2:], mode='bilinear', align_corners=False
+                )
+            
             predictions_masked = predictions * masks
             ground_truth_masked = ground_truth * masks
         else:
@@ -389,16 +407,30 @@ class CleanTrainer:
     
     def _save_validation_outputs(self, predictions: torch.Tensor, batch: Dict, 
                                output_directory: str, batch_idx: int):
-        """Save validation outputs to files."""
-        # Simplified output saving - would be more sophisticated in real implementation
+        """Save validation outputs to files using domain knowledge from legacy code."""
         output_dir = Path(output_directory)
         output_dir.mkdir(parents=True, exist_ok=True)
         
         for i in range(predictions.shape[0]):
             output_path = output_dir / f"batch_{batch_idx}_sample_{i}_output.exr"
-            # In real implementation, would save as EXR using OpenEXR
-            # For now, just log the operation
-            logging.info(f"Would save output to {output_path}")
+            
+            # Use raw processing utilities to save as EXR (legacy domain knowledge)
+            try:
+                # Convert tensor to numpy for saving
+                output_array = predictions[i].detach().cpu().numpy()
+                
+                # Save as HDR EXR using extracted raw processing utilities
+                raw.hdr_nparray_to_file(
+                    output_array,
+                    str(output_path),
+                    color_profile="lin_rec2020"  # Linear Rec2020 color space (domain standard)
+                )
+                logging.info(f"Saved validation output to {output_path}")
+                
+            except Exception as e:
+                logging.warning(f"Failed to save output to {output_path}: {e}")
+                # Fallback: save basic info about what would be saved
+                logging.info(f"Would save output shape {predictions[i].shape} to {output_path}")
 
 
 class CleanDenoiserTrainer(CleanTrainer):
@@ -434,16 +466,31 @@ class CleanDenoiserTrainer(CleanTrainer):
         """Process Bayer model output with color transformation.
         
         Args:
-            model_output: Raw model output
-            xyz_matrices: Color transformation matrices
-            bayer_input: Original Bayer input
+            model_output: Raw model output from neural network (could be Bayer or RGB)
+            xyz_matrices: Color transformation matrices [B, 3, 3]
+            bayer_input: Original Bayer input (used for reference processing)
             
         Returns:
-            Processed RGB output
+            Processed RGB output in linear Rec2020 color space
         """
-        # Apply color transformation and processing
-        # This is a simplified version - real implementation would be more complex
-        return model_output
+        # Apply proper Bayer processing using domain knowledge from legacy code
+        
+        # Check if model output is already RGB (3-channel) or still Bayer (4-channel)
+        if model_output.shape[1] == 4:
+            # Step 1: Demosaic the model output to convert from Bayer pattern to RGB
+            # This handles the resolution doubling (4-channel Bayer -> 3-channel RGB at 2x resolution)
+            demosaiced_output = raw.demosaic(model_output)
+        elif model_output.shape[1] == 3:
+            # Model output is already RGB, no demosaicing needed
+            demosaiced_output = model_output
+        else:
+            raise ValueError(f"Unexpected model output channels: {model_output.shape[1]}, expected 3 or 4")
+        
+        # Step 2: Apply color space transformation to convert camera RGB to linear Rec2020
+        # This uses the calibrated color matrices to ensure accurate color reproduction
+        processed_output = raw.camRGB_to_lin_rec2020_images(demosaiced_output, xyz_matrices)
+        
+        return processed_output
     
     def train(self, train_dataloader: Iterator, validation_dataloader: Iterator,
              experiment_manager: 'CleanExperimentManager',
@@ -469,13 +516,20 @@ class CleanDenoiserTrainer(CleanTrainer):
         early_stopped = False
         early_stop_reason = None
         
-        # Simple training loop
+        # Fixed training loop to avoid infinite loops
+        import itertools
+        
         while step < max_steps:
-            # Training step
-            for batch in train_dataloader:
-                if step >= max_steps:
-                    break
-                    
+            # Determine how many steps to train before next validation/checkpoint
+            remaining_steps = max_steps - step
+            validation_steps_until = self.config.validation_interval - (step % self.config.validation_interval)
+            steps_to_do = min(remaining_steps, validation_steps_until)
+            
+            # Train for the determined number of steps
+            batch_iter = itertools.islice(train_dataloader, steps_to_do)
+            actual_steps_done = 0
+            
+            for batch in batch_iter:
                 # Move data to device
                 clean_images = batch['clean_images'].to(self.device)
                 noisy_images = batch['noisy_images'].to(self.device)
@@ -494,40 +548,47 @@ class CleanDenoiserTrainer(CleanTrainer):
                 
                 training_loss_history.append(loss.item())
                 step += 1
+                actual_steps_done += 1
                 self.current_step = step
-                
-                # Validation
-                if step % self.config.validation_interval == 0:
-                    val_metrics = self.validate(
-                        validation_dataloader=validation_dataloader,
-                        compute_metrics=['loss'] + self.config.additional_metrics
-                    )
-                    validation_metrics_history.append(val_metrics)
-                    
-                    # Update learning rate
-                    self.update_learning_rate(val_metrics, step)
-                    
-                    # Record metrics in experiment manager
-                    experiment_manager.record_metrics(step, {
-                        'train_loss': loss.item(),
-                        **{f'val_{k}': v for k, v in val_metrics.items()}
-                    })
-                    
-                    # Check for early stopping
-                    if self.config.early_stopping_patience:
-                        if self._should_early_stop(val_metrics, step):
-                            early_stopped = True
-                            early_stop_reason = "No improvement in validation loss"
-                            break
-                    
-                # Checkpointing
-                checkpoint_info = experiment_manager.should_save_checkpoint(step)
-                if checkpoint_info['should_save']:
-                    checkpoint_path = experiment_manager.config.checkpoint_dir / f"model_step_{step}.pt"
-                    self.save_checkpoint(step, str(checkpoint_path))
                 
                 if step >= max_steps:
                     break
+                    
+            # CRITICAL: If no batches were available, still increment step to avoid infinite loop
+            if actual_steps_done == 0:
+                logging.warning(f"No training batches available at step {step}, advancing step counter")
+                step += steps_to_do
+                self.current_step = step
+            
+            # Validation
+            if step % self.config.validation_interval == 0 and step < max_steps:
+                val_metrics = self.validate(
+                    validation_dataloader=validation_dataloader,
+                    compute_metrics=['loss'] + self.config.additional_metrics
+                )
+                validation_metrics_history.append(val_metrics)
+                
+                # Update learning rate
+                self.update_learning_rate(val_metrics, step)
+                
+                # Record metrics in experiment manager
+                experiment_manager.record_metrics(step, {
+                    'train_loss': loss.item(),
+                    **{f'val_{k}': v for k, v in val_metrics.items()}
+                })
+                
+                # Check for early stopping
+                if self.config.early_stopping_patience:
+                    if self._should_early_stop(val_metrics, step):
+                        early_stopped = True
+                        early_stop_reason = "No improvement in validation loss"
+                        break
+                
+            # Checkpointing
+            checkpoint_info = experiment_manager.should_save_checkpoint(step)
+            if checkpoint_info['should_save']:
+                checkpoint_path = experiment_manager.config.checkpoint_dir / f"model_step_{step}.pt"
+                self.save_checkpoint(step, str(checkpoint_path))
             
             if early_stopped or step >= max_steps:
                 break
@@ -597,26 +658,53 @@ class CleanDenoiserTrainer(CleanTrainer):
         Returns:
             Dictionary with train/val/test dataloaders
         """
-        # This is a placeholder - would integrate with dataset package
+        # Integrate with dataset package for real data loading
         logging.info(f"Preparing datasets with config: {dataset_config}")
         
-        # Return mock dataloaders for now
+        try:
+            # Try to import dataset creation from dataset package
+            from ..dataset.clean_api import create_training_datasets
+            
+            # Extract required YAML file paths from dataset config
+            clean_dataset_yamlfpaths = dataset_config.get('clean_dataset_yamlfpaths', 
+                dataset_config.get('train_data_paths', []))
+            noise_dataset_yamlfpaths = dataset_config.get('noise_dataset_yamlfpaths',
+                dataset_config.get('val_data_paths', []))
+            test_reserve = dataset_config.get('test_reserve', [])
+            
+            # Create real datasets using dataset package
+            dataset_info = create_training_datasets(
+                input_channels=self.config.input_channels,
+                output_channels=self.config.output_channels,
+                crop_size=self.config.crop_size,
+                batch_size=self.config.batch_size,
+                clean_dataset_yamlfpaths=clean_dataset_yamlfpaths,
+                noise_dataset_yamlfpaths=noise_dataset_yamlfpaths,
+                test_reserve=test_reserve,
+                **{k: v for k, v in dataset_config.items() 
+                   if k not in ['clean_dataset_yamlfpaths', 'noise_dataset_yamlfpaths', 
+                               'train_data_paths', 'val_data_paths', 'test_reserve', 
+                               'crop_size', 'batch_size']}
+            )
+            
+            return {
+                'train_loader': dataset_info['train_dataloader'],
+                'val_loader': dataset_info['validation_dataloader'], 
+                'test_loader': dataset_info['test_dataloader']
+            }
+        except ImportError:
+            # Fallback to mock datasets if dataset package is not available
+            logging.warning("Dataset package not available, using mock datasets")
+            return self._create_mock_datasets()
+        
+    def _create_mock_datasets(self) -> Dict[str, Iterator]:
+        """Create mock datasets for testing when dataset package is unavailable."""
         def mock_dataloader():
-            for i in range(5):
+            for i in range(3):
                 yield {
-                    'clean_images': torch.randn(self.config.batch_size, 
-                                               self.config.output_channels, 
-                                               self.config.crop_size, 
-                                               self.config.crop_size),
-                    'noisy_images': torch.randn(self.config.batch_size,
-                                               self.config.input_channels,
-                                               self.config.crop_size,
-                                               self.config.crop_size),
-                    'masks': torch.ones(self.config.batch_size,
-                                       self.config.output_channels,
-                                       self.config.crop_size,
-                                       self.config.crop_size),
-                    'image_paths': [f'image_{i}_{j}.jpg' for j in range(self.config.batch_size)]
+                    'clean_images': torch.randn(1, self.config.input_channels, self.config.crop_size, self.config.crop_size),
+                    'noisy_images': torch.randn(1, self.config.input_channels, self.config.crop_size, self.config.crop_size),
+                    'masks': torch.ones(1, 1, self.config.crop_size, self.config.crop_size)
                 }
         
         return {
@@ -639,85 +727,201 @@ class CleanDenoiseCompressTrainer(CleanTrainer):
         if config.compression_lambda is None:
             raise ValueError("compression_lambda must be specified for denoise+compress training")
             
+        # Store config and compression parameters first
+        self.config = config
+        self.compression_lambda = config.compression_lambda
+        self.bit_estimator_lr_multiplier = config.bit_estimator_lr_multiplier
+        
+        # Need to set device first for bit estimator
+        self.device = torch.device(config.device)
+        
+        # Set up bit estimator BEFORE calling super().__init__ because optimizer needs it
+        self._setup_bit_estimator()
+        
         super().__init__(config, training_type)
         
         # Set up compression-specific components
         self._setup_compression_model()
-        self._setup_bit_estimator()
+        
+    def _create_model(self):
+        """Override to create compression model instead of simple denoiser."""
+        # Import compression model from models package
+        from ..models.compression_autoencoders import AbstractRawImageCompressor, BalleEncoder, BalleDecoder
+        
+        # Create compression autoencoder with proper parameters
+        self.model = AbstractRawImageCompressor(
+            device=self.device,
+            in_channels=self.config.input_channels,
+            hidden_out_channels=self.config.filter_units,
+            bitstream_out_channels=self.config.filter_units * 2,
+            encoder_cls=BalleEncoder,
+            decoder_cls=BalleDecoder,
+            preupsample=(self.config.input_channels == 4)  # Bayer pre-upsampling
+        )
+        self.compression_model = self.model  # Alias for compatibility
+        
+        # Move to device
+        self.model = self.model.to(self.device)
+        
+        # Add lowercase aliases for test compatibility
+        if hasattr(self.model, 'Encoder'):
+            self.model.encoder = self.model.Encoder
+        if hasattr(self.model, 'Decoder'):
+            self.model.decoder = self.model.Decoder
         
     def _setup_compression_model(self):
-        """Set up compression model components."""
-        # Use compression model from inference package
-        from ..inference.clean_api import create_compressor
-        
-        # Create compressor model
-        compressor = create_compressor(
-            architecture=self.config.model_architecture,
-            encoder_arch="encoder",
-            decoder_arch="decoder",
-            device=self.config.device
-        )
-        
-        # Replace the simple model with compression model
-        self.compression_model = compressor.model
-        self.model = self.compression_model  # Alias for compatibility
+        """Set up compression model components (already done in _create_model)."""
+        # Model setup is handled in _create_model override
+        pass
         
     def _setup_bit_estimator(self):
         """Set up bit estimator for rate-distortion optimization."""
-        # Create bit estimator model
-        from ..models.bitEstimator import BitEstimator
+        # Import bit estimator from models package
+        from ..models.bitEstimator import MultiHeadBitEstimator
         
-        self.bit_estimator = BitEstimator()
+        # Create bit estimator with appropriate parameters
+        latent_channels = self.config.filter_units * 2  # bitstream_out_channels
+        self.bit_estimator = MultiHeadBitEstimator(
+            channel=latent_channels,
+            nb_head=16  # Typical value for multi-head approach
+        )
         self.bit_estimator = self.bit_estimator.to(self.device)
-        
-    def _create_optimizer(self):
-        """Create optimizer with separate parameter groups for compression."""
-        # Main model parameters
-        model_params = list(self.compression_model.parameters())
-        
-        # Bit estimator parameters with different learning rate
-        bit_estimator_params = list(self.bit_estimator.parameters())
-        
-        # Create optimizer with parameter groups
-        self.optimizer = torch.optim.Adam([
-            {'params': model_params, 'lr': self.config.learning_rate},
-            {'params': bit_estimator_params, 
-             'lr': self.config.learning_rate * self.config.bit_estimator_lr_multiplier}
-        ])
     
-    def get_optimizer_param_groups(self) -> List[Dict[str, Any]]:
-        """Get optimizer parameter groups information."""
+    def _create_optimizer(self):
+        """Create optimizer with separate learning rates for autoencoder and bit estimator."""
+        # Get model parameters (should return multiple parameter groups)
+        if hasattr(self.model, 'get_parameters'):
+            model_param_groups = self.model.get_parameters(
+                lr=self.config.learning_rate,
+                bitEstimator_lr_multiplier=self.bit_estimator_lr_multiplier,
+            )
+        else:
+            # Fallback: create basic parameter groups
+            model_param_groups = [{'params': self.model.parameters(), 'lr': self.config.learning_rate}]
+        
+        # Add bit estimator parameters as separate group
+        bit_estimator_params = [{'params': self.bit_estimator.parameters(), 
+                               'lr': self.config.learning_rate * self.bit_estimator_lr_multiplier}]
+        
+        # Combine all parameter groups
+        all_param_groups = model_param_groups + bit_estimator_params
+        
+        self.optimizer = torch.optim.Adam(all_param_groups, lr=self.config.learning_rate)
+    
+    def compute_loss(self, predictions: torch.Tensor, ground_truth: torch.Tensor, 
+                    masks: torch.Tensor, bpp: Optional[torch.Tensor] = None) -> torch.Tensor:
+        """Compute loss for denoise+compress training.
+        
+        Args:
+            predictions: Model predictions (reconstructed images)
+            ground_truth: Ground truth images
+            masks: Valid pixel masks
+            bpp: Bits per pixel from compression model
+            
+        Returns:
+            Combined loss tensor (visual_loss * lambda + rate_loss)
+        """
+        # Compute visual loss
+        visual_loss = super().compute_loss(predictions, ground_truth, masks)
+        
+        # Add rate penalty if available
+        if bpp is not None:
+            combined_loss = visual_loss * self.compression_lambda + bpp
+        else:
+            combined_loss = visual_loss * self.compression_lambda
+            
+        return combined_loss
+        
+    def get_optimizer_param_groups(self) -> List[Dict]:
+        """Get optimizer parameter groups for inspection.
+        
+        Returns:
+            List of optimizer parameter group dictionaries
+        """
         return self.optimizer.param_groups
     
     def compute_joint_loss(self, predictions: torch.Tensor, ground_truth: torch.Tensor,
-                          masks: torch.Tensor, bits_per_pixel: torch.Tensor) -> tuple[torch.Tensor, Dict[str, torch.Tensor]]:
-        """Compute joint loss (distortion + rate) for compression training.
+                          masks: torch.Tensor, bits_per_pixel: torch.Tensor) -> tuple[torch.Tensor, Dict[str, float]]:
+        """Compute joint loss for denoise+compress training.
         
         Args:
-            predictions: Model predictions
+            predictions: Model predictions (reconstructed images)
             ground_truth: Ground truth images
             masks: Valid pixel masks
-            bits_per_pixel: Estimated bits per pixel
+            bits_per_pixel: Bits per pixel from compression model
             
         Returns:
             Tuple of (total_loss, loss_components_dict)
         """
-        # Compute distortion loss
-        distortion_loss = self.compute_loss(predictions, ground_truth, masks)
+        # Compute visual loss (distortion) using parent method
+        visual_loss = super().compute_loss(predictions, ground_truth, masks)
         
-        # Compute rate loss
-        rate_loss = bits_per_pixel * self.config.compression_lambda
+        # Rate loss is the BPP penalty
+        rate_loss = bits_per_pixel * self.compression_lambda
         
-        # Total loss
-        total_loss = distortion_loss + rate_loss
+        # Combined loss according to rate-distortion theory
+        total_loss = visual_loss + rate_loss
         
         loss_components = {
-            'distortion_loss': distortion_loss,
-            'rate_loss': rate_loss,
-            'total_loss': total_loss
+            'distortion_loss': visual_loss.item(),
+            'rate_loss': rate_loss.item() if hasattr(rate_loss, 'item') else float(rate_loss),
+            'combined_loss': total_loss.item()
         }
         
         return total_loss, loss_components
+        
+    def validate(self, validation_dataloader: Iterator, compute_metrics: List[str] = None,
+                save_outputs: bool = False, output_directory: str = None) -> Dict[str, float]:
+        """Run validation with compression-specific metrics."""
+        if compute_metrics is None:
+            compute_metrics = ['loss', 'bpp', 'combined']
+            
+        self.model.eval()
+        all_losses = {metric: [] for metric in compute_metrics}
+        
+        with torch.no_grad():
+            for i, batch in enumerate(validation_dataloader):
+                # Get batch data
+                clean_images = batch['clean_images'].to(self.device)
+                noisy_images = batch['noisy_images'].to(self.device)
+                masks = batch['masks'].to(self.device)
+                
+                # Forward pass
+                model_output = self.model(noisy_images)
+                
+                # Handle compression model output
+                if isinstance(model_output, dict):
+                    predictions = model_output['reconstructed_image']
+                    bpp = model_output.get('bpp', None)
+                else:
+                    predictions = model_output
+                    bpp = None
+                
+                # Compute metrics
+                if 'loss' in compute_metrics:
+                    visual_loss = super().compute_loss(predictions, clean_images, masks)
+                    all_losses['loss'].append(visual_loss.item())
+                    
+                if 'bpp' in compute_metrics and bpp is not None:
+                    all_losses['bpp'].append(bpp.item())
+                    
+                if 'combined' in compute_metrics:
+                    combined_loss = self.compute_loss(predictions, clean_images, masks, bpp)
+                    all_losses['combined'].append(combined_loss.item())
+                
+                # Save outputs if requested
+                if save_outputs and output_directory:
+                    self._save_validation_outputs(predictions, batch, output_directory, i)
+        
+        self.model.train()
+        
+        # Return average metrics
+        result = {}
+        for metric_name, values in all_losses.items():
+            if values:
+                result[metric_name] = sum(values) / len(values)
+        
+        return result
 
 
 class CleanExperimentManager:

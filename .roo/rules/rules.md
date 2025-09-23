@@ -1,3 +1,11 @@
+# General rules
+- Be sure to use the tools available to you as described in @/.roo/rules/rules.md
+- Under no circumstances should you simplify or mock away real parts of the pipeline for integration testing. 
+## Anti-patterns:
+  - Never have more than one implementation of the same (or substantially similar) thing, 
+  - Never call something by more than one name across the project unless it is absolutely necessary,
+  - Never have more than one "sole source of truth" for any value.
+
 # Testing rules
 - **how to run tests** Use `python -m pytest` followed by normal arguments
 
@@ -80,14 +88,10 @@ These are self-imposed rules for using the configured MCP (Model Context Protoco
   - `get_project_dependencies`: Get a list of all dependencies defined in the project.
   - `get_project_modules`: Get a list of all modules in the project with their types.
   - `get_project_problems`: Retrieves all project problems (errors, warnings, etc.) detected in the project.
-  - `create_new_file`: Creates a new file at the specified path within the project directory.
   - `find_files_by_glob`: Searches for all files whose relative paths match the specified glob pattern.
   - `find_files_by_name_keyword`: Searches for all files whose names contain the specified keyword.
-  - `get_all_open_file_paths`: Returns active editor's and other open editors' file paths relative to the project root.
   - `list_directory_tree`: Provides a tree representation of the specified directory.
-  - `open_file_in_editor`: Opens the specified file in the JetBrains IDE editor.
   - `reformat_file`: Reformats a specified file in the JetBrains IDE.
-  - `get_file_text_by_path`: Retrieves the text content of a file using its path relative to project root.
   - `replace_text_in_file`: Replaces text in a file with flexible options for find and replace operations.
   - `search_in_files_by_regex`: Searches with a regex pattern within all files in the project.
   - `search_in_files_by_text`: Searches for a text substring within all files in the project.
@@ -95,7 +99,6 @@ These are self-imposed rules for using the configured MCP (Model Context Protoco
   - `rename_refactoring`: Renames a symbol (variable, function, class, etc.) in the specified file.
   - `find_commit_by_message`: Searches for a commit based on the provided text or keywords in the project history.
   - `get_project_vcs_status`: Retrieves the current version control status of files in the project.
-  - `permission_prompt`: permission_prompt (appears to be a placeholder or internal tool).
 - **Do not use for**: General file operations (use filesystem MCP or general tools).
 - **Example scenarios**: Running tests, checking for code issues, performing refactoring operations.
 

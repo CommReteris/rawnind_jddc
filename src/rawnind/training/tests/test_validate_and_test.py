@@ -1,11 +1,9 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-from rawnind import (
-    train_dc_bayer2prgb,
-    train_dc_prgb2prgb,
-    train_denoiser_bayer2prgb,
-    train_denoiser_prgb2prgb,
+from rawnind.training import (
+    denoise_compress_trainer,
+    denoiser_trainer,
 )
 from rawnind.training import training_loops
 
@@ -18,10 +16,10 @@ Reasons for Mocking/Fixturing: Real instantiation requires config YAML/files whi
 """
 
 @pytest.fixture(params=[
-    train_dc_bayer2prgb.DCTrainingBayerToProfiledRGB,
-    train_dc_prgb2prgb.DCTrainingProfiledRGBToProfiledRGB,
-    train_denoiser_bayer2prgb.DenoiserTrainingBayerToProfiledRGB,
-    train_denoiser_prgb2prgb.DenoiserTrainingProfiledRGBToProfiledRGB,
+    denoise_compress_trainer.DCTrainingBayerToProfiledRGB,
+    denoise_compress_trainer.DCTrainingProfiledRGBToProfiledRGB,
+    denoiser_trainer.DenoiserTrainingBayerToProfiledRGB,
+    denoiser_trainer.DenoiserTrainingProfiledRGBToProfiledRGB,
 ])
 def training_class(request):
     """Parametrized fixture for the 4 training classes."""
