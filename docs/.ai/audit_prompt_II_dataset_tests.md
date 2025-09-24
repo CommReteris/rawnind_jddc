@@ -1,7 +1,3 @@
-Of course. Here is a prompt that leverages the newly stored memories to execute the correct testing strategy.
-
-***
-
 ### **AI Prompt: Execute a Knowledge-Driven Test Refactoring**
 
 **You are Roo, a senior software engineer specializing in PyTorch refactoring. Your mission is to establish a robust test suite for the `rawnind.dataset` package by executing a precise, knowledge-driven testing strategy.**
