@@ -15,7 +15,9 @@ import torch
 from PIL import Image
 
 # Import from dependencies package (will be moved later)
-from .utilities import noop
+def noop(*args, **kwargs):
+    """No-operation function that accepts any arguments and does nothing."""
+    pass
 
 
 def get_device(device_n=None):
@@ -145,31 +147,24 @@ def freeze_model(net):
     return net
 
 
-def get_losses(img1_fpath, img2_fpath):
-    """Compute various losses between two images.
-
-    Args:
-        img1_fpath: Path to first image
-        img2_fpath: Path to second image
-
-    Returns:
-        dict: Dictionary of loss metrics
-    """
-    # Import from dependencies (will be moved later)
-    from .pytorch_losses import SSIM_loss, MS_SSIM_loss
-
-    img1 = fpath_to_tensor(img1_fpath).unsqueeze(0)
-    img2 = fpath_to_tensor(img2_fpath).unsqueeze(0)
-    assert img1.shape == img2.shape, f"img1.shape={img1.shape}, img2.shape={img2.shape}"
-
-    res = dict()
-    res["mse"] = torch.nn.functional.mse_loss(img1, img2).item()
-    res["ssim"] = SSIM_loss()(img1, img2).item()
-    res["msssim"] = MS_SSIM_loss()(img1, img2).item()
-    return res
-
-
 # CUDA synchronization utility
 torch_cuda_synchronize = (
     torch.cuda.synchronize if torch.cuda.is_available() else noop
 )
+
+from torch.optim.lr_scheduler import LambdaLR
+
+def get_basic_linear_schedule_with_warmup(optimizer, num_warmup_steps, num_training_steps, last_epoch=-1):
+    """
+    Create a schedule with a learning rate that decreases linearly from the initial lr set in the optimizer to 0, after
+    a warmup period during which it increases linearly from 0 to the initial lr set in the optimizer.
+    """
+
+    def lr_lambda(current_step: int):
+        if current_step < num_warmup_steps:
+            return float(current_step) / float(max(1, num_warmup_steps))
+        return max(
+            0.0, float(num_training_steps - current_step) / float(max(1, num_training_steps - num_warmup_steps))
+        )
+
+    return LambdaLR(optimizer, lr_lambda, last_epoch)

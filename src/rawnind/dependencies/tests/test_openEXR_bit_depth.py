@@ -13,7 +13,15 @@ from rawnind.dependencies import raw_processing as raw
 
 @pytest.mark.parametrize("bit_depth", [16, 32])
 def test_openEXR_bit_depth(bit_depth):
-    """Parametrized test for OpenEXR bit depth export with mocks."""
+    """
+    Test OpenEXR export with different bit depths using mocks.
+
+    Objective: Verify that OpenEXR export logic correctly handles different bit depths.
+    Test criteria: Mocked export function is called with correct bit_depth and color_profile.
+    How testing for this criteria fulfills purpose: Ensures bit depth handling works without real file I/O.
+    What components are mocked, monkeypatched, or are fixtures: numpy.random.random (return dummy array), raw_processing.hdr_nparray_to_file (track calls).
+    The reasons for which the test will be able to fulfill its objective without the real components being mocked/patched/fixtured: Avoids file system dependencies while testing the core export logic with different bit depths.
+    """
     # Mock np.random.random to return dummy image array
     mock_random = MagicMock(return_value=np.random.random((3, 128, 128)))
 

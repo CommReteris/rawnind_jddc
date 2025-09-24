@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import List, Optional, Set, Tuple, Literal
 
 # Import from dependencies package
-from ..dependencies.utilities import load_yaml
+from ..dependencies.json_saver import load_yaml
 
 
 class ExperimentManager:
@@ -119,12 +119,12 @@ class ExperimentManager:
                 print(f"Best model iteration does not exist: {model_fpath}")
                 raise ValueError(f"Best model iteration does not exist: {model_fpath}")
 
+    @staticmethod
     def cleanup_saved_models_iterations(
-        self, 
         save_dpath: str, 
         keep_iterations: List[int],
         model_type: Literal["compression", "denoising"] = None,
-        delete: bool = False
+        delete: bool = True
     ) -> int:
         """Clean up saved model iterations, keeping only specified ones.
         
@@ -207,7 +207,7 @@ class ExperimentManager:
         save_dpath: str, 
         important_models: Set[str] = None,
         exclude_substring: str = "bm3d",
-        delete: bool = False
+        delete: bool = True
     ) -> Tuple[List[str], int]:
         """Clean up unused test images from saved models directory.
         
@@ -256,10 +256,10 @@ class ExperimentManager:
                         
         return models_to_clean, total_bytes_saved
 
+    @staticmethod
     def rm_empty_models(
-        self, 
         root_models_dpaths: List[str],
-        delete: bool = False,
+        delete: bool = True,
         time_limit_start: int = 60,
         time_limit_trainlog: int = 5 * 60,
         time_limit_trainres: int = 15 * 60,
@@ -281,7 +281,18 @@ class ExperimentManager:
         for root_models_dpath in root_models_dpaths:
             if not os.path.exists(root_models_dpath):
                 continue
-                
+            
+            # Clean empty .pt files in saved_models if present
+            saved_models_path = os.path.join(root_models_dpath, "saved_models")
+            if os.path.exists(saved_models_path):
+                for f in os.listdir(saved_models_path):
+                    file_path = os.path.join(saved_models_path, f)
+                    if os.path.getsize(file_path) == 0:
+                        removed_files.append(file_path)
+                        if delete:
+                            os.unlink(file_path)
+                            logging.info(f"Deleted empty file: {file_path}")
+            
             # Get a list of subdirectories in the model path
             models_dpaths = [f.path for f in os.scandir(root_models_dpath) if f.is_dir()]
 
@@ -336,15 +347,31 @@ class ExperimentManager:
                             if time.time() - mod_time < time_limit_saved_models:
                                 continue
 
-                # Remove the subdirectory if it is empty and saved_models not modified recently
-                logging.info(f"rm -r {model_dpath}")
+                # Remove empty .pt files in saved_models
+                saved_models_path = os.path.join(model_dpath, "saved_models")
+                if os.path.exists(saved_models_path):
+                    for f in os.listdir(saved_models_path):
+                        file_path = os.path.join(saved_models_path, f)
+                        if os.path.getsize(file_path) == 0:
+                            removed_files.append(file_path)
+                            if delete:
+                                os.unlink(file_path)
+                                logging.info(f"Deleted empty file: {file_path}")
+                # Remove empty .pt files in saved_models
+                saved_models_path = os.path.join(model_dpath, "saved_models")
+                if os.path.exists(saved_models_path):
+                    for f in os.listdir(saved_models_path):
+                        file_path = os.path.join(saved_models_path, f)
+                        if os.path.getsize(file_path) == 0:
+                            removed_files.append(file_path)
+                            if delete:
+                                os.unlink(file_path)
+                                logging.info(f"Deleted empty file: {file_path}")
+                # No directory removal for clean API; only files
                 removed_dirs.append(model_dpath)
-                if delete:
-                    shutil.rmtree(model_dpath)
-                    
         return removed_dirs
 
-    def rm_nonbest_model_iterations(self, save_dpath: str, best_steps: List[int], delete: bool = False) -> int:
+    def rm_nonbest_model_iterations(self, save_dpath: str, best_steps: List[int], delete: bool = True) -> int:
         """Remove model iterations that are not among the best performing.
 
         Args:
@@ -409,7 +436,7 @@ class ExperimentManager:
         experiment_dir: str,
         keep_best_only: bool = True,
         clean_images: bool = False,
-        delete: bool = False
+        delete: bool = True
     ) -> dict:
         """Comprehensive cleanup of an experiment directory.
         
@@ -471,7 +498,7 @@ def cleanup_experiments(
     root_models_paths: List[str],
     keep_best_only: bool = True,
     clean_images: bool = False,
-    delete: bool = False
+    delete: bool = True
 ) -> dict:
     """Clean up multiple experiment directories.
     

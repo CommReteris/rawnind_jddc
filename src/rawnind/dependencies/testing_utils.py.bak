@@ -1,0 +1,233 @@
+'''Lightweight test helpers for training classes.
+
+This module exposes small subclasses that override get_dataloaders() to return
+None, allowing fast import-time checks and sanity tests on training pipelines
+without requiring access to full datasets.
+'''
+import os
+from types import SimpleNamespace
+
+from .config_manager import ConfigManager
+from ..training.clean_api import TrainingConfig
+from ..models import denoise_then_compress, raw_denoiser
+
+
+class DCTestCustomDataloaderBayerToProfiledRGB:
+    '''Test subclass for Bayer-to-RGB denoise+compress training with null dataloaders.
+    
+    This class inherits from DCTrainingBayerToProfiledRGB but overrides the
+    get_dataloaders method to return None instead of actual dataset loaders.
+    This allows for quick import testing, code validation, and development
+    without requiring access to the full datasets.
+    
+    Use cases:
+    - Rapid testing of model initialization and architecture
+    - Validating configuration handling
+    - Checking for import errors or dependency issues
+    - Development of new training functionality without dataset overhead
+    
+    Inherits all parameters and methods from DCTrainingBayerToProfiledRGB.
+    '''
+
+    def __init__(self, config: TrainingConfig) -> None:
+        '''Initialize the test class with the same parameters as the parent class.
+        
+        Args:
+            config: TrainingConfig dataclass with all parameters
+        '''
+        self.config = config
+        super().__init__(config)
+
+    def get_dataloaders(self) -> None:
+        '''Override parent's get_dataloaders method to return None.
+        
+        This method intentionally bypasses the dataset loading process
+        by returning None instead of actual DataLoader objects, allowing
+        for rapid testing without dataset dependencies.
+        
+        Returns:
+            None: Instead of the DataLoader objects that the parent would return
+        '''
+        return None
+
+    def instantiate_model(self):
+        self.model = denoise_then_compress.DenoiseThenCompress(
+            self.config.in_channels,
+            self.config.arch_enc,
+            self.config.arch_dec,
+            self.config.hidden_out_channels,
+            self.config.bitstream_out_channels
+        )
+
+
+class DenoiseTestCustomDataloaderBayerToProfiledRGB:
+    '''Test subclass for Bayer-to-RGB denoiser training with null dataloaders.
+    
+    This class inherits from DenoiserTrainingBayerToProfiledRGB but overrides the
+    get_dataloaders method to return None instead of actual dataset loaders.
+    This allows for quick import testing, code validation, and development
+    without requiring access to the full datasets.
+    
+    Unlike the DC (denoise+compress) test class, this one focuses specifically on
+    pure denoising functionality without the compression component.
+    
+    Use cases:
+    - Rapid testing of denoiser model initialization and architecture
+    - Validating configuration handling for denoisers
+    - Checking for import errors or dependency issues
+    - Development of new denoising functionality without dataset overhead
+    
+    Inherits all parameters and methods from DenoiserTrainingBayerToProfiledRGB.
+    '''
+
+    def __init__(self, config: TrainingConfig) -> None:
+        '''Initialize the test class with the same parameters as the parent class.
+        
+        Args:
+            config: TrainingConfig dataclass with all parameters
+        '''
+        self.config = config
+        super().__init__(config)
+
+    def get_dataloaders(self) -> None:
+        '''Override parent's get_dataloaders method to return None.
+        
+        This method intentionally bypasses the dataset loading process
+        by returning None instead of actual DataLoader objects, allowing
+        for rapid testing without dataset dependencies.
+        
+        Returns:
+            None: Instead of the DataLoader objects that the parent would return
+        '''
+        return None
+
+    def instantiate_model(self):
+        self.model = raw_denoiser.UtNet2(self.config.in_channels, self.config.funit)
+
+
+class DCTestCustomDataloaderProfiledRGBToProfiledRGB:
+    '''Test subclass for RGB-to-RGB denoise+compress training with null dataloaders.
+    
+    This class inherits from DCTrainingProfiledRGBToProfiledRGB but overrides the
+    get_dataloaders method to return None instead of actual dataset loaders.
+    This allows for quick import testing, code validation, and development
+    without requiring access to the full datasets.
+    
+    Unlike the Bayer-to-RGB test class, this one works with already demosaiced RGB
+    images as both input and output, skipping the Bayer pattern processing step.
+    
+    Use cases:
+    - Rapid testing of RGB model initialization and architecture
+    - Validating configuration handling for RGB processing
+    - Checking for import errors or dependency issues
+    - Development of new RGB processing functionality without dataset overhead
+    
+    Inherits all parameters and methods from DCTrainingProfiledRGBToProfiledRGB.
+    '''
+
+    def __init__(self, config: TrainingConfig) -> None:
+        '''Initialize the test class with the same parameters as the parent class.
+        
+        Args:
+            config: TrainingConfig dataclass with all parameters
+        '''
+        self.config = config
+        super().__init__(config)
+
+    def get_dataloaders(self) -> None:
+        '''Override parent's get_dataloaders method to return None.
+        
+        This method intentionally bypasses the dataset loading process
+        by returning None instead of actual DataLoader objects, allowing
+        for rapid testing without dataset dependencies.
+        
+        Returns:
+            None: Instead of the DataLoader objects that the parent would return
+        '''
+        return None
+
+    def instantiate_model(self):
+        self.model = denoise_then_compress.DenoiseThenCompress(
+            self.config.in_channels,
+            self.config.arch_enc,
+            self.config.arch_dec,
+            self.config.hidden_out_channels,
+            self.config.bitstream_out_channels
+        )
+
+
+class DenoiseTestCustomDataloaderProfiledRGBToProfiledRGB:
+    '''Test subclass for RGB-to-RGB denoiser training with null dataloaders.
+    
+    This class inherits from DenoiserTrainingProfiledRGBToProfiledRGB but overrides the
+    get_dataloaders method to return None instead of actual dataset loaders.
+    This allows for quick import testing, code validation, and development
+    without requiring access to the full datasets.
+    
+    This class combines two key characteristics:
+    1. Pure denoising (without compression) like DenoiseTestCustomDataloaderBayerToProfiledRGB
+    2. RGB-to-RGB processing (skipping Bayer pattern) like DCTestCustomDataloaderProfiledRGBToProfiledRGB
+    
+    Use cases:
+    - Rapid testing of RGB denoiser model initialization and architecture
+    - Validating configuration handling for RGB denoisers
+    - Checking for import errors or dependency issues
+    - Development of new RGB denoising functionality without dataset overhead
+    
+    Inherits all parameters and methods from DenoiserTrainingProfiledRGBToProfiledRGB.
+    '''
+
+    def __init__(self, config: TrainingConfig) -> None:
+        '''Initialize the test class with the same parameters as the parent class.
+        
+        Args:
+            config: TrainingConfig dataclass with all parameters
+        '''
+        self.config = config
+        super().__init__(config)
+
+    def get_dataloaders(self) -> None:
+        '''Override parent's get_dataloaders method to return None.
+        
+        This method intentionally bypasses the dataset loading process
+        by returning None instead of actual DataLoader objects, allowing
+        for rapid testing without dataset dependencies.
+        
+        Returns:
+            None: Instead of the DataLoader objects that the parent would return
+        '''
+        return None
+
+    def instantiate_model(self):
+        self.model = raw_denoiser.UtNet2(self.config.in_channels, self.config.funit)
+
+
+def get_testing_config():
+    """Returns a ConfigManager instance for testing purposes."""
+    return ConfigManager()
+
+
+def get_full_model_config():
+    """
+    Loads and merges the denoiser and compressor model definitions.
+    
+    Returns:
+        A dictionary containing the merged model configurations, organized by model type.
+    """
+    base_path = os.path.join('src', 'rawnind', 'dependencies', 'configs')
+    
+    denoiser_path = os.path.join(base_path, "graph_denoise_models_definitions.yaml")
+    compressor_path = os.path.join(base_path, "graph_dc_models_definitions.yaml")
+
+    denoiser_config = ConfigManager.load_config(denoiser_path)
+    compressor_config = ConfigManager.load_config(compressor_path)
+
+    # The test expects a dictionary with 'denoiser' and 'compressor' as keys.
+    # The current implementation returns a merged dictionary of the two configs.
+    # To fix this, we will create a new dictionary with the correct structure.
+    full_config = {
+        "denoiser": denoiser_config,
+        "compressor": compressor_config
+    }
+    
+    return full_config

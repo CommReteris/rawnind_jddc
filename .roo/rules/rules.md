@@ -7,7 +7,7 @@
   - Never have more than one "sole source of truth" for any value.
 
 # Testing rules
-- **how to run tests** Use `python -m pytest` followed by normal arguments
+- **how to run tests** Use `python -m pytest` followed by normal arguments. Do not generate html coverage reports.
 
 # MCP Server Tool Usage Rules
 

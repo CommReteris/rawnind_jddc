@@ -20,16 +20,17 @@ import torch
 
 # Import from dependencies package
 from ..dependencies.pytorch_helpers import get_device, fpath_to_tensor as pt_helpers
-from ..dependencies.utilities import dict_to_yaml, load_yaml
+from ..dependencies.json_saver import dict_to_yaml, load_yaml
 from ..dependencies.pt_losses import losses, metrics
 
 # Import raw processing (will be moved to dependencies later)
 from ..dependencies import raw_processing as raw, raw_processing as rawproc, arbitrary_processing as arbitrary_proc_fun
 
 # Import base classes
-from .base_dataset import RawImageDataset, TestDataLoader
-from .noisy_datasets import CleanProfiledRGBNoisyBayerImageCropsDataset, \
-    CleanProfiledRGBNoisyProfiledRGBImageCropsDataset
+from .base_dataset import RawImageDataset
+from .bayer_datasets import CleanProfiledRGBNoisyBayerImageCropsDataset
+from .rgb_datasets import CleanProfiledRGBNoisyProfiledRGBImageCropsDataset
+from .test_dataloaders import TestDataLoader
 
 BREAKPOINT_ON_ERROR = True
 COLOR_PROFILE = "lin_rec2020"

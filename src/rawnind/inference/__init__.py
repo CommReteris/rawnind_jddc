@@ -36,7 +36,7 @@ from .clean_api import (
 from .base_inference import ImageToImageNN, BayerImageToImageNN
 from .inference_engine import InferenceEngine
 from .model_factory import get_and_load_test_object, get_and_load_model
-from .model_loader import ModelLoader
+
 
 __all__ = [
     # Clean modern API (recommended)
@@ -56,7 +56,7 @@ __all__ = [
     # Legacy API (deprecated - will be removed)
     'ImageToImageNN',
     'BayerImageToImageNN',
-    'ModelLoader',
+    
     'InferenceEngine',
     'get_and_load_test_object',
     'get_and_load_model'

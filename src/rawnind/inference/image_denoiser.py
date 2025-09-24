@@ -23,7 +23,7 @@ from ..dependencies import raw_processing as rawproc
 from ..dependencies import raw_processing as raw
 
 # Import inference components
-from .model_factory import get_and_load_test_object
+from .clean_api import InferenceConfig, load_model_from_checkpoint, compute_image_metrics, create_rgb_denoiser, create_bayer_denoiser
 from .base_inference import ImageToImageNN
 
 DENOISED_DN = "denoised_images"

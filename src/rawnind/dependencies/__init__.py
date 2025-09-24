@@ -13,3 +13,6 @@ from .config_manager import ConfigManager
 __all__ = [
     'ConfigManager'
 ]
+from .json_saver import load_yaml, dict_to_yaml
+
+__all__ += ['load_yaml', 'dict_to_yaml']

@@ -10,28 +10,10 @@ The module includes:
 1. Loss functions suitable for neural network training (inversions of metrics)
 2. Metrics for model evaluation
 3. Dictionaries mapping string names to loss/metric functions
-4. Utility functions for determining valid dimensions for MS-SSIM calculation
-
-The implementation uses pytorch_msssim as the backend for MS-SSIM calculation,
-with previous implementations using piqa commented out due to compatibility issues.
 """
 
 import torch
-
-# import piqa  # disabled due to https://github.com/francois-rozet/piqa/issues/25
 import pytorch_msssim
-import sys
-
-
-# from common.extlibs import DISTS_pt
-
-# class MS_SSIM_loss(piqa.MS_SSIM):
-#     def __init__(self, **kwargs):
-#         r""""""
-#         super().__init__(**kwargs)
-#     def forward(self, input, target):
-#         return 1-super().forward(input, target)
-
 
 class MS_SSIM_loss(pytorch_msssim.MS_SSIM):
     """Multi-Scale Structural Similarity loss function.
@@ -66,23 +48,12 @@ class MS_SSIM_loss(pytorch_msssim.MS_SSIM):
         return 1 - super().forward(input, target)
 
 
-class MS_SSIM_metric(pytorch_msssim.MS_SSIM):
-    """Multi-Scale Structural Similarity metric for evaluation.
-    
-    Unlike MS_SSIM_loss, this class directly uses the MS-SSIM score without inversion,
-    making it suitable for evaluation where higher values indicate better quality.
-    
-    Values range from 0 to 1, where 1 indicates perfect similarity between images.
+def ms_ssim_metric(input, target, data_range=1.0, **kwargs):
     """
-
-    def __init__(self, data_range=1.0, **kwargs):
-        """Initialize the MS-SSIM metric.
-        
-        Args:
-            data_range: Value range of input images (usually 1.0 for normalized images)
-            **kwargs: Additional arguments passed to pytorch_msssim.MS_SSIM
-        """
-        super().__init__(data_range=data_range, **kwargs)
+    Calculates the MS-SSIM score. Higher is better.
+    This is derived from the loss function to ensure a single implementation.
+    """
+    return 1 - MS_SSIM_loss(data_range=data_range, **kwargs)(input, target)
 
 
 class PSNR_metric(torch.nn.Module):
@@ -122,76 +93,22 @@ class PSNR_metric(torch.nn.Module):
         psnr = 20 * torch.log10(self.data_range / torch.sqrt(mse))
         return psnr
 
+class L1_loss(torch.nn.L1Loss):
+    pass
 
-# class SSIM_loss(piqa.SSIM):
-#     def __init__(self, **kwargs):
-#         r""""""
-#         super().__init__(**kwargs)
-#     def forward(self, input, target):
-#         return 1-super().forward(input, target)
-#     # Note: SSIM implementation using piqa is commented out due to compatibility issues
-
-
-# class DISTS_loss(DISTS_pt.DISTS):
-#     def __init__(self, **kwargs):
-#         super().__init__()
-#
-#     def forward(self, x, y):
-#         return super().forward(x, y, require_grad=True, batch_average=True)
-#     # Note: DISTS implementation is commented out and would require the DISTS_pt module
-
+class MSE_loss(torch.nn.MSELoss):
+    pass
 
 # Dictionary mapping loss function names to their implementation classes
 losses = {
-    "mse"        : torch.nn.MSELoss,  # Standard Mean Squared Error loss
-    "ms_ssim_loss": MS_SSIM_loss  # Perceptual MS-SSIM loss (1 - MS_SSIM)
-}  # "dists": DISTS_loss is commented out due to dependency issues
-
-# Dictionary mapping metric names to their implementation classes
-# Note: Python 3.8/3.10 compatibility workaround (can't use | operator for dict merging)
-metrics = {
-    "ms_ssim"    : MS_SSIM_metric,  # Multi-Scale Structural Similarity metric (higher = better)
-    "ms_ssim_loss": MS_SSIM_loss,  # MS-SSIM loss function (lower = better) 
-    "mse"        : torch.nn.MSELoss,  # Mean Squared Error (lower = better)
-    "psnr"       : PSNR_metric,  # Peak Signal-to-Noise Ratio (higher = better)
-    # "dists": DISTS_loss,  # DISTS metric commented out due to dependency issues
+    "l1"         : L1_loss,
+    "mse"        : MSE_loss,  # Standard Mean Squared Error loss
+    "ms_ssim": MS_SSIM_loss  # Perceptual MS-SSIM loss (1 - MS_SSIM)
 }
 
-if __name__ == "__main__":
-    """
-    Utility script to find the minimum valid dimension for MS-SSIM calculation.
-    
-    MS-SSIM has minimum dimension requirements due to its multi-scale nature.
-    This script attempts to find the smallest valid image dimension by testing
-    increasingly larger square images until the calculation succeeds.
-    
-    Note: This test uses pytorch_msssim, not the commented-out piqa implementation.
-    The result from previous tests was 162 as the minimum valid dimension.
-    """
-
-
-    def findvaliddim(start):
-        """
-        Recursively find the minimum valid dimension for MS-SSIM calculation.
-        
-        Args:
-            start: Starting dimension to test
-            
-        Returns:
-            The first valid dimension that works with MS-SSIM
-        """
-        try:
-            # Using pytorch_msssim instead of piqa to match actual implementation
-            pytorch_msssim.MS_SSIM()(
-                torch.rand(1, 3, start, start), torch.rand(1, 3, start, start)
-            )
-            print(start)
-            return start
-        except RuntimeError:
-            print(start)
-            # Recursively try the next dimension
-            return findvaliddim(start + 1)
-
-
-    # Start testing from dimension 1
-    findvaliddim(1)  # result is 162
+# Dictionary mapping metric names to their implementation classes
+metrics = {
+    "ms_ssim"    : ms_ssim_metric,  # Multi-Scale Structural Similarity metric (higher = better)
+    "mse"        : MSE_loss,  # Mean Squared Error (lower = better)
+    "psnr"       : PSNR_metric,  # Peak Signal-to-Noise Ratio (higher = better)
+}

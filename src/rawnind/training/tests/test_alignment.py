@@ -9,7 +9,7 @@ Reasons for No Mocking: Real images are available in test_data/ directory; no mo
 import os
 import pytest
 from skimage.metrics import structural_similarity as ssim
-from src.rawnind.libs import rawproc, np_imgops
+from rawnind.dependencies import raw_processing as rawproc, numpy_operations as np_imgops
 
 def test_image_alignment():
     """Test image alignment verification using SSIM."""

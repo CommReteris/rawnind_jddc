@@ -11,7 +11,7 @@ import os
 from typing import Any, Dict
 
 # Import from dependencies (will be moved later)
-from .utilities import load_yaml
+from .json_saver import load_yaml
 
 
 class ConfigManager:
@@ -86,7 +86,7 @@ class ConfigManager:
             config_path: Path where to save the configuration
         """
         # Import from dependencies (will be moved later)
-        from .utilities import dict_to_yaml
+        from .json_saver import dict_to_yaml
 
         dict_to_yaml(config, config_path)
 
