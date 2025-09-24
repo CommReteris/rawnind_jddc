@@ -1,0 +1,31 @@
+import pytest
+from rawnind.dependencies import testing_utils as tu
+from rawnind.dependencies import config_manager
+
+def test_get_testing_config():
+    """
+    Test get_testing_config returns a ConfigManager instance.
+
+    Objective: Verify get_testing_config provides a valid ConfigManager.
+    Test criteria: Returns ConfigManager instance.
+    How testing fulfills purpose: Ensures testing utilities provide correct config type.
+    Components mocked: None - direct function call.
+    Reason for hermeticity: No external dependencies.
+    """
+    config = tu.get_testing_config()
+    assert isinstance(config, config_manager.ConfigManager)
+
+def test_get_full_model_config():
+    """
+    Test get_full_model_config returns complete model config dict.
+
+    Objective: Verify get_full_model_config provides dict with denoiser and compressor keys.
+    Test criteria: Returns dict containing 'denoiser' and 'compressor' keys.
+    How testing fulfills purpose: Ensures model config utilities provide expected structure.
+    Components mocked: None - direct function call.
+    Reason for hermeticity: No external dependencies.
+    """
+    config = tu.get_full_model_config()
+    assert isinstance(config, dict)
+    assert "denoiser" in config
+    assert "compressor" in config

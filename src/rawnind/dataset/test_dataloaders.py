@@ -12,12 +12,14 @@ from typing import Optional
 import torch
 
 from .base_dataset import RawImageDataset
-from .noisy_datasets import CleanProfiledRGBNoisyBayerImageCropsDataset, \
-    CleanProfiledRGBNoisyProfiledRGBImageCropsDataset
+from .bayer_datasets import CleanProfiledRGBNoisyBayerImageCropsDataset
+from .rgb_datasets import CleanProfiledRGBNoisyProfiledRGBImageCropsDataset
+
 from ..dependencies.pytorch_helpers import fpath_to_tensor as pt_helpers
-from ..dependencies.utilities import load_yaml as utilities
+from ..dependencies.json_saver import load_yaml as utilities
 # Import raw processing (will be moved to dependencies later)
-from ..libs import rawproc, arbitrary_proc_fun
+from ..dependencies import raw_processing as rawproc
+from ..dependencies.arbitrary_processing import arbitrarily_process_images as arbitrary_proc_fun
 
 # Constants from original rawds.py
 ALIGNMENT_MAX_LOSS = 0.035

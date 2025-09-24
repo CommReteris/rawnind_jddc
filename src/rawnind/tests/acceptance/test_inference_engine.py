@@ -1,5 +1,5 @@
-import torch
 import pytest
+import torch
 
 from rawnind.inference.inference_engine import InferenceEngine
 
@@ -47,7 +47,6 @@ def test_infer_output_modes(return_dict):
         assert isinstance(out, torch.Tensor)
 
 
-@pytest.mark.xfail(reason="dependencies.raw_processing not yet migrated; enable once available")
 def test_transfer_function_factory_available():
     # Ensures callable is returned for supported names
     tf_none = InferenceEngine.get_transfer_function("None")

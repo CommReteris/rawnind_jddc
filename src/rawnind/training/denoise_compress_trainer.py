@@ -93,28 +93,4 @@ def create_dc_rgb_trainer(**kwargs) -> DCTrainingProfiledRGBToProfiledRGB:
     return DCTrainingProfiledRGBToProfiledRGB(launch=False, **kwargs)
 
 
-# Legacy CLI support (for backward compatibility, but deprecated)
-def _legacy_cli_main():
-    """Legacy CLI entry point - deprecated in favor of clean API."""
-    logging.warning("Legacy CLI interface is deprecated. Use clean API factory functions instead.")
-    
-    # Handle multiprocessing for proc2proc or opencv arguments
-    if any("proc2proc" in arg or "opencv" in arg for arg in sys.argv):
-        try:
-            print("setting multiprocessing.set_start_method('spawn')")
-            multiprocessing.set_start_method("spawn")
-        except RuntimeError:
-            print("multiprocessing.set_start_method('spawn') failed")
-            logging.info("multiprocessing.set_start_method('spawn') failed - method already set")
 
-    # Determine which trainer to use based on arguments
-    if any("bayer" in arg.lower() for arg in sys.argv):
-        trainer = DCTrainingBayerToProfiledRGB()
-    else:
-        trainer = DCTrainingProfiledRGBToProfiledRGB()
-
-    trainer.training_loop()
-
-
-if __name__ == "__main__":
-    _legacy_cli_main()

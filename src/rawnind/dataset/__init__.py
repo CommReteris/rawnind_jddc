@@ -40,39 +40,29 @@ from .clean_api import (
     convert_dataset_format,
     create_dataset_config_from_yaml,
     load_rawnind_test_reserve_config,
-    validate_training_type_and_dataset_config
+    validate_training_type_and_dataset_config,
+    ConfigurableDataset
 )
 
 # Legacy API - base dataset classes and utilities (more complex but complete)
-from .base_dataset import (
-    CleanCleanImageDataset, 
-    CleanNoisyDataset, 
-    ProfiledRGBBayerImageDataset,
-    ProfiledRGBProfiledRGBImageDataset, 
-    RawDatasetOutput, 
-    RawImageDataset, 
-    TestDataLoader
-)
+
+
+
+
+
+
+
 
 # Clean dataset implementations
-from .clean_datasets import (
-    CleanProfiledRGBCleanBayerImageCropsDataset,
-    CleanProfiledRGBCleanProfiledRGBImageCropsDataset,
-)
+
 
 # Noisy dataset implementations
-from .noisy_datasets import (
-    CleanProfiledRGBNoisyBayerImageCropsDataset,
-    CleanProfiledRGBNoisyProfiledRGBImageCropsDataset,
-)
+
+
+
 
 # Validation and test dataset implementations
-from .validation_datasets import (
-    CleanProfiledRGBNoisyBayerImageCropsTestDataloader,
-    CleanProfiledRGBNoisyBayerImageCropsValidationDataset,
-    CleanProfiledRGBNoisyProfiledRGBImageCropsTestDataloader,
-    CleanProfiledRGBNoisyProfiledRGBImageCropsValidationDataset
-)
+
 
 # Constants
 MAX_MASKED = 0.5
@@ -82,6 +72,7 @@ ALIGNMENT_MAX_LOSS = 0.035
 OVEREXPOSURE_LB = 0.99
 TOY_DATASET_LEN = 25
 COLOR_PROFILE = "lin_rec2020"
+
 
 __all__ = [
     # Clean modern API (recommended)
@@ -99,29 +90,7 @@ __all__ = [
     'create_dataset_config_from_yaml',
     'load_rawnind_test_reserve_config',
     'validate_training_type_and_dataset_config',
-    
-    # Legacy API - base classes
-    "RawImageDataset",
-    "RawDatasetOutput",
-    "ProfiledRGBBayerImageDataset",
-    "ProfiledRGBProfiledRGBImageDataset",
-    "CleanCleanImageDataset",
-    "CleanNoisyDataset",
-    "TestDataLoader",
-
-    # Legacy API - clean dataset implementations
-    "CleanProfiledRGBCleanBayerImageCropsDataset",
-    "CleanProfiledRGBCleanProfiledRGBImageCropsDataset",
-
-    # Legacy API - noisy dataset implementations
-    "CleanProfiledRGBNoisyBayerImageCropsDataset",
-    "CleanProfiledRGBNoisyProfiledRGBImageCropsDataset",
-
-    # Legacy API - validation and test dataset implementations
-    "CleanProfiledRGBNoisyProfiledRGBImageCropsValidationDataset",
-    "CleanProfiledRGBNoisyBayerImageCropsValidationDataset",
-    "CleanProfiledRGBNoisyBayerImageCropsTestDataloader",
-    "CleanProfiledRGBNoisyProfiledRGBImageCropsTestDataloader",
+    'ConfigurableDataset',
 
     # Constants
     "MAX_MASKED",

@@ -1,0 +1,112 @@
+import numpy as np
+import pytest
+from unittest.mock import patch, MagicMock
+from rawnind.dependencies import raw_processing as raw
+
+
+def test_raw_loader_load_raw_data(mock_rawpy_data):
+    """
+    Test RawLoader.load_raw_data with mocked rawpy.
+
+    Objective: Verify RawLoader processes RAW files correctly.
+    Test criteria: Returns expected image array and metadata structure.
+    How testing fulfills purpose: Ensures RAW loading pipeline works with external libraries.
+    Components mocked: rawpy using a fixture to control its behavior.
+    Reason for hermeticity: RAW file processing requires external files/libraries.
+    """
+    mock_raw = mock_rawpy_data
+
+    # Set specific raw_image_visible for this test
+    mock_raw.raw_image = np.random.randint(0, 65535, (1024, 1024), dtype=np.uint16)
+    # Ensure raw_colors and rgb_xyz_matrix are set explicitly or reset if fixture changes them
+    mock_raw.raw_colors = np.array([[0, 1], [2, 3]])  # RGGB pattern
+    mock_raw.rgb_xyz_matrix = np.eye(3).astype(np.float32)
+    mock_raw.raw_pattern = np.array([[0, 1], [2, 3]])
+
+    loader = raw.RawLoader(raw.ProcessingConfig())
+    image, metadata = loader.load_raw_data('dummy.cr2')
+
+    assert isinstance(image, np.ndarray)
+    assert image.shape == (1, 512, 512)
+    assert isinstance(metadata, raw.Metadata)
+    assert metadata.bayer_pattern == raw.BayerPattern.RGGB
+    assert metadata.rgb_xyz_matrix is not None
+
+
+class TestRawLoaderInternalMethods:
+    """Tests for internal helper methods of RawLoader."""
+
+    @pytest.fixture
+    def mock_rawpy_for_internal(self):
+        """Fixture to mock rawpy.imread and rawpy.RawPy for internal RawLoader tests."""
+        with patch('rawnind.dependencies.raw_processing.rawpy.imread') as mock_imread, \
+                patch('rawnind.dependencies.raw_processing.rawpy.RawPy') as mock_rawpy_class:
+            mock_raw = MagicMock()
+            mock_raw.raw_image = np.zeros((10, 10), dtype=np.uint16)  # Smaller image for simplicity
+            mock_raw.raw_colors = np.array([[0, 1], [2, 3]])  # RGGB pattern for consistent mocking
+            mock_sizes_dict = {'raw_width': 10, 'raw_height': 10, 'width': 10, 'height': 10, 'iwidth': 10,
+                               'iheight'  : 10, 'top_margin': 0, 'left_margin': 0}
+            mock_raw.sizes = MagicMock()
+            mock_raw.sizes._asdict.return_value = mock_sizes_dict
+            mock_raw.color_desc = b'RGBG'
+            mock_raw.rgb_xyz_matrix = np.eye(3)
+            # Add other necessary rawpy attributes that _RawLoader might access
+            mock_raw.camera_whitebalance = np.array([1.0, 1.0, 1.0, 1.0])
+            mock_raw.black_level_per_channel = np.array([0, 0, 0, 0])
+            mock_raw.white_level = 16000
+            mock_raw.camera_white_level_per_channel = np.array([16000, 16000, 16000, 16000])
+            mock_raw.daylight_whitebalance = np.array([1.0, 1.0, 1.0, 1.0])
+
+            mock_imread.return_value = mock_raw
+            mock_rawpy_class.return_value = mock_raw  # In case RawPy is instantiated
+            yield mock_imread, mock_rawpy_class, mock_raw
+
+    def test_remove_empty_borders(self, mock_rawpy_for_internal):
+        """
+        Test RawLoader._remove_empty_borders removes specified borders.
+
+        Objective: Verify _remove_empty_borders correctly crops image and updates metadata based on margins.
+        Test criteria: Image and relevant metadata dimensions are reduced by exact margin values.
+        How testing fulfills purpose: Ensures initial raw cropping logic matches domain expertise.
+        Components mocked: rawpy (via fixture to avoid file I/O).
+        Reason for hermeticity: Isolates internal method for precise testing.
+        """
+        # Unpack the mock objects from the fixture
+        mock_imread, mock_rawpy_class, mock_raw = mock_rawpy_for_internal
+
+        loader = raw.RawLoader(raw.ProcessingConfig(crop_all=False))  # Set crop_all=False to only test border removal
+
+        # Setup initial image and metadata with borders
+        initial_mono_img = np.random.rand(1, 10, 10).astype(np.float32)
+        metadata_dict = {
+            "sizes": {'raw_width' : 10, 'raw_height': 10, 'width': 8, 'height': 8, 'iwidth': 8, 'iheight': 8,
+                      'top_margin': 1, 'left_margin': 1},
+        }
+
+        # Call the internal method
+        processed_mono_img = loader._remove_empty_borders(initial_mono_img, metadata_dict)
+
+        # Assertions
+        assert processed_mono_img.shape == (1, 9, 9)  # Image should be cropped by 1 from top/left
+        assert metadata_dict["sizes"]["top_margin"] == 0
+        assert metadata_dict["sizes"]["left_margin"] == 0
+        assert metadata_dict["sizes"]["raw_height"] == 9
+        assert metadata_dict["sizes"]["raw_width"] == 9
+        # Ensure that the content is correctly shifted
+        assert np.all(processed_mono_img[:, :, :] == initial_mono_img[:, 1:, 1:])
+
+    def test_remove_empty_borders_with_crop_all(self, mock_rawpy_for_internal):
+        """
+        Test RawLoader._remove_empty_borders with crop_all=True.
+
+        Objective: Verify _remove_empty_borders crops to minimum of all stated sizes.
+        Test criteria: Final image and metadata dimensions match the minimum of given sizes.
+        How testing fulfills purpose: Ensures that the final image dimensions are consistent with metadata after
+        cropping.
+        Components mocked: rawpy (via fixture to avoid file I/O).
+        Reason for hermeticity: Isolates internal method for precise testing.
+        """
+        # Unpack the mock objects from the fixture
+        mock_imread, mock_rawpy_class, mock_raw = mock_rawpy_for_internal
+
+        loader = raw.RawLoader(raw.ProcessingConfig(crop_all=True))

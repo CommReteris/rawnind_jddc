@@ -27,3 +27,6 @@ src/rawnind/models/weights/train_denoise_proc2proc_2024-05-17-proc2proc_ocv3_not
 src/rawnind/tests/test_data/raw_samples/Bayer_D60-2_GT_ISO100_sha1=29f5b93638b1cf60d4afbd83fb2c1caca5c1ac38.crw
 **/*/*.pt
 **/*/*.pth
+.vscode/settings.json
+datasets/DEMO/raw_downloads/*
+datasets/DEMO/splits/*

@@ -1,0 +1,68 @@
+@startuml
+!theme vibrant
+title Dataset Package Architecture
+
+package "torch.utils.data" {
+  class DataLoader {
+    + __init__(dataset, batch_size, shuffle, num_workers)
+    + __iter__()
+  }
+}
+
+package "rawnind.dataset" {
+  class ConfigurableDataset {
+    + __init__(config: DatasetConfig, data_paths: Dict[str, Any])
+    + __len__()
+    + __getitem__(idx)
+    - _load_dataset()
+  }
+
+  class DatasetConfig << (D,orchid) >> {
+    + dataset_type: str
+    + data_format: str
+    + input_channels: int
+    + output_channels: int
+    + crop_size: int
+    + num_crops_per_image: int
+    + batch_size: int
+    + ...
+  }
+
+  class RawImageDataset {
+    + __init__(num_crops: int, crop_size: int)
+    + random_crops(ximg, yimg, whole_img_mask)
+    + center_crop(ximg, yimg, mask)
+    - make_a_random_crop(...)
+  }
+
+  class CleanDataset {
+    + __init__(config: DatasetConfig, data_paths: Dict[str, Any])
+    + __iter__()
+    + __len__()
+    - _create_underlying_dataset()
+    - _standardize_batch_format(batch)
+  }
+
+  class CleanValidationDataset extends CleanDataset {
+    + __init__(config: DatasetConfig, data_paths: Dict[str, Any])
+  }
+
+  class CleanTestDataset extends CleanDataset {
+    + __init__(config: DatasetConfig, data_paths: Dict[str, Any])
+  }
+
+  folder "factories" {
+    object create_training_dataset
+    object create_validation_dataset
+    object create_test_dataset
+  }
+}
+
+DataLoader "1" -- "1" ConfigurableDataset : consumes
+ConfigurableDataset "1" -- "1" DatasetConfig : configured by
+ConfigurableDataset "1" -- "1" RawImageDataset : uses for cropping
+CleanDataset "1" -- "1" ConfigurableDataset : wraps
+create_training_dataset --> CleanDataset
+create_validation_dataset --> CleanValidationDataset
+create_test_dataset --> CleanTestDataset
+@enduml
