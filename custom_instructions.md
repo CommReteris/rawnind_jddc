@@ -1,0 +1,4 @@
+- Use context7
+- Use the Filesystem MCP server tool whenever possible.
+- Do not use Search and Replace
+- Use the PyCharm MCP tools for exploration (e.g., get project structure), when changing signatures, refactoring, or renaming always try to use 'Refactor'
