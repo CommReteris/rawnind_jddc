@@ -11,7 +11,11 @@ import os
 from typing import Any, Dict
 
 # Import from dependencies (will be moved later)
+<<<<<<< HEAD
 from .utilities import load_yaml
+=======
+from .json_saver import load_yaml
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 
 class ConfigManager:
@@ -86,7 +90,11 @@ class ConfigManager:
             config_path: Path where to save the configuration
         """
         # Import from dependencies (will be moved later)
+<<<<<<< HEAD
         from .utilities import dict_to_yaml
+=======
+        from .json_saver import dict_to_yaml
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
         dict_to_yaml(config, config_path)
 

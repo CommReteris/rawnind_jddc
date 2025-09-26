@@ -1,6 +1,10 @@
 *.pyc
 .idea
 .vscode
+<<<<<<< HEAD
+=======
+.settings.json
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 .venv
 .envrc
 build
@@ -11,6 +15,7 @@ uv.lock
 /src/rawnind.egg-info/requires.txt
 /src/rawnind.egg-info/SOURCES.txt
 /src/rawnind.egg-info/top_level.txt
+<<<<<<< HEAD
 /src/rawnind/models/rawnind_denoise/DenoiserTrainingBayerToProfiledRGB_4ch_2024-02-21-bayer_ms-ssim_mgout_notrans_valeither_-4/saved_models/iter_4350000.pt
 /src/rawnind/models/rawnind_denoise/DenoiserTrainingBayerToProfiledRGB_4ch_2024-02-21-bayer_ms-ssim_mgout_notrans_valeither_-4/saved_models/iter_4350000.pt.opt
 /src/rawnind/models/rawnind_denoise/DenoiserTrainingBayerToProfiledRGB_4ch_2024-02-21-bayer_ms-ssim_mgout_notrans_valeither_-4/args.yaml
@@ -281,3 +286,23 @@ datasets/DEMO/raw_downloads/Bayer_whiteboard_ISO640_sha1=08da83f11bca3cb30e9a4a4
 datasets/DEMO/raw_downloads/Bayer_whiteboard_ISO65535_sha1=bc04c66d88610b089e28ee461ba96557e6f49e49.arw
 datasets/DEMO/splits/train.csv
 datasets/DEMO/splits/val.csv
+=======
+!/build/**/*
+!/build/*
+src/rawnind/models/weights/README.md
+src/rawnind/models/weights/DenoiserTrainingBayerToProfiledRGB_4ch_2024-02-21-bayer_ms-ssim_mgout_notrans_valeither_-4/saved_models/iter_4350000.pt
+src/rawnind/models/weights/DenoiserTrainingBayerToProfiledRGB_4ch_2024-03-11-bayer_ms-ssim_mgout_preupsample_notrans_valeither_-2/saved_models/iter_4320000.pt
+src/rawnind/models/weights/DenoiserTrainingBayerToProfiledRGB_4ch_2024-06-07-denoise_bayer_nocc_notrans_valeither_msssim_-2/saved_models/iter_4245000.pt
+src/rawnind/models/weights/DenoiserTrainingBayerToProfiledRGB_4ch_2024-10-25-bayer_ms-ssim_mgout_gamma22_-3/saved_models/iter_2370000.pt
+src/rawnind/models/weights/DenoiserTrainingBayerToProfiledRGB_4ch_2024-11-22-bayer_ms-ssim_mgout_notrans_valeither_noowwnpics_mgdef_-1/saved_models/iter_1245000.pt
+src/rawnind/models/weights/DenoiserTrainingProfiledRGBToProfiledRGB_3ch_2024-06-07-denoise_prgb_nocc_notrans_valeither_msssim_-2/saved_models/iter_4980000.pt
+src/rawnind/models/weights/DenoiserTrainingProfiledRGBToProfiledRGB_3ch_2024-10-09-prgb_ms-ssim_mgout_notrans_valeither_-1/saved_models/iter_3900000.pt
+src/rawnind/models/weights/DenoiserTrainingProfiledRGBToProfiledRGB_3ch_2024-10-25-prgb_ms-ssim_mgout_gamma22_-3/saved_models/iter_4305000.pt
+src/rawnind/models/weights/train_denoise_proc2proc_2024-05-17-proc2proc_ocv3_notrans_valeither_msssim_-4/saved_models/iter_3195000.pt
+src/rawnind/tests/test_data/raw_samples/Bayer_D60-2_GT_ISO100_sha1=29f5b93638b1cf60d4afbd83fb2c1caca5c1ac38.crw
+**/*/*.pt
+**/*/*.pth
+.vscode/settings.json
+datasets/DEMO/raw_downloads/*
+datasets/DEMO/splits/*
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c

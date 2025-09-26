@@ -1,7 +1,11 @@
 import pytest
 import torch
 
+<<<<<<< HEAD
 from rawnind.dataset.base_dataset import RawImageDataset
+=======
+from rawnind.dataset.clean_api import ConfigurableDataset as RawImageDataset
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 pytestmark = pytest.mark.acceptance
 
@@ -44,6 +48,9 @@ def test_random_crops_and_center_crop_shapes():
     assert mask_center.shape == torch.Size([3, ds.crop_size, ds.crop_size])
 
 
+<<<<<<< HEAD
 @pytest.mark.xfail(reason="Specific dataset classes not yet extracted from rawds.py")
+=======
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 def test_clean_clean_dataset_available():
     from rawnind.dataset.clean_datasets import CleanCleanImageDataset  # noqa: F401

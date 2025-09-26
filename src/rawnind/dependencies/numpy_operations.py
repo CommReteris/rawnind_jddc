@@ -1,3 +1,4 @@
+import torch
 # cv2.setNumThreads(0)
 """NumPy-based image operations for loading, manipulating, and saving images.
 
@@ -60,8 +61,15 @@ except ImportError:
         "np_imgops.py warning: missing OpenImageIO library; falling back to OpenCV which cannot open 16-bit float tiff images"
     )
 
+<<<<<<< HEAD
 from . import raw_processing as raw
 from . import image_analysis as libimganalysis
+=======
+# Import the refactored raw_processing module
+from . import raw_processing as raw 
+from . import image_analysis as libimganalysis
+from .raw_processing import ProcessingConfig 
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 # Directory for temporary files used in testing
 TMP_DPATH = "tmp"
@@ -132,11 +140,17 @@ def _opencv_img_fpath_to_np(fpath: str):
         - Limited support for specialized formats compared to OpenImageIO
     """
     try:
-        return cv2.cvtColor(
-            cv2.imread(fpath, flags=cv2.IMREAD_COLOR + cv2.IMREAD_ANYDEPTH),
-            cv2.COLOR_BGR2RGB,
-        ).transpose(2, 0, 1)  # HWC -> CHW format
-    except cv2.error as e:
+        # Check if the file actually exists for OpenCV to read
+        if not os.path.isfile(fpath):
+            raise FileNotFoundError(f"File not found for OpenCV: {fpath}")
+
+        img_bgr_hwc = cv2.imread(fpath, flags=cv2.IMREAD_COLOR + cv2.IMREAD_ANYDEPTH)
+        if img_bgr_hwc is None: # imread returns None if file cannot be read
+            raise ValueError(f"OpenCV failed to read image {fpath}. Might be an unsupported format or corrupted.")
+
+        img_rgb_hwc = cv2.cvtColor(img_bgr_hwc, cv2.COLOR_BGR2RGB)
+        return img_rgb_hwc.transpose(2, 0, 1)  # HWC -> CHW format
+    except Exception as e:
         raise ValueError(
             f"img_fpath_to_np_flt: error {e} with {fpath} (hint: consider installing OpenImageIO instead of OpenCV backend)"
         )
@@ -170,7 +184,7 @@ def img_fpath_to_np_flt(
         - All images are normalized to [0,1] range regardless of input bit depth
         - Channel order is maintained as RGB (or original color space)
         - The function automatically detects and uses the appropriate backend:
-          * RAW files: Uses raw.raw_fpath_to_rggb_img_and_metadata
+          * RAW files: Uses raw.RawLoader().load_raw_data()
           * TIFF: Uses OpenImageIO if available, falls back to OpenCV
           * Other formats: Uses OpenCV
         - Output array is always in float32 precision
@@ -181,13 +195,21 @@ def img_fpath_to_np_flt(
         assert not incl_metadata
         return np.load(fpath)
     if libimganalysis.is_raw(fpath):
-        rggb_img, metadata = raw.raw_fpath_to_rggb_img_and_metadata(fpath)
+        # Use the refactored RawLoader class from raw_processing
+        raw_loader = raw.RawLoader(config=ProcessingConfig())
+        rggb_img, metadata_nt = raw_loader.load_raw_data(fpath, return_float=True)
         if incl_metadata:
-            return rggb_img, metadata
-        print("img_fpath_to_np_flt warning: ignoring raw image metadata")
+            # Convert Metadata NamedTuple to dict for consistency with legacy metadata handling expected by some parts of codebase
+            return rggb_img, metadata_nt._asdict() # Returns dict here
         return rggb_img
     if (
+<<<<<<< HEAD
             fpath.lower().endswith(".tif") or fpath.lower().endswith(".tiff")
+=======
+            fpath.lower().endswith(".tif") or
+            fpath.lower().endswith(".tiff") or
+            fpath.lower().endswith(".exr")
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
     ) and TIFF_PROVIDER == "OpenImageIO":
         rgb_img = _oiio_img_fpath_to_np(fpath)
     else:
@@ -195,12 +217,6 @@ def img_fpath_to_np_flt(
 
     if rgb_img.dtype == np.float32 or rgb_img.dtype == np.float16:
         res = rgb_img
-        # if bit_depth is None:
-        #     return rgb_img
-        # elif bit_depth == 16:
-        #     return rgb_img.astype(np.float16)
-        # elif bit_depth == 32:
-        #     return rgb_img.astype(np.float32)
     elif rgb_img.dtype == np.ubyte:
         res = rgb_img.astype(np.single) / 255
     elif rgb_img.dtype == np.ushort:
@@ -210,7 +226,7 @@ def img_fpath_to_np_flt(
             f"img_fpath_to_np_flt: Error: fpath={fpath} has unknown format ({rgb_img.dtype})"
         )
     if incl_metadata:
-        return res, {}
+        return res, {} # Return empty dict as metadata if not raw
     else:
         return res
 
@@ -284,6 +300,11 @@ def np_crop_img_pair(img1, img2, cs: int, crop_method=CropMethod.RAND):
         # Center crop: calculate starting point for centered crop
         x0 = (img1.shape[2] - cs) // 2
         y0 = (img1.shape[1] - cs) // 2
+<<<<<<< HEAD
+=======
+    else:
+        raise NotImplementedError(f"Unsupported crop method: {crop_method}")
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
     # Extract the same region from both images
     return img1[:, y0: y0 + cs, x0: x0 + cs], img2[:, y0: y0 + cs, x0: x0 + cs]
@@ -312,9 +333,18 @@ def np_to_img(img: np.ndarray, fpath: str, precision: int = 16):
         - Scales values from [0,1] to [0,255] or [0,65535] based on precision
         - Uses OpenCV for saving, which supports various formats based on extension
     """
+<<<<<<< HEAD
     # Handle single-channel (H,W) images by adding channel dimension
     if len(img.shape) == 2:
         img = np.expand_dims(img, 0)
+=======
+    # Handle single-channel (H,W) or (1,H,W) images by converting to 3 channels for saving (e.g., as grayscale RGB)
+    if len(img.shape) == 2: # (H,W)
+        img = np.expand_dims(img, 0) # -> (1, H, W)
+    
+    if img.shape[0] == 1: # (1, H, W) -> (3, H, W) by replicating channel
+        img = np.tile(img, (3, 1, 1))
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
     # Convert from CHW to HWC format for OpenCV
     hwc_img = img.transpose(1, 2, 0)
@@ -330,24 +360,56 @@ def np_to_img(img: np.ndarray, fpath: str, precision: int = 16):
         # 8-bit: scale to [0, 255] and convert to uint8
         hwc_img = (hwc_img * 255).clip(0, 255).astype(np.uint8)
     else:
+<<<<<<< HEAD
         raise NotImplemented(precision)
+=======
+        raise NotImplementedError(precision) # Corrected to raise NotImplementedError
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
     # Save the image using OpenCV
     cv2.imwrite(fpath, hwc_img)
 
+# Utility Functions
+def np_l1(img1: np.ndarray, img2: np.ndarray, avg: bool = True) -> Union[float, np.ndarray]:
+    '''Compute per-element L1 distance between two images.
 
-class TestImgOps(unittest.TestCase):
-    """Unit tests for NumPy-based image operations.
-    
-    This test suite verifies the functionality of the image operations in the module,
-    focusing on padding, cropping, and image loading. It tests:
-    1. Padding images to a target size
-    2. Cropping images with different methods (random and center)
-    3. Loading images with different backends (OpenCV and OpenImageIO)
-    
-    The tests use both even and odd-sized images to ensure proper handling of
-    edge cases, and verify both the dimensions and content of the processed images.
+    Args:
+        img1: First image (NumPy array) of identical shape as img2.
+        img2: Second image (NumPy array) of identical shape as img1.
+        avg: If True, return the mean L1 value over all elements; otherwise return the element-wise map.
+
+    Returns:
+        A scalar float if avg is True, otherwise a NumPy array of absolute differences with the same shape as inputs.
+    '''
+    if avg:
+        return np.abs(img1 - img2).mean()
+    return np.abs(img1 - img2)
+
+
+def gamma(img: np.ndarray, gamma_val: float = 2.2, in_place: bool = False) -> np.ndarray:
+    '''Apply gamma correction to a NumPy image.
+
+    Only strictly positive values are gamma-encoded; non-positive values are preserved
+    as-is to avoid creating NaNs when operating on linear-light data that may contain
+    small negative values (e.g., after filtering).
+
+    Args:
+        img: Input NumPy array. Broadcastable operations are applied element-wise.
+        gamma_val: Gamma exponent to apply (default 2.2). Effective transform is x**(1/gamma).
+        in_place: If True, modify the input array in place; otherwise operate on a copy.
+
+    Returns:
+        NumPy array with gamma applied to positive entries.
+    '''
+    res = img if in_place else img.copy()
+    res[res > 0] = res[res > 0] ** (1 / gamma_val)
+    return res
+
+def scenelin_to_pq(
+        img: Union[np.ndarray, torch.Tensor], compat=True
+) -> Union[np.ndarray, torch.Tensor]:
     """
+<<<<<<< HEAD
 
     def setUp(self):
         """Set up test images and fixtures.
@@ -466,7 +528,68 @@ class TestImgOps(unittest.TestCase):
         self.assertTrue(
             (cvimg == default_img).all(), "OpenCV and default image do not match"
         )
+=======
+    Scene linear input signal to PQ opto-electronic transfer function (OETF).
+    This function depends on the `colour-science` library.
+    """
+    try:
+        import colour
+    except ImportError:
+        raise ImportError("The 'colour-science' library is required for scenelin_to_pq. Please install it.")
+
+    if isinstance(img, np.ndarray):
+        return colour.models.rgb.transfer_functions.itur_bt_2100.oetf_BT2100_PQ(img)
+    elif isinstance(img, torch.Tensor):
+        # The torch implementation requires internals of colour, which are not directly exposed.
+        # This part should ideally be contained within pytorch_operations.
+        # For now, if called for a torch tensor, raise an error indicating it's not implemented here.
+        raise NotImplementedError("PyTorch Tensor support for scenelin_to_pq for numpy_operations is not implemented here. Use pytorch_operations' equivalent.")
+    else:
+        raise NotImplementedError(f"Unsupported image type for scenelin_to_pq: {type(img)=}")
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 
-if __name__ == "__main__":
-    unittest.main()
+def pq_to_scenelin(
+        img: Union[np.ndarray, torch.Tensor],
+) -> Union[np.ndarray, torch.Tensor]:
+    """
+    PQ non-linear to scene linear signal, inverse opto-electronic transfer function (OETF^-1).
+    This function depends on the `colour-science` library.
+    """
+    try:
+        import colour
+    except ImportError:
+        raise ImportError("The 'colour-science' library is required for pq_to_scenelin. Please install it.")
+
+    if isinstance(img, np.ndarray):
+        return colour.models.rgb.transfer_functions.itur_bt_2100.oetf_inverse_PQ_BT2100(img)
+    elif isinstance(img, torch.Tensor):
+        raise NotImplementedError("PyTorch Tensor support for pq_to_scenelin for numpy_operations is not implemented here. Use pytorch_operations' equivalent.")
+    else:
+        raise NotImplementedError(f"Unsupported image type for pq_to_scenelin: {type(img)=}")
+
+
+def match_gain(
+        anchor_img: Union[np.ndarray, torch.Tensor],
+        other_img: Union[np.ndarray, torch.Tensor],
+        return_val: bool = False,
+) -> Union[np.ndarray, torch.Tensor, float]:
+    '''Match average intensity (gain) between two images.
+
+    Supports single images shaped [C,H,W] and batched images shaped [N,C,H,W].
+    '''
+    # Basic implementation for numpy arrays
+    if isinstance(anchor_img, np.ndarray) and isinstance(other_img, np.ndarray):
+        anchor_mean = np.mean(anchor_img)
+        other_mean = np.mean(other_img)
+        if other_mean == 0:
+            gain = 1.0 # Avoid division by zero, no change
+        else:
+            gain = anchor_mean / other_mean
+        
+        if return_val:
+            return float(gain)
+        else:
+            return other_img * gain
+    # Placeholder for torch tensors, or more complex cases
+    raise NotImplementedError("match_gain with Torch tensors or specific backend handling is not yet implemented.")

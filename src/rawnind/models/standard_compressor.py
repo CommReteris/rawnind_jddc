@@ -8,7 +8,11 @@ from rawnind.models import compression_autoencoders
 from rawnind.dependencies import compression as stdcompression
 from rawnind.dependencies import pytorch_operations as pt_ops
 from rawnind.dependencies import pytorch_helpers
+<<<<<<< HEAD
 from rawnind.dependencies import utilities
+=======
+from rawnind.dependencies import numpy_operations
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 import torch
 
 TMP_INIMG_DPATH = os.path.join("tmp", "inimg")
@@ -50,7 +54,7 @@ class Std_ImageCompressor(compression_autoencoders.AbstractRawImageCompressor):
         """
         in_fpath = self.make_input_image_file(input_image)
         out_fpath = os.path.join(
-            TMP_OUTIMG_DPATH, type(self).__name__ + utilities.get_leaf(in_fpath)
+            TMP_OUTIMG_DPATH, type(self).__name__ + numpy_operations.get_leaf(in_fpath)
         )
         if not self.REQ_DEC:
             out_fpath += "." + self.ENCEXT

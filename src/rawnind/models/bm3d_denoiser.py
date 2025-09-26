@@ -64,7 +64,11 @@ import sys
 import torch
 
 from typing import Union
+<<<<<<< HEAD
 from rawnind.models import raw_denoiser
+=======
+from . import raw_denoiser
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 from rawnind.dependencies import raw_processing as raw
 from rawnind.dependencies import pytorch_helpers
 from rawnind.dependencies import numpy_operations as np_imgops

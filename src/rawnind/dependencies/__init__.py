@@ -13,3 +13,9 @@ from .config_manager import ConfigManager
 __all__ = [
     'ConfigManager'
 ]
+<<<<<<< HEAD
+=======
+from .json_saver import load_yaml, dict_to_yaml
+
+__all__ += ['load_yaml', 'dict_to_yaml']
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c

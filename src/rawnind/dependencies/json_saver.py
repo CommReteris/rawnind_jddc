@@ -36,8 +36,55 @@ Usage example:
 from typing import Optional, Set, Dict, Any, Union
 import sys
 import os
+import json
+import yaml
 
+<<<<<<< HEAD
 from . import utilities
+=======
+
+def load_yaml(fpath: str, error_on_404: bool = True) -> Optional[Dict[str, Any]]:
+    """Load YAML file.
+
+    Args:
+        fpath: Path to YAML file
+        error_on_404: Whether to raise error if file not found
+
+    Returns:
+        Parsed YAML content or None if file not found and error_on_404=False
+    """
+    if not os.path.isfile(fpath):
+        if error_on_404:
+            raise FileNotFoundError(f"load_yaml: {fpath} not found")
+        return None
+
+    with open(fpath, 'r') as f:
+        return yaml.safe_load(f)
+
+
+def dict_to_yaml(data: Dict[str, Any], fpath: str):
+    """Save dictionary to YAML file.
+
+    Args:
+        data: Dictionary to save
+        fpath: Output file path
+    """
+    os.makedirs(os.path.dirname(fpath), exist_ok=True)
+    with open(fpath, 'w') as f:
+        yaml.safe_dump(data, f, default_flow_style=False)
+
+def dict_to_json(a_dict, fpath):
+    """Saves a dictionary to a JSON file."""
+    with open(fpath, 'w') as f:
+        json.dump(a_dict, f, indent=4)
+
+def jsonfpath_load(fpath, default=None):
+    """Loads a JSON file."""
+    if not os.path.isfile(fpath):
+        return default
+    with open(fpath, 'r') as f:
+        return json.load(f)
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 
 class JSONSaver:
@@ -108,12 +155,17 @@ class JSONSaver:
         Returns:
             Dictionary containing loaded results or default values
         """
-        return utilities.jsonfpath_load(fpath, default=default)
+        return jsonfpath_load(fpath, default=default)
 
     def add_res(
             self,
+<<<<<<< HEAD
             step: int,
             res: Dict[str, Any],
+=======
+            res: Dict[str, Any],
+            step: Optional[int] = None,
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
             minimize: Union[bool, Dict[str, bool]] = True,
             write: bool = True,
             val_type: Optional[type] = float,
@@ -149,10 +201,13 @@ class JSONSaver:
             - List values are stored but not tracked for best values
         """
         # Handle step/epoch parameter (epoch is an alias for step)
-        if epoch is not None and step is None:
-            step = epoch
-        elif (epoch is None and step is None) or step is None or epoch is not None:
+        if step is None and epoch is None:
             raise ValueError("JSONSaver.add_res: Must specify either step or epoch")
+<<<<<<< HEAD
+=======
+        if step is None:
+            step = epoch
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
         # Initialize results dictionary for this step if it doesn't exist
         if step not in self.results:
@@ -220,10 +275,10 @@ class JSONSaver:
         """Write the current results to the JSON file.
         
         This method serializes the current results dictionary to the JSON file
-        specified during initialization. It uses utilities.dict_to_json to handle
+        specified during initialization. It uses dict_to_json to handle
         the serialization.
         """
-        utilities.dict_to_json(self.results, self.jsonfpath)
+        dict_to_json(self.results, self.jsonfpath)
 
     def get_best_steps(self) -> Set[int]:
         """Get the set of all steps that are best for at least one metric.
@@ -285,6 +340,7 @@ class YAMLSaver(JSONSaver):
         saver = YAMLSaver('results.yaml')
         saver.add_res(step=1000, res={'loss': 0.245})
     """
+<<<<<<< HEAD
 
     def __init__(
             self,
@@ -308,6 +364,8 @@ class YAMLSaver(JSONSaver):
         super().__init__(
             jsonfpath, step_type=step_type, default=default, warmup_nsteps=warmup_nsteps
         )
+=======
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
     def _load(self, fpath: str, default: Dict[str, Any]) -> Dict[str, Any]:
         """Load results from the YAML file.
@@ -325,7 +383,8 @@ class YAMLSaver(JSONSaver):
             Uses error_on_404=False to silently use default when file is not found,
             rather than raising an error.
         """
-        return utilities.load_yaml(fpath, default=default, error_on_404=False)
+        result = load_yaml(fpath, error_on_404=False)
+        return result if result is not None else default
 
     def write(self) -> None:
         """Write the current results to the YAML file.
@@ -334,4 +393,4 @@ class YAMLSaver(JSONSaver):
         It serializes the current results dictionary to the YAML file
         specified during initialization.
         """
-        utilities.dict_to_yaml(self.results, self.jsonfpath)
+        dict_to_yaml(self.results, self.jsonfpath)

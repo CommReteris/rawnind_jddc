@@ -6,12 +6,10 @@ including comprehensive metrics computation and output processing.
 Extracted from tools/denoise_image.py as part of the codebase refactoring.
 """
 
-import argparse
 import os
 import sys
 from typing import Optional
 
-import configargparse
 import torch
 import yaml
 
@@ -20,17 +18,28 @@ from ..dependencies.pt_losses import metrics as pt_losses_metrics
 from ..dependencies.pytorch_helpers import fpath_to_tensor
 from ..dependencies.utilities import load_yaml
 
+<<<<<<< HEAD
 # Import raw processing (will be moved to dependencies later)
 from ..libs import rawproc, raw
 
 # Import inference components
 from .model_factory import get_and_load_test_object
 from .base_inference import BaseInference
+=======
+# Import raw processing from dependencies
+from ..dependencies import raw_processing as rawproc
+from ..dependencies import raw_processing as raw
+
+# Import inference components
+from .clean_api import InferenceConfig, load_model_from_checkpoint, compute_image_metrics, create_rgb_denoiser, create_bayer_denoiser
+from .base_inference import ImageToImageNN
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 DENOISED_DN = "denoised_images"
 METRICS_DN = "denoised_images_metrics"
 
 
+<<<<<<< HEAD
 def add_arguments(parser):
     """Register CLI arguments for single-image denoising.
 
@@ -71,6 +80,13 @@ def add_arguments(parser):
     )
 
 
+=======
+# CLI interface removed - use clean API functions instead:
+# from rawnind.inference import create_rgb_denoiser, load_model_from_checkpoint, compute_image_metrics
+
+
+
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 def load_image(fpath, device) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
     """Load an image and optional RGB->XYZ matrix for processing.
 
@@ -91,7 +107,11 @@ def load_image(fpath, device) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
 
 
 def process_image_base(
+<<<<<<< HEAD
         test_obj: BaseInference,
+=======
+        test_obj: ImageToImageNN,
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
         out_img: torch.Tensor,
         gt_img: Optional[torch.Tensor] = None,
         in_img: Optional[torch.Tensor] = None,
@@ -181,7 +201,13 @@ def compute_metrics(
     """
     metrics_results = {}
     for metric in metrics:
+<<<<<<< HEAD
         metrics_results[metric] = float(pt_losses_metrics[metric](in_img, gt_img))
+=======
+        # Instantiate the metric class first, then call it
+        metric_fn = pt_losses_metrics[metric]()
+        metrics_results[metric] = float(metric_fn(in_img, gt_img))
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
     if prefix is not None:
         metrics_results = {f"{prefix}_{k}": v for k, v in metrics_results.items()}
     return metrics_results
@@ -198,7 +224,7 @@ def save_image(image, fpath: str, src_fpath: Optional[str] = None):
     assert image.shape[-3] == 3
     if len(image.shape) == 4:
         image = image.squeeze(0)
-    raw.hdr_nparray_to_file(image.numpy(), fpath, "lin_rec2020", src_fpath=src_fpath)
+    raw.hdr_nparray_to_file(image.numpy(), fpath, "lin_rec2020")
 
 
 def save_metrics(metrics: dict, fpath: str):
@@ -213,7 +239,11 @@ def save_metrics(metrics: dict, fpath: str):
 
 
 def denoise_image_from_to_fpath(
+<<<<<<< HEAD
         in_img_fpath: str, out_img_fpath: str, test_obj: BaseInference
+=======
+        in_img_fpath: str, out_img_fpath: str, test_obj: ImageToImageNN
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 ):
     """Denoise a single image file and write the processed output.
 
@@ -254,7 +284,11 @@ def bayer_to_prgb(image, rgb_xyz_matrix):
 
 def denoise_image_compute_metrics(
         in_img,
+<<<<<<< HEAD
         test_obj: BaseInference,
+=======
+        test_obj: ImageToImageNN,
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
         rgb_xyz_matrix: Optional[torch.Tensor] = None,
         gt_img: Optional[torch.Tensor] = None,
         metrics: list[str] = [],
@@ -311,7 +345,11 @@ def denoise_image_compute_metrics(
 
 def denoise_image_from_fpath_compute_metrics_and_export(
         in_img_fpath: str,
+<<<<<<< HEAD
         test_obj: Optional[BaseInference] = None,
+=======
+        test_obj: Optional[ImageToImageNN] = None,
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
         gt_img_fpath: Optional[str] = None,
         metrics: list[str] = [],
         nonlinearities: list[str] = [],
@@ -364,6 +402,7 @@ def denoise_image_from_fpath_compute_metrics_and_export(
         )
 
 
+<<<<<<< HEAD
 if __name__ == "__main__":
     parser = configargparse.argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -373,3 +412,7 @@ if __name__ == "__main__":
     # call denoise_image_compute_metrics with all args except config
     vars(args).pop("config")
     denoise_image_from_fpath_compute_metrics_and_export(**vars(args))
+=======
+# CLI interface removed - use clean API functions instead:
+# from rawnind.inference import create_rgb_denoiser, load_model_from_checkpoint, compute_image_metrics
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c

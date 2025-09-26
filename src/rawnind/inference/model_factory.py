@@ -57,6 +57,7 @@ class DenoiseCompress(ImageToImageNN):
             preupsample=vars(self).get("preupsample", False),
         ).to(self.device)
 
+<<<<<<< HEAD
     def add_arguments(self, parser):
         super().add_arguments(parser)
         parser.add_argument(
@@ -73,6 +74,9 @@ class DenoiseCompress(ImageToImageNN):
         )
         parser.add_argument("--hidden_out_channels", type=int)
         parser.add_argument("--bitstream_out_channels", type=int)
+=======
+    # CLI interface removed - use clean factory functions instead
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
     def _get_resume_suffix(self) -> str:
         return "combined"
@@ -95,6 +99,10 @@ class Denoiser(ImageToImageNN):
     ARCHS = {
         "unet"    : raw_denoiser.UtNet2,
         "utnet3"  : raw_denoiser.UtNet3,
+<<<<<<< HEAD
+=======
+        "autoencoder": raw_denoiser.UtNet2,  # Alias for testing
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
         # "runet": runet.Runet,
         "identity": raw_denoiser.Passthrough,
         # "edsr": edsr.EDSR,
@@ -114,6 +122,7 @@ class Denoiser(ImageToImageNN):
             preupsample=vars(self).get("preupsample", False),
         ).to(self.device)
 
+<<<<<<< HEAD
     def add_arguments(self, parser):
         super().add_arguments(parser)
         parser.add_argument(
@@ -122,6 +131,9 @@ class Denoiser(ImageToImageNN):
             choices=["msssim", "psnr", "l1", "l2"],  # Simplified for inference
             required=True,
         )
+=======
+    # CLI interface removed - use clean factory functions instead
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 
 class BayerDenoiser(Denoiser, BayerImageToImageNN):
@@ -131,6 +143,7 @@ class BayerDenoiser(Denoiser, BayerImageToImageNN):
         super().__init__(**kwargs)
 
 
+<<<<<<< HEAD
 def get_and_load_test_object(
         **kwargs,
 ) -> ImageToImageNN:  # only used in denoise_image.py
@@ -194,6 +207,34 @@ def get_and_load_test_object(
     # Set model to evaluation mode
     test_obj.model = test_obj.model.eval()
     return test_obj
+=======
+# CLI interface removed - use clean factory functions instead:
+# from rawnind.inference import create_rgb_denoiser, create_bayer_denoiser, load_model_from_checkpoint
+
+def get_and_load_test_object(**kwargs) -> ImageToImageNN:
+    """DEPRECATED: Use clean factory functions instead.
+    
+    This function is kept for backward compatibility but should not be used.
+    Use the clean API factory functions instead:
+    - create_rgb_denoiser() for RGB denoising
+    - create_bayer_denoiser() for Bayer denoising
+    - load_model_from_checkpoint() for loading trained models
+    
+    Raises:
+        DeprecationWarning: This function is deprecated
+    """
+    import warnings
+    warnings.warn(
+        "get_and_load_test_object() is deprecated. Use clean factory functions: "
+        "create_rgb_denoiser(), create_bayer_denoiser(), or load_model_from_checkpoint()",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    raise NotImplementedError(
+        "CLI-based model loading removed. Use clean factory functions: "
+        "create_rgb_denoiser(), create_bayer_denoiser(), or load_model_from_checkpoint()"
+    )
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 
 def get_and_load_model(**kwargs):

@@ -1,9 +1,17 @@
+<<<<<<< HEAD
 """Noisy dataset implementations for supervised denoising.
 
 This module contains dataset classes for clean-noisy image pairs used in
 supervised denoising training scenarios.
 
 Extracted from rawds.py as part of the codebase refactoring.
+=======
+
+"""
+Noisy dataset classes for raw image processing.
+
+This module contains noisy dataset classes for both Bayer and RGB image processing.
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 """
 
 import logging
@@ -12,6 +20,7 @@ from typing import Literal, Optional
 
 import torch
 
+<<<<<<< HEAD
 # Import base classes
 from .base_dataset import CleanNoisyDataset, ProfiledRGBBayerImageDataset, \
     ProfiledRGBProfiledRGBImageDataset, RawDatasetOutput
@@ -32,11 +41,20 @@ MAX_RANDOM_CROP_ATTEMPS = 10
 MASK_MEAN_MIN = 0.8
 ALIGNMENT_MAX_LOSS = 0.035
 OVEREXPOSURE_LB = 0.99
+=======
+from rawnind.dependencies import pytorch_helpers as pt_helpers, raw_processing as rawproc, load_yaml
+from .base_dataset import CleanNoisyDataset, RawDatasetOutput, TOY_DATASET_LEN
+from .bayer_datasets import ProfiledRGBBayerImageDataset
+from .rgb_datasets import ProfiledRGBProfiledRGBImageDataset
+from .base_dataset import ALIGNMENT_MAX_LOSS, MASK_MEAN_MIN
+from ..dependencies.arbitrary_processing import arbitrarily_process_images as arbitrary_proc_fun
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 
 class CleanProfiledRGBNoisyBayerImageCropsDataset(
     CleanNoisyDataset, ProfiledRGBBayerImageDataset
 ):
+<<<<<<< HEAD
     """Dataset for supervised denoising training with clean profiled RGB targets and noisy Bayer inputs.
 
     This dataset pairs clean profiled RGB ground-truth images with corresponding noisy Bayer
@@ -78,6 +96,53 @@ class CleanProfiledRGBNoisyBayerImageCropsDataset(
 
         for content_fpath in content_fpaths:
             contents = utilities.load_yaml(content_fpath, error_on_404=True)
+=======
+    """
+    Dataset of clean-noisy raw images from rawNIND.
+
+    Load from raw files using rawpy.
+    Returns float crops, (highlight and anomaly) mask, metadata
+
+    Alignment and masks are pre-computed.
+    Output metadata contains color_matrix.
+    """
+
+    def __init__(
+        self,
+        content_fpaths: list[str],
+        num_crops: int,
+        crop_size: int,
+        test_reserve: list,
+        bayer_only: bool = True,
+        alignment_max_loss: float = ALIGNMENT_MAX_LOSS,
+        mask_mean_min: float = MASK_MEAN_MIN,
+        test: bool = False,
+        toy_dataset: bool = False,
+        data_pairing: Literal["x_y", "x_x", "y_y"] = "x_y",  # x_y, x_x, y_y
+        match_gain: bool = False,
+        min_msssim_score: Optional[float] = 0.0,
+        max_msssim_score: Optional[float] = 1.0,
+    ):
+        """
+        content_fpaths points to a yaml file containing:
+            - best_alignment
+            - f_bayer_fpath
+            - gt_linrec2020_fpath
+            - mask_fpath
+            - best_alignment_loss
+            - mask_mean
+
+        return_data
+        """
+        super().__init__(num_crops=num_crops, crop_size=crop_size)
+        self.match_gain = match_gain
+        assert bayer_only
+        # contents: list[dict] = utilities.load_yaml(content_fpath)
+        for content_fpath in content_fpaths:
+            contents = load_yaml(
+                content_fpath, error_on_404=True
+            )  # python 3.8 incompat
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
             for image in contents:
                 if toy_dataset and len(self._dataset) >= TOY_DATASET_LEN:
                     break
@@ -86,22 +151,37 @@ class CleanProfiledRGBNoisyBayerImageCropsDataset(
 
                 # check that the image is (/not) reserved for testing
                 if (not test and image["image_set"] in test_reserve) or (
+<<<<<<< HEAD
                         test and image["image_set"] not in test_reserve
+=======
+                    test and image["image_set"] not in test_reserve
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
                 ):
                     continue
                 try:
                     if (
+<<<<<<< HEAD
                             min_msssim_score
                             and min_msssim_score > image["rgb_msssim_score"]
+=======
+                        min_msssim_score
+                        and min_msssim_score > image["rgb_msssim_score"]
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
                     ):
                         print(
                             f"Skipping {image['f_fpath']} with {image['rgb_msssim_score']} < {min_msssim_score}"
                         )
                         continue
                     if (
+<<<<<<< HEAD
                             max_msssim_score
                             and max_msssim_score != 1.0
                             and max_msssim_score < image["rgb_msssim_score"]
+=======
+                        max_msssim_score
+                        and max_msssim_score != 1.0
+                        and max_msssim_score < image["rgb_msssim_score"]
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
                     ):
                         print(
                             f"Skipping {image['f_fpath']} with {image['rgb_msssim_score']} > {max_msssim_score}"
@@ -112,34 +192,65 @@ class CleanProfiledRGBNoisyBayerImageCropsDataset(
                         f"{image} does not contain msssim score (required with {min_msssim_score=})"
                     )
                 if (
+<<<<<<< HEAD
                         image["best_alignment_loss"] > alignment_max_loss
                         or image["mask_mean"] < mask_mean_min
                 ):
                     logging.info(
                         f"{type(self).__name__}.__init__: rejected {image['f_fpath']}"
+=======
+                    image["best_alignment_loss"] > alignment_max_loss
+                    or image["mask_mean"] < mask_mean_min
+                ):
+                    logging.info(
+                        f'{type(self).__name__}.__init__: rejected {image["f_fpath"]} (alignment or mask criteria)'
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
                     )
                     continue
                 image["crops"] = sorted(
                     image["crops"], key=lambda d: d["coordinates"]
+<<<<<<< HEAD
                 )
+=======
+                )  # for testing
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
                 if len(image["crops"]) > 0:
                     self._dataset.append(image)
                 else:
                     logging.warning(
+<<<<<<< HEAD
                         f"{type(self).__name__}.__init__: {image['f_fpath']} has no crops."
                     )
         logging.info(f"initialized {type(self).__name__} with {len(self)} images.")
         assert len(self) > 0, (
             f"{type(self).__name__} has no images. {content_fpaths=}, {test_reserve=}"
         )
+=======
+                        f'{type(self).__name__}.__init__: {image["f_fpath"]} has no crops.'
+                    )
+        logging.info(f"initialized {type(self).__name__} with {len(self)} images.")
+        assert (
+            len(self) > 0
+        ), f"{type(self).__name__} has no images. {content_fpaths=}, {test_reserve=}"
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
         self.data_pairing = data_pairing
 
     def __getitem__(self, i: int) -> RawDatasetOutput:
         image: dict = self._dataset[i]
+<<<<<<< HEAD
+=======
+        # load x, y, mask
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
         crop = random.choice(image["crops"])
         if self.data_pairing == "x_y":
             gt_img = pt_helpers.fpath_to_tensor(crop["gt_linrec2020_fpath"])
             noisy_img = pt_helpers.fpath_to_tensor(crop["f_bayer_fpath"])
+<<<<<<< HEAD
+=======
+            # gt_img = self.crop_rgb_to_bayer(gt_img, metadata)
+
+            # align x, y
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
             gt_img, noisy_img = rawproc.shift_images(
                 gt_img, noisy_img, image["best_alignment"]
@@ -147,13 +258,22 @@ class CleanProfiledRGBNoisyBayerImageCropsDataset(
 
             whole_img_mask = pt_helpers.fpath_to_tensor(image["mask_fpath"])[
                 :,
+<<<<<<< HEAD
                 crop["coordinates"][1]: crop["coordinates"][1] + gt_img.shape[1],
                 crop["coordinates"][0]: crop["coordinates"][0] + gt_img.shape[2],
+=======
+                crop["coordinates"][1] : crop["coordinates"][1] + gt_img.shape[1],
+                crop["coordinates"][0] : crop["coordinates"][0] + gt_img.shape[2],
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
             ]
             whole_img_mask = whole_img_mask.expand(gt_img.shape)
         elif self.data_pairing == "x_x":
             gt_img = pt_helpers.fpath_to_tensor(crop["gt_linrec2020_fpath"])
+<<<<<<< HEAD
             noisy_img = pt_helpers.fpath_to_tensor(crop["f_bayer_fpath"])
+=======
+            noisy_img = pt_helpers.fpath_to_tensor(crop["gt_bayer_fpath"])
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
             whole_img_mask = torch.ones_like(gt_img)
         elif self.data_pairing == "y_y":
             gt_img = pt_helpers.fpath_to_tensor(crop["f_linrec2020_fpath"])
@@ -162,10 +282,24 @@ class CleanProfiledRGBNoisyBayerImageCropsDataset(
         else:
             raise ValueError(f"return_data={self.data_pairing} not supported")
 
+<<<<<<< HEAD
+=======
+        # crop x, y, mask, add alignment to mask
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
         try:
             x_crops, y_crops, mask_crops = self.random_crops(
                 gt_img, noisy_img, whole_img_mask
             )
+<<<<<<< HEAD
+=======
+        except AssertionError as e:
+            logging.info(crop)
+            raise AssertionError(f"{self} {e} with {crop=}")
+        except RuntimeError as e:
+            logging.error(e)
+            logging.error(f"{gt_img.shape=}, {noisy_img.shape=}, {whole_img_mask.shape=}")
+            raise RuntimeError(f"{self} {e} with {crop=}")
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
         except TypeError:
             logging.warning(
                 f"{crop} does not contain sufficient valid pixels; removing from dataset"
@@ -177,15 +311,32 @@ class CleanProfiledRGBNoisyBayerImageCropsDataset(
                 )
                 self._dataset.remove(self._dataset[i])
             return self.__getitem__(i)
+<<<<<<< HEAD
 
         output = {
             "x_crops"       : x_crops.float(),
             "y_crops"       : y_crops.float(),
             "mask_crops"    : mask_crops,
+=======
+        # hardcoded_rgbm = torch.tensor(
+        #     [
+        #         [0.7034, -0.0804, -0.1014],
+        #         [-0.4420, 1.2564, 0.2058],
+        #         [-0.0851, 0.1994, 0.5758],
+        #         [0.0000, 0.0000, 0.0000],
+        #     ]
+        # )
+        output = {
+            "x_crops": x_crops,
+            "y_crops": y_crops,
+            "mask_crops": mask_crops,
+            # "rgb_xyz_matrix": hardcoded_rgbm  # TODO RM DBG
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
             "rgb_xyz_matrix": torch.tensor(image["rgb_xyz_matrix"]),
         }
         if self.match_gain:
             output["y_crops"] *= image["raw_gain"]
+<<<<<<< HEAD
             output["gain"] = 1.0
         else:
             output["gain"] = image["raw_gain"]
@@ -373,3 +524,6 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsDataset(
         output["mask_crops"] = mask_crops
 
         return output
+=======
+            output["gain"]
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c

@@ -66,8 +66,16 @@ class InferenceEngine:
             - Dictionary output may contain additional metrics like bits-per-pixel (bpp) for compression models
         """
         with torch.no_grad():
+<<<<<<< HEAD
             if len(img.shape) == 3:
                 img = img.unsqueeze(0)
+=======
+            # Track if we need to squeeze output
+            squeeze_output = False
+            if len(img.shape) == 3:
+                img = img.unsqueeze(0)
+                squeeze_output = True
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
             # Get input channels from the tensor
             in_channels = img.shape[1]
@@ -81,12 +89,45 @@ class InferenceEngine:
 
             img = img.to(self.device)
             output = self.model.eval()(img)
+<<<<<<< HEAD
 
             if return_dict:
                 if isinstance(output, torch.Tensor):
                     return {"reconstructed_image": output}
                 return output
             return output["reconstructed_image"] if isinstance(output, dict) else output
+=======
+            
+            # Extract the main result
+            if isinstance(output, dict):
+                result = output["reconstructed_image"]
+            else:
+                result = output
+            
+            # Remove batch dimension if we added it
+            if squeeze_output:
+                result = result.squeeze(0)
+                if isinstance(output, dict):
+                    output["reconstructed_image"] = result
+
+            if return_dict:
+                if isinstance(output, torch.Tensor):
+                    return {"reconstructed_image": result}
+                return output
+            return result
+
+    def process(self, img: torch.Tensor, return_dict: bool = False) -> Union[torch.Tensor, Dict[str, Any]]:
+        """Alias for infer method to provide consistent API.
+        
+        Args:
+            img: Input image tensor
+            return_dict: If True, return dict with additional info
+            
+        Returns:
+            Processed image tensor or dict
+        """
+        return self.infer(img, return_dict=return_dict)
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
     @staticmethod
     def get_transfer_function(fun_name: str) -> callable:

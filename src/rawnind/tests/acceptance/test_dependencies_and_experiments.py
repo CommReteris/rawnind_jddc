@@ -2,7 +2,11 @@ import os
 import yaml
 import pytest
 
+<<<<<<< HEAD
 from rawnind.dependencies.utilities import load_yaml, dict_to_yaml
+=======
+from rawnind.dependencies.json_saver import load_yaml, dict_to_yaml
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 from rawnind.training.experiment_manager import ExperimentManager
 
 pytestmark = pytest.mark.acceptance

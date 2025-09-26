@@ -44,7 +44,11 @@ import inspect
 import time
 import sys
 
+<<<<<<< HEAD
 from . import utilities
+=======
+from . import numpy_operations
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 # Number of threads to use for parallel compression operations
 NUMTHREADS: int = 1  # Default to 1, can be set to os.cpu_count()//4*3 for parallel processing
@@ -221,7 +225,7 @@ class StdCompression:
         """Wrapper method for multi-threaded compression operations.
     
         This helper method unpacks a dictionary of arguments and passes them to
-        the file_encdec method, making it suitable for use with utilities.mt_runner.
+        the file_encdec method, making it suitable for use with numpy_operations.mt_runner.
     
         Args:
             kwargs: Dictionary of arguments for file_encdec
@@ -258,7 +262,7 @@ class StdCompression:
 
         # Create output directory path if not provided
         if outdpath is None:
-            dsname = utilities.get_leaf(indpath)
+            dsname = numpy_operations.get_leaf(indpath)
             outdpath = os.path.join(
                 indpath, "compressed", cls.make_cname(kwargs), dsname
             )
@@ -289,7 +293,7 @@ class StdCompression:
             )
 
         # Process all files in parallel
-        utilities.mt_runner(
+        numpy_operations.mt_runner(
             cls.file_encdec_mtrunner, args, num_threads=NUMTHREADS, ordered=False
         )
 
@@ -667,8 +671,8 @@ COMPRESSIONS = [
 COMPRESSIONS.remove("StdCompression")
 
 
-class Test_utilities(unittest.TestCase):
-    """Test cases for compression utilities.
+class Test_numpy_operations(unittest.TestCase):
+    """Test cases for compression numpy_operations.
     
     This class contains unit tests that verify the functionality of the
     compression classes using the Kodak test image dataset.

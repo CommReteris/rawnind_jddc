@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """
 ICC color profile data for color space conversion.
 
@@ -937,3 +938,107 @@ rec2020 = np.array(
     ],
     dtype="uint8",
 )
+=======
+import numpy as np
+import torch
+
+
+def get_XYZ_to_profiledRGB_matrix(profile: str) -> np.ndarray:
+    """Returns a static XYZ->profile matrix."""
+    if profile == "lin_rec2020":
+        return np.array(
+            [
+                [1.71666343, -0.35567332, -0.25336809],
+                [-0.66667384, 1.61645574, 0.0157683],
+                [0.01764248, -0.04277698, 0.94224328],
+            ],
+            dtype=np.float32,
+        )
+    elif "sRGB" in profile:
+        return np.array(
+            [
+                [3.24100326, -1.53739899, -0.49861587],
+                [-0.96922426, 1.87592999, 0.04155422],
+                [0.05563942, -0.2040112, 1.05714897],
+            ],
+            dtype=np.float32,
+        )
+    else:
+        raise NotImplementedError(f"get_XYZ_to_profiledRGB_matrix: {profile} not *_sRGB or lin_rec2020.")
+
+
+def get_camRGB_to_profiledRGB_img_matrix(
+    metadata: dict, output_color_profile: str
+) -> np.ndarray:
+    """Get conversion matrix from camRGB to a given color profile."""
+    cam_to_xyzd65 = np.linalg.inv(metadata["rgb_xyz_matrix"][:3])
+    if output_color_profile.lower() == "xyz":
+        return cam_to_xyzd65
+    xyz_to_profiledRGB = get_XYZ_to_profiledRGB_matrix(output_color_profile)
+    color_matrix = xyz_to_profiledRGB @ cam_to_xyzd65
+    return color_matrix
+
+
+def camRGB_to_profiledRGB_img(
+    camRGB_img: np.ndarray, metadata: dict, output_color_profile: str
+) -> np.ndarray:
+    """Convert camRGB debayered image to a given RGB color profile (in-place)."""
+    color_matrix = get_camRGB_to_profiledRGB_img_matrix(metadata, output_color_profile)
+    orig_dims = camRGB_img.shape
+    profiledRGB_img = (color_matrix @ camRGB_img.reshape(3, -1)).reshape(orig_dims)
+    if output_color_profile.startswith("gamma"):
+        apply_gamma(profiledRGB_img, output_color_profile)
+    return profiledRGB_img
+
+
+def apply_gamma(profiledRGB_img: np.ndarray, color_profile: str) -> None:
+    """Apply gamma correction (in-place)."""
+    if color_profile == "gamma_sRGB":
+        # See https://en.wikipedia.org/wiki/SRGB
+        img_mask = profiledRGB_img > 0.0031308
+        profiledRGB_img[img_mask] = (
+            1.055 * np.power(profiledRGB_img[img_mask], 1.0 / 2.4) - 0.055
+        )
+        profiledRGB_img[~img_mask] *= 12.92
+    else:
+        raise NotImplementedError(f"apply_gamma with {color_profile=}")
+
+
+def get_XYZ_to_profiledRGB_matrix_torch(profile: str) -> torch.Tensor:
+    """Returns a static XYZ->profile matrix as torch tensor."""
+    matrix_np = get_XYZ_to_profiledRGB_matrix(profile)
+    return torch.tensor(matrix_np, dtype=torch.float32)
+
+
+def get_camRGB_to_profiledRGB_img_matrix_torch(
+    metadata: dict, output_color_profile: str
+) -> torch.Tensor:
+    """Get conversion matrix from camRGB to a given color profile as torch tensor."""
+    matrix_np = get_camRGB_to_profiledRGB_img_matrix(metadata, output_color_profile)
+    return torch.tensor(matrix_np, dtype=torch.float32)
+
+
+def camRGB_to_profiledRGB_img_torch(
+    camRGB_img: torch.Tensor,
+    metadata: dict,
+    output_color_profile="lin_rec2020",
+) -> torch.Tensor:
+    """Convert camRGB debayered image to a given RGB color profile (torch version)."""
+    color_matrix = get_camRGB_to_profiledRGB_img_matrix_torch(metadata, output_color_profile)
+    profiledRGB_img = torch.mm(color_matrix, camRGB_img.view(3, -1)).view(camRGB_img.shape)
+    if output_color_profile.startswith("gamma"):
+        profiledRGB_img = apply_gamma_torch(profiledRGB_img, output_color_profile)
+    return profiledRGB_img
+
+
+def apply_gamma_torch(profiledRGB_img: torch.Tensor, color_profile: str) -> torch.Tensor:
+    """Apply gamma correction (in-place, torch version)."""
+    profiledRGB_img = profiledRGB_img.clone()
+    if color_profile == "gamma_sRGB":
+        img_mask = profiledRGB_img > 0.0031308
+        profiledRGB_img[img_mask] = 1.055 * torch.pow(profiledRGB_img[img_mask], 1.0 / 2.4) - 0.055
+        profiledRGB_img[~img_mask] *= 12.92
+    else:
+        raise NotImplementedError(f"apply_gamma_torch with {color_profile=}")
+    return profiledRGB_img
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c

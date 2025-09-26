@@ -1,0 +1,6 @@
+graph TD
+    A[DatasetConfig] -->|initializes| B(ConfigurableDataset);
+    B -->|loads data from| C{YAML file};
+    B -->|uses for cropping| D[RawImageDataset];
+    B -->|is consumed by| E(DataLoader);
+    E -->|produces batches for| F[Training];

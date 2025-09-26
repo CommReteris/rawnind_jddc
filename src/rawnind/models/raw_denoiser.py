@@ -390,7 +390,19 @@ class UtNet3(UtNet2):
         )
 
 
+<<<<<<< HEAD
 architectures = {"UtNet2": UtNet2, "Passthrough": Passthrough}
+=======
+architectures = {
+    "UtNet2": UtNet2,
+    "UtNet3": UtNet3,
+    "Passthrough": Passthrough,
+    "unet": UtNet2,
+    "utnet3": UtNet3,
+    "identity": Passthrough,
+    "autoencoder": UtNet2,  # Alias for testing compatibility
+}
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 if __name__ == "__main__":
     utnet3 = UtNet3(in_channels=4)

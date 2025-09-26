@@ -1,9 +1,15 @@
+<<<<<<< HEAD
 Based on my comprehensive analysis of the codebase, I have completed the examination and created the requested Mermaid
 diagrams. Here are the results:
 
 ## Current Codebase Structure Analysis
 
 The current codebase is a monolithic PyTorch-based repository with significant structural issues:
+=======
+## Legacy Codebase Structure Analysis
+
+The legacy codebase is a monolithic PyTorch-based repository with significant structural issues:
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 ### Key Findings:
 
@@ -13,7 +19,11 @@ The current codebase is a monolithic PyTorch-based repository with significant s
 4. **Mixed Responsibilities**: Training scripts, inference tools, and utility tools are all mixed together
 5. **Configuration Scattered**: YAML config files are mixed with training scripts
 
+<<<<<<< HEAD
 ### Current Structure Issues:
+=======
+### Legacy Structure Issues:
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 - **Training/Inference Mixed**: The `abstract_trainer.py` handles both training loops and inference
 - **Dataset Logic Embedded**: Dataset handling is tightly coupled with training logic
@@ -22,7 +32,11 @@ The current codebase is a monolithic PyTorch-based repository with significant s
 
 ## Mermaid Diagrams
 
+<<<<<<< HEAD
 ### Current Monolithic Structure
+=======
+### Legacy Monolithic Structure
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 ```mermaid
 flowchart TD
@@ -341,5 +355,12 @@ proposed package:
     - Tests reorganized to match new package structure
     - Each package will have its own test directory
 
+<<<<<<< HEAD
 This detailed mapping shows exactly how each component will be reorganized, making the refactoring process clear and
 actionable. Each item shows both the current location and the proposed new location in the modular structure.
+=======
+
+---
+
+
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c

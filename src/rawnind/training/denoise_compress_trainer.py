@@ -1,12 +1,21 @@
 """Training classes for joint denoise+compress models.
 
 This module contains trainer classes for models that perform both denoising
+<<<<<<< HEAD
 and compression, extracted from the original training scripts.
+=======
+and compression, extracted from the original training scripts per the partition plan.
+
+Consolidated from:
+- train_dc_bayer2prgb.py
+- train_dc_prgb2prgb.py
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 """
 
 import multiprocessing
 import os
 import sys
+<<<<<<< HEAD
 from typing import Optional
 from collections.abc import Iterable
 import torch
@@ -15,6 +24,16 @@ import logging
 from . import training_loops
 from ..dependencies import pytorch_helpers
 from ..dependencies import rawproc
+=======
+import logging
+from typing import Optional
+from collections.abc import Iterable
+import torch
+
+from . import training_loops
+from ..dependencies import pytorch_helpers
+from ..dependencies import raw_processing as rawproc
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 from ..dependencies import raw_processing as raw
 
 
@@ -64,6 +83,7 @@ class DCTrainingProfiledRGBToProfiledRGB(
         super().autocomplete_args(args)
 
 
+<<<<<<< HEAD
 if __name__ == "__main__":
     # Handle multiprocessing for proc2proc or opencv arguments
     if any("proc2proc" in arg or "opencv" in arg for arg in sys.argv):
@@ -86,3 +106,31 @@ if __name__ == "__main__":
         denoiserTraining = DCTrainingProfiledRGBToProfiledRGB()
 
     denoiserTraining.training_loop()
+=======
+# Clean API factory functions (no CLI dependencies)
+def create_dc_bayer_trainer(**kwargs) -> DCTrainingBayerToProfiledRGB:
+    """Create a Bayer-to-RGB denoising+compression trainer with clean API.
+    
+    Args:
+        **kwargs: Training configuration parameters
+        
+    Returns:
+        Configured DCTrainingBayerToProfiledRGB instance
+    """
+    return DCTrainingBayerToProfiledRGB(launch=False, **kwargs)
+
+
+def create_dc_rgb_trainer(**kwargs) -> DCTrainingProfiledRGBToProfiledRGB:
+    """Create an RGB-to-RGB denoising+compression trainer with clean API.
+    
+    Args:
+        **kwargs: Training configuration parameters
+        
+    Returns:
+        Configured DCTrainingProfiledRGBToProfiledRGB instance
+    """
+    return DCTrainingProfiledRGBToProfiledRGB(launch=False, **kwargs)
+
+
+
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c

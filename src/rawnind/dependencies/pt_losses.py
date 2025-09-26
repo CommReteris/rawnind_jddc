@@ -10,6 +10,7 @@ The module includes:
 1. Loss functions suitable for neural network training (inversions of metrics)
 2. Metrics for model evaluation
 3. Dictionaries mapping string names to loss/metric functions
+<<<<<<< HEAD
 4. Utility functions for determining valid dimensions for MS-SSIM calculation
 
 The implementation uses pytorch_msssim as the backend for MS-SSIM calculation,
@@ -32,6 +33,12 @@ import sys
 #     def forward(self, input, target):
 #         return 1-super().forward(input, target)
 
+=======
+"""
+
+import torch
+import pytorch_msssim
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 class MS_SSIM_loss(pytorch_msssim.MS_SSIM):
     """Multi-Scale Structural Similarity loss function.
@@ -66,6 +73,7 @@ class MS_SSIM_loss(pytorch_msssim.MS_SSIM):
         return 1 - super().forward(input, target)
 
 
+<<<<<<< HEAD
 class MS_SSIM_metric(pytorch_msssim.MS_SSIM):
     """Multi-Scale Structural Similarity metric for evaluation.
     
@@ -156,3 +164,69 @@ if __name__ == "__main__":
 
     # Start testing from dimension 1
     findvaliddim(1)  # result is 162
+=======
+def ms_ssim_metric(input, target, data_range=1.0, **kwargs):
+    """
+    Calculates the MS-SSIM score. Higher is better.
+    This is derived from the loss function to ensure a single implementation.
+    """
+    return 1 - MS_SSIM_loss(data_range=data_range, **kwargs)(input, target)
+
+
+class PSNR_metric(torch.nn.Module):
+    """Peak Signal-to-Noise Ratio metric for evaluation.
+    
+    PSNR is a commonly used metric in image processing that measures the ratio
+    between the maximum possible power of a signal and the power of corrupting noise.
+    Higher values indicate better image quality.
+    
+    PSNR = 20 * log10(MAX_PIXEL_VALUE / sqrt(MSE))
+    """
+    
+    def __init__(self, data_range=1.0, **kwargs):
+        """Initialize the PSNR metric.
+        
+        Args:
+            data_range: Value range of input images (usually 1.0 for normalized images)
+            **kwargs: Additional arguments (for compatibility)
+        """
+        super().__init__()
+        self.data_range = data_range
+        
+    def forward(self, input, target):
+        """Calculate PSNR between input and target images.
+        
+        Args:
+            input: Predicted images, shape [N, C, H, W]
+            target: Ground truth images, shape [N, C, H, W]
+            
+        Returns:
+            PSNR value in dB (higher is better)
+        """
+        mse = torch.nn.functional.mse_loss(input, target)
+        if mse == 0:
+            return torch.tensor(float('inf'), device=input.device)
+        
+        psnr = 20 * torch.log10(self.data_range / torch.sqrt(mse))
+        return psnr
+
+class L1_loss(torch.nn.L1Loss):
+    pass
+
+class MSE_loss(torch.nn.MSELoss):
+    pass
+
+# Dictionary mapping loss function names to their implementation classes
+losses = {
+    "l1"         : L1_loss,
+    "mse"        : MSE_loss,  # Standard Mean Squared Error loss
+    "ms_ssim": MS_SSIM_loss  # Perceptual MS-SSIM loss (1 - MS_SSIM)
+}
+
+# Dictionary mapping metric names to their implementation classes
+metrics = {
+    "ms_ssim"    : ms_ssim_metric,  # Multi-Scale Structural Similarity metric (higher = better)
+    "mse"        : MSE_loss,  # Mean Squared Error (lower = better)
+    "psnr"       : PSNR_metric,  # Peak Signal-to-Noise Ratio (higher = better)
+}
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c

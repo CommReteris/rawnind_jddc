@@ -6,7 +6,10 @@ Image analysis on file paths
 import subprocess
 from typing import Union
 from PIL import Image
+<<<<<<< HEAD
 import unittest
+=======
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 import os
 import shutil
 import numpy as np
@@ -22,6 +25,7 @@ except ModuleNotFoundError:
 from typing import Optional
 import sys
 
+<<<<<<< HEAD
 # try:
 #    import tensorflow as tf
 # except ModuleNotFoundError as e:
@@ -35,6 +39,10 @@ import sys
 #    from . import tf_helpers
 # except ModuleNotFoundError as e:
 #    print("libimganalysis: warning: {}".format(e))
+=======
+import piqa
+
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 from . import pytorch_helpers as pt_helpers
 from . import raw_processing as rawproc
 
@@ -155,6 +163,7 @@ def piqa_msssim(img1path: str, img2path: str):
     img2 = pt_helpers.fpath_to_tensor(img2path, batch=True)
     return piqa.MS_SSIM()(img1, img2).item()
 
+<<<<<<< HEAD
 
 def ipx_psnr(img1path: str, img2path: str):
     """
@@ -237,6 +246,9 @@ if "tensorflow" in sys.modules:
 else:
     msssim = piqa_msssim
 
+=======
+msssim = piqa_msssim
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 def pil_get_resolution(imgpath):
     return Image.open(imgpath).size
@@ -252,7 +264,11 @@ def is_valid_img(img_fpath, open_img=False, save_img=False, clean=False):
     """
     if is_raw(img_fpath) or img_fpath.split(".")[-1].lower() == "exr":
         try:
+<<<<<<< HEAD
             img, metadata = rawproc.img_fpath_to_np_mono_flt_and_metadata(img_fpath)
+=======
+            img, metadata = rawproc.raw_fpath_to_rggb_img_and_metadata(img_fpath)
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
             return True
         except AssertionError:
             if img_fpath.lower().endswith(".raf"):  # cannot check RAF atm
@@ -292,6 +308,7 @@ def is_valid_img(img_fpath, open_img=False, save_img=False, clean=False):
         return False
 
 
+<<<<<<< HEAD
 class Test_libimganalysis(unittest.TestCase):
     """
     [common]$ python -m unittest discover libs/ -p *.py
@@ -327,3 +344,12 @@ class Test_libimganalysis(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+=======
+def get_mask(rggb_img: np.ndarray, overexposure_lb: float = 0.99) -> np.ndarray:
+    """
+    Generate overexposure mask: True for valid (non-saturated) pixels.
+    Saturates if any channel >= overexposure_lb.
+    """
+    mask = ~(rggb_img >= overexposure_lb).any(axis=0)
+    return mask.astype(bool)
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c

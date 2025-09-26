@@ -479,3 +479,21 @@ class Test_PTOPS(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+def gamma_pt(img: torch.Tensor, gamma_val: float = 2.2, in_place: bool = False) -> torch.Tensor:
+    '''Apply gamma correction to a torch Tensor.
+
+    Mirrors gamma() but operates on torch tensors and preserves device/dtype.
+    Only strictly positive values are gamma-encoded; non-positive values are preserved.
+
+    Args:
+        img: Input tensor.
+        gamma_val: Gamma exponent to apply (default 2.2). Effective transform is x**(1/gamma).
+        in_place: If True, modify the tensor in place; otherwise operate on a clone.
+
+    Returns:
+        Tensor with gamma applied to positive entries.
+    '''
+    res = img if in_place else img.clone()
+    res[res > 0] = res[res > 0] ** (1 / gamma_val)
+    return res

@@ -5,7 +5,6 @@ description = "Add your description here"
 requires-python = ">=3.13"
 dependencies = [
     "colour-science>=0.4.6",
-    "configargparse>=1.7.1",
     "exif>=1.6.1",
     "matplotlib>=3.10.3",
     "opencv-contrib-python>=4.12.0.88",
@@ -66,7 +65,10 @@ test = [
     "pylint>=3.3.8",
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
+<<<<<<< HEAD
     "configargparse",
+=======
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
     "trio>=0.31.0",
 ]
 dev = [
@@ -92,4 +94,14 @@ markers = [
     "input_type(type): mark tests for input formats like 'bayer' or 'prgb'",
     "fast: mark fast tests using null dataloaders",
     "integration: mark tests requiring real datasets",
+<<<<<<< HEAD
 ]
+=======
+    "slow: mark tests that are slow to run",
+    "dataset: All tests for the dataset package",
+    "requires_real_model: mark tests that require trained models to be available",
+    "requires_gpu: mark tests that require CUDA GPU availability",
+    "synthetic: mark tests using synthetic/mock data",
+    "real: mark tests using real data and models",
+]
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c

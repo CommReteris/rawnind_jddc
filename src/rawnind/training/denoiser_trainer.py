@@ -1,7 +1,15 @@
 """Training classes for pure denoising models.
 
 This module contains trainer classes for models that perform only denoising,
+<<<<<<< HEAD
 extracted from the original training scripts.
+=======
+extracted from the original training scripts per the partition plan.
+
+Consolidated from:
+- train_denoiser_bayer2prgb.py
+- train_denoiser_prgb2prgb.py
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 """
 
 import os
@@ -9,14 +17,24 @@ import statistics
 import time
 import logging
 import sys
+<<<<<<< HEAD
 from typing import Optional
 from collections.abc import Iterable
 import multiprocessing
+=======
+import multiprocessing
+from typing import Optional
+from collections.abc import Iterable
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 import torch
 
 from . import training_loops
 from ..dependencies import pytorch_helpers
+<<<<<<< HEAD
 from ..dependencies import rawproc
+=======
+from ..dependencies import raw_processing as rawproc
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 from ..dependencies import raw_processing as raw
 
 APPROX_EXPOSURE_DIFF_PENALTY = 1 / 10000
@@ -25,7 +43,10 @@ APPROX_EXPOSURE_DIFF_PENALTY = 1 / 10000
 class DenoiserTrainingBayerToProfiledRGB(
     training_loops.DenoiserTraining,
     training_loops.BayerImageToImageNNTraining,
+<<<<<<< HEAD
     training_loops.BayerDenoiser,
+=======
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 ):
     """Train a denoiser from Bayer to profiled RGB.
 
@@ -69,6 +90,7 @@ class DenoiserTrainingProfiledRGBToProfiledRGB(
         super().autocomplete_args(args)
 
 
+<<<<<<< HEAD
 if __name__ == "__main__":
     # Handle multiprocessing for proc2proc or opencv arguments
     if any("proc2proc" in arg or "opencv" in arg for arg in sys.argv):
@@ -91,3 +113,31 @@ if __name__ == "__main__":
         denoiserTraining = DenoiserTrainingProfiledRGBToProfiledRGB()
 
     denoiserTraining.training_loop()
+=======
+# Clean API factory functions (no CLI dependencies)
+def create_bayer_denoiser_trainer(**kwargs) -> DenoiserTrainingBayerToProfiledRGB:
+    """Create a Bayer-to-RGB denoiser trainer with clean API.
+    
+    Args:
+        **kwargs: Training configuration parameters
+        
+    Returns:
+        Configured DenoiserTrainingBayerToProfiledRGB instance
+    """
+    return DenoiserTrainingBayerToProfiledRGB(launch=False, **kwargs)
+
+
+def create_rgb_denoiser_trainer(**kwargs) -> DenoiserTrainingProfiledRGBToProfiledRGB:
+    """Create an RGB-to-RGB denoiser trainer with clean API.
+    
+    Args:
+        **kwargs: Training configuration parameters
+        
+    Returns:
+        Configured DenoiserTrainingProfiledRGBToProfiledRGB instance
+    """
+    return DenoiserTrainingProfiledRGBToProfiledRGB(launch=False, **kwargs)
+
+
+
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c

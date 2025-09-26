@@ -36,7 +36,12 @@ import torch
 
 from rawnind.dependencies import raw_processing as rawproc
 # 
+<<<<<<< HEAD
 from . import raw_denoiser, manynets_compression
+=======
+from .raw_denoiser import UtNet2
+from .manynets_compression import ManyPriors_RawImageCompressor
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 
 # DBG
@@ -62,7 +67,11 @@ class DenoiseThenCompress(torch.nn.Module):
         PRGB_DENOISING_MODEL_FPATH: Path to pre-trained profiled RGB denoising model
     """
     # Denoising architecture to use (U-Net based model)
+<<<<<<< HEAD
     DENOISING_ARCH = raw_denoiser.UtNet2
+=======
+    DENOISING_ARCH = UtNet2
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
     # Path to pre-trained Bayer pattern (4-channel) denoising model
     BAYER_DENOISING_MODEL_FPATH = "../../models/rawnind_denoise/DenoiserTrainingBayerToProfiledRGB_4ch_2024-02-21-bayer_ms-ssim_mgout_notrans_valeither_-4/saved_models/iter_4350000.pt"

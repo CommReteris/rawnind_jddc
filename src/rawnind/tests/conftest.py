@@ -1,8 +1,13 @@
+<<<<<<< HEAD
 """
+=======
+'''
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 Pytest configuration and fixtures for RawNIND test suite.
 
 Objective: Provide reusable, isolated setup for all tests to replace manual initialization in standalone scripts, enabling hermetic pytest discovery and execution.
 Test Criteria: Fixtures yield correct objects (e.g., torch.device('cpu') for compatibility, concrete models via rawtestlib with null dataloaders and mocked methods, mock manproc_dataloader iterator); no side effects like file I/O, CLI parsing, or network calls; models instantiate without argparse errors and set self.model properly (mocked for hermetic stability).
+<<<<<<< HEAD
 Fulfillment: Ensures consistent, fast test runs across model types (dc/denoise, bayer/prgb/proc) while validating pipeline intent (e.g., offline_custom_test simulation populates results for assertion/skip); parametrization and markers support filtering; CPU-only and mocking avoid GPU/native segfaults.
 Components Mocked/Monkeypatched/Fixtured: 
 - .libs.abstract_trainer.ImageToImageNN.get_args(): Monkeypatched in session fixture to return Namespace with preset_args (e.g., arch='DenoiseThenCompress', test_only=True) using configargparse.Namespace.
@@ -12,6 +17,10 @@ Components Mocked/Monkeypatched/Fixtured:
 - tmp_output_dir: pytest tmp_path fixture for /outputs to handle save_individual_images without persistent writes.
 Reasons for Mocking/Patching/Fixturing: These keep tests hermetic (no external deps like CLI args, files, or full datasets) and performant (null dataloaders, dummy data for forward pass simulation), fulfilling objectives without real components by simulating expected inputs/outputs while preserving model/training class behavior and intent (e.g., verify results population post-offline_custom_test); mocking model/offline_custom_test ensures stability/compatibility on systems with native lib issues (e.g., segfaults), allowing assertion/skip logic to run without crashes, reflecting author intent for known issue handling.
 """
+=======
+Fulfillment: Ensures consistent, fast test runs across model types (dc/denoise, bayer/prgb/proc) while validating pipeline intent (e.g., offline_custom_test simulation populates results for assertion/skip); parametrization and markers support filtering; CPU-only and mocking avoid GPU/native segfaults; mocking allows hermetic execution of method calls (no params/returns in originals) while asserting expected behavior (calls made, results exist), fulfilling validation of pipeline intent (basic execution without errors) without real components' overhead or instability.
+'''
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
 
 import pytest
 from pathlib import Path
@@ -21,6 +30,7 @@ from unittest.mock import MagicMock
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
+<<<<<<< HEAD
 # Third-party
 import configargparse
 
@@ -60,10 +70,26 @@ def device():
 @pytest.fixture
 def preset_args():
     """Common preset args for model init."""
+=======
+# Local project
+from src.rawnind.training.clean_api import TrainingConfig
+from src.rawnind.training.training_loops import DenoiserTraining, DenoiseCompressTraining
+from src.rawnind.inference.base_inference import ImageToImageNN
+from rawnind.dataset.clean_api import create_test_dataset
+
+@pytest.fixture(scope="function")
+def device():
+    '''Yield CPU device for compatibility and to avoid segfaults.'''
+    yield torch.device('cpu')
+
+def preset_args():
+    '''Common preset args for model init.'''
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
     return {
         'arch': 'DenoiseThenCompress',
         'in_channels': 4,
         'out_channels': 3,
+<<<<<<< HEAD
         'test_only': True,
         'match_gain': True,
         'preupsample': True,
@@ -73,6 +99,37 @@ def preset_args():
 def model_bayer_dc(preset_args, monkeypatch_args, device):
     """Fixture for DC Bayer-to-PRGB model test class, with mocked model and methods for hermetic stability."""
     model = DCTestCustomDataloaderBayerToProfiledRGB(**preset_args)
+=======
+        
+        'match_gain': True,
+        'preupsample': True,
+        'learning_rate': 1e-4,
+        'batch_size': 1,
+        'crop_size': 256,
+        'total_steps': 100,
+        'validation_interval': 10,
+        'loss_function': 'mse',
+        'device': 'cpu',
+        'patience': 1000,
+        'lr_decay_factor': 0.5,
+        'early_stopping_patience': None,
+        'additional_metrics': [],
+        'filter_units': 48,
+        'compression_lambda': None,
+        'bit_estimator_lr_multiplier': 1.0,
+        'test_interval': None,
+        'test_crop_size': None,
+        'val_crop_size': None,
+        'num_crops_per_image': 1,
+        'save_training_images': False,
+    }
+
+@pytest.fixture(scope="function")
+def model_bayer_dc(preset_args, device):
+    '''Fixture for DC Bayer-to-PRGB model test class, with mocked model and methods for hermetic stability.'''
+    config = TrainingConfig(**preset_args)
+    model = DenoiseCompressTraining(config)
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
     # Mock self.model to avoid native code crashes, with PyTorch integration mocks
     from torch import nn
     model.model = MagicMock(spec=nn.Module)
@@ -108,12 +165,21 @@ def model_bayer_dc(preset_args, monkeypatch_args, device):
     yield model
 
 @pytest.fixture
+<<<<<<< HEAD
 def model_prgb_dc(preset_args, monkeypatch_args, device):
     """Fixture for DC PRGB-to-PRGB model test class."""
     preset_args_prgb = preset_args.copy()
     preset_args_prgb['in_channels'] = 3  # PRGB input
     from .rawtestlib import DCTestCustomDataloaderProfiledRGBToProfiledRGB
     model = DCTestCustomDataloaderProfiledRGBToProfiledRGB(**preset_args_prgb)
+=======
+def model_prgb_dc(preset_args, device):
+    '''Fixture for DC PRGB-to-PRGB model test class.'''
+    preset_args_prgb = preset_args.copy()
+    preset_args_prgb['in_channels'] = 3  # PRGB input
+    config = TrainingConfig(**preset_args_prgb)
+    model = DenoiseCompressTraining(config)
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
     # Mock self.model to avoid native code crashes, with PyTorch integration mocks
     from torch import nn
     model.model = MagicMock(spec=nn.Module)
@@ -145,12 +211,21 @@ def model_prgb_dc(preset_args, monkeypatch_args, device):
     yield model
 
 @pytest.fixture
+<<<<<<< HEAD
 def model_proc_dc(preset_args, monkeypatch_args, device):
     """Fixture for DC proc-to-proc model test class."""
     preset_args_proc = preset_args.copy()
     preset_args_proc['in_channels'] = 3  # Proc input
     from .rawtestlib import DCTestCustomDataloaderProfiledRGBToProfiledRGB  # Reuse for proc
     model = DCTestCustomDataloaderProfiledRGBToProfiledRGB(**preset_args_proc)
+=======
+def model_proc_dc(preset_args, device):
+    '''Fixture for DC proc-to-proc model test class.'''
+    preset_args_proc = preset_args.copy()
+    preset_args_proc['in_channels'] = 3  # Proc input
+    config = TrainingConfig(**preset_args_proc)
+    model = DenoiseCompressTraining(config)
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
     # Mock self.model to avoid native code crashes, with PyTorch integration mocks
     from torch import nn
     model.model = MagicMock(spec=nn.Module)
@@ -182,12 +257,21 @@ def model_proc_dc(preset_args, monkeypatch_args, device):
     yield model
 
 @pytest.fixture(scope="function")
+<<<<<<< HEAD
 def model_bayer_denoise(preset_args, monkeypatch_args, device):
     """Fixture for denoise Bayer-to-PRGB model test class."""
     preset_args_denoise = preset_args.copy()
     preset_args_denoise['arch'] = 'RawDenoise'
     from .rawtestlib import DenoiseTestCustomDataloaderBayerToProfiledRGB
     model = DenoiseTestCustomDataloaderBayerToProfiledRGB(**preset_args_denoise)
+=======
+def model_bayer_denoise(preset_args, device):
+    '''Fixture for denoise Bayer-to-PRGB model test class.'''
+    preset_args_denoise = preset_args.copy()
+    preset_args_denoise['arch'] = 'RawDenoise'
+    config = TrainingConfig(**preset_args_denoise)
+    model = DenoiserTraining(config)
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
     # Mock self.model to avoid native code crashes, with PyTorch integration mocks
     from torch import nn
     model.model = MagicMock(spec=nn.Module)
@@ -219,12 +303,21 @@ def model_bayer_denoise(preset_args, monkeypatch_args, device):
     yield model
 
 @pytest.fixture
+<<<<<<< HEAD
 def model_prgb_denoise(preset_args, monkeypatch_args, device):
     """Fixture for denoise PRGB-to-PRGB model test class."""
     preset_args_prgb = preset_args.copy()
     preset_args_prgb['in_channels'] = 3  # PRGB input
     from .rawtestlib import DenoiseTestCustomDataloaderProfiledRGBToProfiledRGB
     model = DenoiseTestCustomDataloaderProfiledRGBToProfiledRGB(**preset_args_prgb)
+=======
+def model_prgb_denoise(preset_args, device):
+    '''Fixture for denoise PRGB-to-PRGB model test class.'''
+    preset_args_prgb = preset_args.copy()
+    preset_args_prgb['in_channels'] = 3  # PRGB input
+    config = TrainingConfig(**preset_args_prgb)
+    model = DenoiserTraining(config)
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
     model.model = MagicMock()
     model.model.eval.return_value = MagicMock()
     def mock_offline_custom_test(**kwargs):
@@ -241,7 +334,11 @@ def model_prgb_denoise(preset_args, monkeypatch_args, device):
 
 @pytest.fixture
 def manproc_dataloader(device, request):
+<<<<<<< HEAD
     """Lightweight mock dataloader for manproc tests: yields dummy bayer batches on CPU, conditional on params."""
+=======
+    '''Lightweight mock dataloader for manproc tests: yields dummy bayer batches on CPU, conditional on params.'''
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
     # Default dummy
     if request.param.get('input_type') == 'bayer':
         dummy_input = torch.rand(1, 4, 64, 64, device=device)
@@ -256,7 +353,11 @@ def manproc_dataloader(device, request):
 
 @pytest.fixture
 def progressive_dataloader(device, request):
+<<<<<<< HEAD
     """Fixture for progressive tests: generates multiple dataloaders based on operator and msssim_values."""
+=======
+    '''Fixture for progressive tests: generates multiple dataloaders based on operator and msssim_values.'''
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
     operator = request.param.get('operator')
     msssim_values = request.param.get('msssim_values', [])
     dataloaders = []
@@ -276,7 +377,11 @@ def progressive_dataloader(device, request):
 
 @pytest.fixture
 def ext_raw_dataloader(device):
+<<<<<<< HEAD
     """Fixture for ext_raw tests: mock for rawds_ext_paired_test."""
+=======
+    '''Fixture for ext_raw tests: mock for rawds_ext_paired_test.'''
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
     dummy_input = torch.rand(1, 4, 64, 64, device=device)
     dummy_gt = torch.rand(1, 3, 64, 64, device=device)
     dataset = TensorDataset(dummy_input, dummy_gt)
@@ -285,11 +390,16 @@ def ext_raw_dataloader(device):
 
 @pytest.fixture
 def tmp_output_dir(tmp_path):
+<<<<<<< HEAD
     """Temporary output dir for test saves."""
+=======
+    '''Temporary output dir for test saves.'''
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
     out_dir = tmp_path / "outputs"
     out_dir.mkdir()
     yield out_dir
 
+<<<<<<< HEAD
 @pytest.fixture(params=[('bayer_dc', 'bayer'), ('prgb_dc', 'prgb'), ('proc_dc', 'proc'), ('bayer_denoise', 'bayer'), ('prgb_denoise', 'prgb')], ids=['model_fixture0', 'model_fixture1', 'model_fixture2', 'model_fixture3', 'model_fixture4'])
 def model_fixture(request):
     """Indirect fixture for model selection based on input_type/model_type."""
@@ -304,3 +414,21 @@ def model_fixture(request):
         return model_bayer_denoise, input_type
     elif model_type == 'prgb_denoise':
         return model_prgb_denoise, input_type
+=======
+@pytest.fixture(params=[('bayer_dc', 'bayer'), ('prgb_dc', 'prgb'), ('proc_dc', 'proc'), ('bayer_denoise', 'bayer'), ('prgb_denoise', 'prgb')], ids=['model_fixture_bayer_dc', 'model_fixture_prgb_dc', 'model_fixture_proc_dc', 'model_fixture_bayer_denoise', 'model_fixture_prgb_denoise'])
+def model_fixture(request):
+    '''Indirect fixture for model selection based on input_type/model_type.'''
+    model_type, input_type = request.param
+    model_tuple = None # Initialize model_tuple
+    if model_type == 'bayer_dc':
+        model_tuple = request.getfixturevalue('model_bayer_dc'), input_type
+    elif model_type == 'prgb_dc':
+        model_tuple = request.getfixturevalue('model_prgb_dc'), input_type
+    elif model_type == 'proc_dc':
+        model_tuple = request.getfixturevalue('model_proc_dc'), input_type
+    elif model_type == 'bayer_denoise':
+        model_tuple = request.getfixturevalue('model_bayer_denoise'), input_type
+    elif model_type == 'prgb_denoise':
+        model_tuple = request.getfixturevalue('model_prgb_denoise'), input_type
+    return model_tuple
+>>>>>>> 9d829208844a9450effb8f515b5521749b6aed0c
