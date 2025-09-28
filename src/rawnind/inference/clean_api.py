@@ -138,7 +138,7 @@ class CleanDenoiser:
 
     def __init__(self, model: torch.nn.Module, config: InferenceConfig):
         """Initialize clean denoiser.
-        
+
         Args:
             model: PyTorch model instance
             config: Inference configuration
@@ -157,10 +157,10 @@ class CleanDenoiser:
 
     def denoise_batch(self, batch_images: torch.Tensor) -> torch.Tensor:
         """Denoise a batch of images.
-        
+
         Args:
             batch_images: Batch of images [B,C,H,W]
-            
+
         Returns:
             Denoised batch of images [B,C,H,W]
         """
@@ -168,11 +168,11 @@ class CleanDenoiser:
 
     def denoise(self, image: torch.Tensor, return_dict: bool = False) -> Union[torch.Tensor, Dict[str, Any]]:
         """Denoise an input image.
-        
+
         Args:
             image: Input image tensor [C,H,W] or [B,C,H,W]
             return_dict: If True, return dict with additional info
-            
+
         Returns:
             Denoised image tensor or dict with additional information
         """
@@ -216,7 +216,7 @@ class CleanBayerDenoiser(CleanDenoiser):
 
     def __init__(self, model: torch.nn.Module, config: InferenceConfig):
         """Initialize clean Bayer denoiser.
-        
+
         Args:
             model: PyTorch model instance
             config: Inference configuration
@@ -237,12 +237,12 @@ class CleanBayerDenoiser(CleanDenoiser):
             return_dict: bool = False
     ) -> Union[torch.Tensor, Dict[str, Any]]:
         """Denoise Bayer pattern image and convert to RGB.
-        
+
         Args:
             bayer_image: Bayer pattern image [4,H,W] or [B,4,H,W]
             rgb_xyz_matrix: Color transformation matrix [3,3] or [B,3,3]
             return_dict: If True, return dict with additional info
-            
+
         Returns:
             RGB denoised image or dict with additional information
         """
@@ -296,7 +296,7 @@ class CleanCompressor:
 
     def __init__(self, model: torch.nn.Module, config: InferenceConfig):
         """Initialize clean compressor.
-        
+
         Args:
             model: PyTorch compression model instance
             config: Inference configuration
@@ -319,11 +319,11 @@ class CleanCompressor:
             target_bpp: Optional[float] = None
     ) -> Dict[str, Any]:
         """Alias for compress_and_denoise method.
-        
+
         Args:
             image: Input image tensor [C,H,W] or [B,C,H,W]
             target_bpp: Target bits per pixel (optional)
-            
+
         Returns:
             Dict containing compression results
         """
@@ -331,10 +331,10 @@ class CleanCompressor:
 
     def decompress(self, compressed_data: torch.Tensor) -> torch.Tensor:
         """Decompress compressed image data.
-        
+
         Args:
             compressed_data: Compressed image tensor
-            
+
         Returns:
             Decompressed image tensor
         """
@@ -366,11 +366,11 @@ class CleanCompressor:
             target_bpp: Optional[float] = None
     ) -> Dict[str, Any]:
         """Apply joint denoising and compression.
-        
+
         Args:
             image: Input image tensor [C,H,W] or [B,C,H,W]
             target_bpp: Target bits per pixel (optional)
-            
+
         Returns:
             Dict containing 'denoised_image', 'bpp', and other compression info
         """
@@ -415,14 +415,14 @@ def create_rgb_denoiser(
         **kwargs
 ) -> CleanDenoiser:
     """Create RGB denoiser with clean API.
-    
+
     Args:
         architecture: Model architecture ('unet', 'utnet3', 'bm3d', etc.)
         checkpoint_path: Path to model checkpoint (optional)
         device: Device to run on ('cpu', 'cuda', 'cuda:0', etc.)
         filter_units: Number of filter units in the model
         **kwargs: Additional configuration parameters
-        
+
     Returns:
         CleanDenoiser instance ready for inference
     """
@@ -434,32 +434,8 @@ def create_rgb_denoiser(
         **kwargs
     )
 
-    # Convert device string to format expected by legacy code
-    if device == "cpu":
-        device_param = -1
-    elif device.startswith("cuda"):
-        if ":" in device:
-            device_param = int(device.split(":")[1])
-        else:
-            device_param = 0  # cuda without number = cuda:0
-    else:
-        device_param = device  # Pass through other formats
-
-    # Create model instance without CLI dependencies
-    denoiser_instance = Denoiser(
-        test_only=True,
-        use_cli=False,
-        arch=architecture,
-        in_channels=3,
-        funit=filter_units,
-        device=device_param,
-        load_path=checkpoint_path,
-        match_gain=config.match_gain,
-        metrics=config.metrics_to_compute,
-        debug_options=[],
-        save_dpath='/tmp/rawnind_inference'
-    )
-
+    # Instantiate Denoiser with config object only
+    denoiser_instance = Denoiser(config)
     return CleanDenoiser(denoiser_instance.model, config)
 
 
@@ -471,14 +447,14 @@ def create_bayer_denoiser(
         **kwargs
 ) -> CleanBayerDenoiser:
     """Create Bayer denoiser with clean API.
-    
+
     Args:
         architecture: Model architecture ('unet', 'utnet3', 'bm3d', etc.)
         checkpoint_path: Path to model checkpoint (optional)
         device: Device to run on ('cpu', 'cuda', 'cuda:0', etc.)
         filter_units: Number of filter units in the model
         **kwargs: Additional configuration parameters including enable_preupsampling
-        
+
     Returns:
         CleanBayerDenoiser instance ready for inference
     """
@@ -490,35 +466,8 @@ def create_bayer_denoiser(
         **kwargs
     )
 
-    # Convert device string to format expected by legacy code
-    if device == "cpu":
-        device_param = -1
-    elif device.startswith("cuda"):
-        if ":" in device:
-            device_param = int(device.split(":")[1])
-        else:
-            device_param = 0  # cuda without number = cuda:0
-    else:
-        device_param = device  # Pass through other formats
-
-    # Create model instance without CLI dependencies
-    denoiser_instance = BayerDenoiser(
-        test_only=True,
-        use_cli=False,
-        arch=architecture,
-        in_channels=4,
-        funit=filter_units,
-        device=device_param,
-        load_path=checkpoint_path,
-        match_gain=config.match_gain,
-        metrics=config.metrics_to_compute,
-        debug_options=[],
-        save_dpath='/tmp/rawnind_inference'
-    )
-
-    # Set preupsample attribute for model instantiation (vars(self).get("preupsample", False))
-    denoiser_instance.preupsample = config.enable_preupsampling
-
+    # Instantiate BayerDenoiser with config object only
+    denoiser_instance = BayerDenoiser(config)
     return CleanBayerDenoiser(denoiser_instance.model, config)
 
 
@@ -532,7 +481,7 @@ def create_compressor(
         **kwargs
 ) -> CleanCompressor:
     """Create compressor with clean API.
-    
+
     Args:
         architecture: Compression architecture ('ManyPriors', 'DenoiseThenCompress', etc.)
         encoder_arch: Encoder architecture ('Balle', etc.)
@@ -541,7 +490,7 @@ def create_compressor(
         device: Device to run on ('cpu', 'cuda', 'cuda:0', etc.)
         input_channels: Number of input channels (3 for RGB, 4 for Bayer)
         **kwargs: Additional configuration parameters
-        
+
     Returns:
         CleanCompressor instance ready for inference
     """
@@ -549,42 +498,17 @@ def create_compressor(
         architecture=architecture,
         input_channels=input_channels,
         device=device,
+        encoder_arch=encoder_arch,
+        decoder_arch=decoder_arch,
+        hidden_out_channels=kwargs.get('hidden_out_channels', 192),
+        bitstream_out_channels=kwargs.get('bitstream_out_channels', 64),
         **kwargs
     )
 
-    # Convert device string to format expected by legacy code
-    if device == "cpu":
-        device_param = -1
-    elif device.startswith("cuda"):
-        if ":" in device:
-            device_param = int(device.split(":")[1])
-        else:
-            device_param = 0  # cuda without number = cuda:0
-    else:
-        device_param = device  # Pass through other formats
+    # Select compressor class
+    compressor_class = BayerDenoiseCompress if config.input_channels == 4 else DenoiseCompress
 
-    # Determine if this is Bayer or RGB compression
-    if input_channels == 4:
-        compressor_class = BayerDenoiseCompress
-    else:
-        compressor_class = DenoiseCompress
-
-    # Create model instance without CLI dependencies
-    compressor_instance = compressor_class(
-        test_only=True,
-        use_cli=False,
-        arch=architecture,
-        arch_enc=encoder_arch,
-        arch_dec=decoder_arch,
-        in_channels=input_channels,
-        device=device_param,
-        load_path=checkpoint_path,
-        match_gain=config.match_gain,
-        hidden_out_channels=kwargs.get('hidden_out_channels', 192),
-        bitstream_out_channels=kwargs.get('bitstream_out_channels', 64),
-        save_dpath='/tmp/rawnind_inference'
-    )
-
+    compressor_instance = compressor_class(config)
     return CleanCompressor(compressor_instance.model, config)
 
 
@@ -596,14 +520,14 @@ def load_model_from_checkpoint(
         **model_kwargs
 ) -> Dict[str, Any]:
     """Load model from checkpoint with clean API.
-    
+
     Args:
         checkpoint_path: Path to checkpoint file or model directory
         architecture: Model architecture name (auto-detected if None)
         input_channels: Number of input channels (auto-detected if None)
         device: Device to load model on
         **model_kwargs: Additional model configuration
-        
+
     Returns:
         Dict containing:
         - 'model': Loaded PyTorch model
@@ -711,8 +635,6 @@ def load_model_from_checkpoint(
 
         if input_channels == 4:
             model_instance = BayerDenoiser(
-                test_only=True,
-                use_cli=False,
                 arch=architecture,
                 in_channels=input_channels,
                 funit=filter_units,
@@ -723,8 +645,6 @@ def load_model_from_checkpoint(
             )
         else:
             model_instance = Denoiser(
-                test_only=True,
-                use_cli=False,
                 arch=architecture,
                 in_channels=input_channels,
                 funit=filter_units,
@@ -742,8 +662,6 @@ def load_model_from_checkpoint(
 
         if input_channels == 4:
             model_instance = BayerDenoiseCompress(
-                test_only=True,
-                use_cli=False,
                 arch=architecture,
                 arch_enc=encoder_arch,
                 arch_dec=decoder_arch,
@@ -757,8 +675,6 @@ def load_model_from_checkpoint(
             )
         else:
             model_instance = DenoiseCompress(
-                test_only=True,
-                use_cli=False,
                 arch=architecture,
                 arch_enc=encoder_arch,
                 arch_dec=decoder_arch,
@@ -801,13 +717,13 @@ def compute_image_metrics(
         mask: Optional[torch.Tensor] = None
 ) -> Dict[str, float]:
     """Compute image quality metrics between predicted and ground truth images.
-    
+
     Args:
         predicted_image: Model prediction [C,H,W] or [B,C,H,W]
         ground_truth_image: Ground truth image [C,H,W] or [B,C,H,W]
         metrics_list: List of metrics to compute ('mse', 'psnr', 'ms_ssim', etc.)
         mask: Optional mask for valid pixels [C,H,W] or [B,C,H,W]
-        
+
     Returns:
         Dict mapping metric names to computed values
     """
@@ -862,10 +778,10 @@ def compute_image_metrics(
 
 def list_available_models(models_base_path: Optional[str] = None) -> Dict[str, List[str]]:
     """List available pre-trained models.
-    
+
     Args:
         models_base_path: Base path to search for models (optional)
-        
+
     Returns:
         Dict mapping model types to lists of available model names
     """
@@ -922,11 +838,11 @@ def find_best_model_in_directory(
         metric_name: str = "val_msssim"
 ) -> str:
     """Find the best model checkpoint in a directory based on a metric.
-    
+
     Args:
         model_directory: Path to model experiment directory
         metric_name: Metric to use for finding best model
-        
+
     Returns:
         Path to the best model checkpoint file
     """
@@ -952,10 +868,10 @@ def find_best_model_in_directory(
 
 def convert_device_format(device: Union[str, int, torch.device]) -> Union[str, int]:
     """Convert device to format expected by legacy code.
-    
+
     Args:
         device: Device specification
-        
+
     Returns:
         Union[str, int]: Device in legacy format (-1 for CPU, device number for CUDA)
     """

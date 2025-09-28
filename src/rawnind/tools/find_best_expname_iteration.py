@@ -2,7 +2,7 @@ import os
 import yaml
 from typing import Literal, Optional
 
-MODELS_ROOT_DPATH = os.path.join("..", "..", "models")
+MODELS_ROOT_DPATH = "models"
 
 
 def _get_model_type(expname: str) -> Literal["rawnind_dc", "rawnind_denoise"]:

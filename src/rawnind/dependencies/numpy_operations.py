@@ -26,16 +26,16 @@ Backend handling:
 Usage examples:
     # Load an image as a normalized float array (channels first)
     img = img_fpath_to_np_flt('image.tif')  # Returns shape (C,H,W) in range [0,1]
-    
+
     # Load with metadata
     img, metadata = img_fpath_to_np_flt('image.raw', incl_metadata=True)
-    
+
     # Pad two images to the same size
     img1_padded, img2_padded = np_pad_img_pair(img1, img2, target_size=256)
-    
+
     # Randomly crop two images to the same size
     crop1, crop2 = np_crop_img_pair(img1, img2, crop_size=128, crop_method=CropMethod.RAND)
-    
+
     # Save a numpy array as an image
     np_to_img(processed_array, 'output.png', precision=16)
 """
@@ -62,9 +62,9 @@ except ImportError:
     )
 
 # Import the refactored raw_processing module
-from . import raw_processing as raw 
+from . import raw_processing as raw
 from . import image_analysis as libimganalysis
-from .raw_processing import ProcessingConfig 
+from .raw_processing import ProcessingConfig
 
 # Directory for temporary files used in testing
 TMP_DPATH = "tmp"
@@ -72,9 +72,9 @@ TMP_DPATH = "tmp"
 
 class CropMethod(Enum):
     """Cropping method options for image pair cropping.
-    
+
     This enum defines the available strategies for cropping image pairs:
-    
+
     Attributes:
         RAND: Random cropping - selects a random region of the specified size
               from the input images, useful for data augmentation during training
@@ -87,16 +87,16 @@ class CropMethod(Enum):
 
 def _oiio_img_fpath_to_np(fpath: str):
     """Load an image using OpenImageIO and convert to channel-first NumPy array.
-    
+
     This private helper function uses OpenImageIO to load images, which provides
     better support for specialized formats like 16-bit float TIFFs compared to OpenCV.
-    
+
     Args:
         fpath: Path to the image file
-        
+
     Returns:
         np.ndarray: Image as a NumPy array with shape (C,H,W)
-    
+
     Notes:
         - Moves channels from last dimension to first (HWC -> CHW)
         - Preserves original precision and range of the image data
@@ -114,21 +114,21 @@ def _oiio_img_fpath_to_np(fpath: str):
 
 def _opencv_img_fpath_to_np(fpath: str):
     """Load an image using OpenCV and convert to channel-first RGB NumPy array.
-    
+
     This private helper function serves as a fallback when OpenImageIO is not
     available. It loads the image with OpenCV and converts from BGR to RGB format,
     then transposes to channel-first order.
-    
+
     Args:
         fpath: Path to the image file
-        
+
     Returns:
         np.ndarray: Image as a NumPy array with shape (C,H,W) in RGB order
-        
+
     Raises:
         ValueError: If OpenCV fails to read the image, suggesting to install
                    OpenImageIO as an alternative
-    
+
     Notes:
         - OpenCV loads images in BGR order; this function converts to RGB
         - Uses IMREAD_ANYDEPTH flag to preserve bit depth (8/16-bit)
@@ -156,25 +156,25 @@ def img_fpath_to_np_flt(
         incl_metadata=False,  # , bit_depth: Optional[int] = None
 ) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
     """Load an image file into a normalized NumPy array with optional metadata.
-    
+
     This function serves as the primary interface for loading images from various formats
     into a standardized NumPy representation. It supports multiple image formats including
     TIFF, JPEG, PNG, and RAW files, and handles different bit depths transparently.
-    
+
     Args:
         fpath: Path to the image file to load
         incl_metadata: If True, returns a tuple of (image_array, metadata_dict);
                        if False, returns only the image array
-        
+
     Returns:
         Union[np.ndarray, Tuple[np.ndarray, dict]]:
             - If incl_metadata=False: NumPy array with shape (C,H,W) in range [0,1]
             - If incl_metadata=True: Tuple of (NumPy array, metadata dictionary)
-            
+
     Raises:
         ValueError: If the file does not exist or has an unknown format
         TypeError: If the image has an unsupported data type
-        
+
     Notes:
         - All images are normalized to [0,1] range regardless of input bit depth
         - Channel order is maintained as RGB (or original color space)
@@ -224,23 +224,23 @@ def img_fpath_to_np_flt(
 
 def np_pad_img_pair(img1, img2, cs):
     """Pad two images to the same target size with center alignment.
-    
-    This function pads both input images to reach the specified target size, 
+
+    This function pads both input images to reach the specified target size,
     maintaining their alignment by centering the original content. The padding
     is applied equally on all sides where possible.
-    
+
     Args:
         img1: First image array with shape (C,H,W)
         img2: Second image array with shape (C,H,W)
         cs: Target size (both height and width) for the padded images
-        
+
     Returns:
         tuple: (padded_img1, padded_img2) where both images have dimensions (C,cs,cs)
-        
+
     Notes:
         - Padding is applied only to spatial dimensions (H,W), not to channels
         - Padding is distributed evenly on both sides of each dimension
-        - If the original image is larger than the target size in any dimension, 
+        - If the original image is larger than the target size in any dimension,
           no padding is applied to that dimension
         - Uses zeros for padding values
     """
@@ -262,20 +262,20 @@ def np_pad_img_pair(img1, img2, cs):
 
 def np_crop_img_pair(img1, img2, cs: int, crop_method=CropMethod.RAND):
     """Crop a pair of images to the specified size using the same crop region.
-    
+
     This function extracts matching regions from two images, ensuring both
     crops come from the same spatial location. The crop location can be either
     random (for data augmentation) or centered.
-    
+
     Args:
         img1: First image array with shape (C,H,W)
         img2: Second image array with shape (C,H,W)
         cs: Crop size (both height and width)
         crop_method: Method to determine crop location (RAND or CENTER)
-        
+
     Returns:
         tuple: (cropped_img1, cropped_img2) where both have dimensions (C,cs,cs)
-        
+
     Notes:
         - Assumes both input images have the same spatial dimensions
         - Compatible with both NumPy arrays and PyTorch tensors
@@ -300,21 +300,21 @@ def np_crop_img_pair(img1, img2, cs: int, crop_method=CropMethod.RAND):
 
 def np_to_img(img: np.ndarray, fpath: str, precision: int = 16):
     """Save a NumPy array as an image file with specified bit precision.
-    
+
     This function converts a channel-first (C,H,W) NumPy array to an image file,
     handling color space conversion, bit depth adjustment, and format selection
     based on the output path.
-    
+
     Args:
         img: NumPy array with shape (C,H,W) or (H,W) in range [0,1]
         fpath: Output file path (extension determines format)
         precision: Bit depth for the output image:
                    - 8 for 8-bit (0-255, standard formats)
                    - 16 for 16-bit (0-65535, suitable for TIFF/PNG)
-                   
+
     Raises:
         NotImplementedError: If precision is not 8 or 16
-        
+
     Notes:
         - Automatically handles single-channel images by adding a channel dimension
         - Converts from RGB to BGR color order for OpenCV compatibility
@@ -324,7 +324,7 @@ def np_to_img(img: np.ndarray, fpath: str, precision: int = 16):
     # Handle single-channel (H,W) or (1,H,W) images by converting to 3 channels for saving (e.g., as grayscale RGB)
     if len(img.shape) == 2: # (H,W)
         img = np.expand_dims(img, 0) # -> (1, H, W)
-    
+
     if img.shape[0] == 1: # (1, H, W) -> (3, H, W) by replicating channel
         img = np.tile(img, (3, 1, 1))
 
@@ -426,6 +426,18 @@ def pq_to_scenelin(
         raise NotImplementedError(f"Unsupported image type for pq_to_scenelin: {type(img)=}")
 
 
+def get_leaf(fpath: str) -> str:
+    """Extract the filename (leaf) from a file path.
+
+    Args:
+        fpath: File path
+
+    Returns:
+        Filename component of the path
+    """
+    return os.path.basename(fpath)
+
+
 def match_gain(
         anchor_img: Union[np.ndarray, torch.Tensor],
         other_img: Union[np.ndarray, torch.Tensor],
@@ -443,7 +455,7 @@ def match_gain(
             gain = 1.0 # Avoid division by zero, no change
         else:
             gain = anchor_mean / other_mean
-        
+
         if return_val:
             return float(gain)
         else:

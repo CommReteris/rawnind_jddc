@@ -11,7 +11,7 @@ import argparse
 import shutil
 import yaml
 
-ROOT_MODELS_DPATHS = ["../../models/rawnind_denoise/", "../../models/rawnind_dc/"]
+ROOT_MODELS_DPATHS = ["models/rawnind_denoise/", "models/rawnind_dc/"]
 TIME_LIMIT_START = 60
 TIME_LIMIT_TRAINLOG = 5 * 60  # 5 minutes
 TIME_LIMIT_TRAINRES = 15 * 60  # 15 minutes

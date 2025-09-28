@@ -122,7 +122,7 @@ class CleanProfiledRGBCleanProfiledRGBImageCropsDataset(
             logging.info(
                 f"CleanProfiledRGBCleanProfiledRGBImageCropsDataset.__init__: loading {content_fpath}"
             )
-            ds_content = utilities.load_yaml(content_fpath, error_on_404=True)
+            ds_content = load_yaml(content_fpath, error_on_404=True)
             for all_metadata in tqdm.tqdm(ds_content):
                 if toy_dataset and len(self._dataset) >= TOY_DATASET_LEN:
                     break

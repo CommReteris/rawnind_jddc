@@ -27,6 +27,7 @@ import argparse
 
 from rawnind.dependencies import rawproc
 from rawnind.dependencies import utilities
+from rawnind.dependencies.utilities import load_yaml
 
 from rawnind.libs.rawproc import (
     DATASETS_ROOT,
@@ -192,7 +193,7 @@ if __name__ == "__main__":
     if args.overwrite or not os.path.exists(content_fpath):
         cached_results = []
     else:
-        cached_results = utilities.load_yaml(content_fpath, error_on_404=True)
+        cached_results = load_yaml(content_fpath, error_on_404=True)
     for ds_dpath in (bayer_ds_dpath, linrec_ds_dpath):
         if not os.path.isdir(ds_dpath):
             continue

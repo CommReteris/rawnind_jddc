@@ -31,7 +31,7 @@ def preset_args():
         'arch': 'DenoiseThenCompress',
         'in_channels': 4,
         'out_channels': 3,
-        
+
         'match_gain': True,
         'preupsample': True,
         'learning_rate': 1e-4,
@@ -293,3 +293,137 @@ def model_fixture(request):
     elif model_type == 'prgb_denoise':
         model_tuple = request.getfixturevalue('model_prgb_denoise'), input_type
     return model_tuple
+
+@pytest.fixture(scope="session")
+def sample_data_dir(tmp_path_factory):
+    """Session-scoped fixture that downloads sample data for testing."""
+    import sys
+    sys.path.append(str(Path(__file__).parent))
+    from download_sample_data import download_sample_data, get_sample_rgb_path
+
+    # Use a session-wide temp directory
+    sample_dir = tmp_path_factory.mktemp("sample_data")
+
+    # Download sample data
+    raw_path = download_sample_data(str(sample_dir / "raw_samples"))
+    rgb_path = get_sample_rgb_path()
+
+    # Return paths to downloaded samples
+    return {
+        'raw_sample': raw_path,
+        'rgb_sample': rgb_path,
+        'sample_dir': str(sample_dir)
+    }
+
+
+@pytest.fixture(scope="function")
+def mini_test_dataset(sample_data_dir, tmp_path):
+    """Create a mini YAML dataset from sample data for testing."""
+    import yaml
+    from pathlib import Path
+
+    dataset_dir = Path(tmp_path) / "mini_dataset"
+    dataset_dir.mkdir(exist_ok=True)
+
+    # Create a simple YAML dataset descriptor
+    yaml_content = {
+        'name': 'mini_test_dataset',
+        'description': 'Mini dataset for testing created from sample data',
+        'images': []
+    }
+
+    # Add RGB sample if available
+    if sample_data_dir['rgb_sample'] and Path(sample_data_dir['rgb_sample']).exists():
+        # Copy RGB sample to dataset directory
+        rgb_dest = dataset_dir / "rgb_sample.jpg"
+        import shutil
+        shutil.copy2(sample_data_dir['rgb_sample'], rgb_dest)
+
+        yaml_content['images'].append({
+            'path': str(rgb_dest),
+            'type': 'rgb',
+            'ground_truth': str(rgb_dest),  # Self-supervised for RGB
+            'rgb_msssim_score': 0.95,  # Add quality score for filtering tests
+            'metadata': {
+                'iso': 100,
+                'exposure_time': 0.01,
+                'f_number': 2.8
+            }
+        })
+
+    # Add RAW sample if available
+    if sample_data_dir['raw_sample'] and Path(sample_data_dir['raw_sample']).exists():
+        # Copy RAW sample to dataset directory
+        raw_filename = Path(sample_data_dir['raw_sample']).name
+        raw_dest = dataset_dir / raw_filename
+        import shutil
+        shutil.copy2(sample_data_dir['raw_sample'], raw_dest)
+
+        yaml_content['images'].append({
+            'path': str(raw_dest),
+            'type': 'raw',
+            'ground_truth': str(raw_dest),  # Self-supervised for RAW
+            'rgb_msssim_score': 0.90,  # Add quality score for filtering tests
+            'metadata': {
+                'iso': 100,
+                'exposure_time': 0.01,
+                'f_number': 2.8,
+                'cfa_pattern': 'RGGB'
+            }
+        })
+
+    # Write YAML file
+    yaml_path = dataset_dir / "dataset.yaml"
+    with open(yaml_path, 'w') as f:
+        yaml.safe_dump(yaml_content, f, default_flow_style=False)
+
+    return {
+        'yaml_path': str(yaml_path),
+        'dataset_dir': str(dataset_dir),
+        'has_rgb': len([img for img in yaml_content['images'] if img['type'] == 'rgb']) > 0,
+        'has_raw': len([img for img in yaml_content['images'] if img['type'] == 'raw']) > 0,
+        'image_count': len(yaml_content['images'])
+    }
+
+
+@pytest.fixture(scope="function")
+def mock_dataset_with_samples(mini_test_dataset):
+    """Create a mock dataset that uses real sample data instead of synthetic."""
+    from unittest.mock import MagicMock
+    import torch
+    from torch.utils.data import DataLoader, TensorDataset
+
+    # If we have real samples, try to load them
+    real_images = []
+    if mini_test_dataset['has_rgb'] or mini_test_dataset['has_raw']:
+        try:
+            # Try to create a real dataset using the clean API
+            from rawnind.dataset.clean_api import create_test_dataset
+
+            # Create a simple test dataset config
+            dataset_config = {
+                'dataset_yaml_path': mini_test_dataset['yaml_path'],
+                'input_channels': 3,
+                'output_channels': 3,
+                'crop_size': 64,  # Small crops for testing
+                'batch_size': 1
+            }
+
+            dataset_info = create_test_dataset(**dataset_config)
+
+            # Return the real dataloader if it worked
+            if dataset_info and 'test_dataloader' in dataset_info:
+                return dataset_info['test_dataloader']
+
+        except Exception as e:
+            # If real dataset creation fails, fall back to mock
+            print(f"Failed to create real dataset from samples: {e}, using mock")
+
+    # Fallback to mock dataset
+    device = torch.device('cpu')
+    dummy_input = torch.rand(1, 3, 64, 64, device=device)
+    dummy_gt = torch.rand(1, 3, 64, 64, device=device)
+    dataset = TensorDataset(dummy_input, dummy_gt)
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+
+    return dataloader

@@ -1,0 +1,4 @@
+2025-09-28 11:23:25 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind --tb=no -q
+2025-09-28 11:23:25 INFO     PID: 715966
+2025-09-28 11:23:25 INFO     Experiment 'test_denoiser' initialized in /tmp/tmpp0h3489u
+2025-09-28 11:23:25 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/Denoiser_unet_2025-09-28-408/train_cmd.sh.config

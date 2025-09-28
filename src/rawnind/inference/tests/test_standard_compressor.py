@@ -36,19 +36,19 @@ def test_standard_compressor_forward_pass(monkeypatch):
     # Mock pt_helpers.sdr_pttensor_to_file and fpath_to_tensor for hermetic I/O
     def mock_sdr_to_file(tensor, fpath):
         pass
-    monkeypatch.setattr('rawnind.libs.pt_helpers.sdr_pttensor_to_file', mock_sdr_to_file)
+    monkeypatch.setattr('rawnind.dependencies.pytorch_helpers.sdr_pttensor_to_file', mock_sdr_to_file)
 
     def mock_fpath_to_tensor(fpath, batch=True, device=None):
         # Fixed close tensor for high PSNR
         recon = torch.full((1, 3, 64, 64), 0.5, dtype=torch.float32)
         return recon.to(device)
-    monkeypatch.setattr('rawnind.libs.pt_helpers.fpath_to_tensor', mock_fpath_to_tensor)
+    monkeypatch.setattr('rawnind.dependencies.pytorch_helpers.fpath_to_tensor', mock_fpath_to_tensor)
 
     # Mock pt_ops.fragile_checksum
-    monkeypatch.setattr('rawnind.libs.pt_ops.fragile_checksum', lambda tensor: 'dummy_hash')
+    monkeypatch.setattr('rawnind.dependencies.pytorch_operations.fragile_checksum', lambda tensor: 'dummy_hash')
 
     # Mock utilities.get_leaf
-    monkeypatch.setattr('rawnind.libs.utilities.get_leaf', lambda fpath: 'dummy.png')
+    monkeypatch.setattr('rawnind.dependencies.numpy_operations.get_leaf', lambda fpath: 'dummy.png')
 
     # Instantiate compressor
     compressor = JPEG_ImageCompressor(funit=90)
@@ -57,7 +57,7 @@ def test_standard_compressor_forward_pass(monkeypatch):
     dummy_input = torch.rand(1, 3, 64, 64)
 
     # Forward pass (now hermetic, bpp calc needs encsize – mock stdcompression JPG_Compression.file_encdec to return dummy)
-    with patch('rawnind.libs.stdcompression.JPG_Compression.file_encdec') as mock_encdec:
+    with patch('rawnind.dependencies.compression.JPG_Compression.file_encdec') as mock_encdec:
         mock_encdec.return_value = {'encsize': 1000}  # Dummy size for bpp ~1.56 on 64x64x3
         output = compressor(dummy_input)
 

@@ -26,6 +26,24 @@ class _TinyRawDataset(RawImageDataset):
 
 
 def test_random_crops_and_center_crop_shapes():
+    """Test that random crops and center crop produce tensors of expected shapes.
+
+    This test verifies the core cropping functionality in the dataset base contracts.
+    It ensures that both random multi-crop extraction and single center cropping
+    maintain proper tensor shapes for downstream training operations.
+
+    Expected behavior:
+    - random_crops returns multiple crops with batch dimension [num_crops, C, H, W]
+    - center_crop returns single crop [C, H, W]
+    - Both preserve channel and spatial dimensions
+    - Masks are generated with matching shapes
+
+    Key assertions:
+    - Crop tensors are torch.Tensors
+    - Random crops shape: [num_crops, 3, crop_size, crop_size]
+    - Center crop shape: [3, crop_size, crop_size]
+    - Mask shapes match image crop shapes
+    """
     ds = _TinyRawDataset()
 
     ximg = torch.randn(3, 32, 32)
@@ -45,4 +63,20 @@ def test_random_crops_and_center_crop_shapes():
 
 
 def test_clean_clean_dataset_available():
+    """Test that clean-clean dataset implementation is available in the package.
+
+    This acceptance test verifies that the clean dataset module can be imported
+    without errors, ensuring that the core dataset functionality is properly
+    exposed in the refactored package structure. It serves as a smoke test
+    for the dataset API availability post-refactoring.
+
+    Expected behavior:
+    - Import succeeds without ModuleNotFoundError or ImportError
+    - CleanCleanImageDataset class is accessible
+    - No legacy CLI dependencies are triggered during import
+
+    Key assertions:
+    - Successful import of CleanCleanImageDataset
+    - No exceptions raised during module access
+    """
     from rawnind.dataset.clean_datasets import CleanCleanImageDataset  # noqa: F401

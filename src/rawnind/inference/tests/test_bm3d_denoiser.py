@@ -38,7 +38,7 @@ def test_bm3d_denoiser_forward_pass(monkeypatch):
             denoised = denoised.squeeze(0)
         return denoised.to(device)
 
-    monkeypatch.setattr('rawnind.libs.pt_helpers.fpath_to_tensor', mock_fpath_to_tensor)
+    monkeypatch.setattr('rawnind.dependencies.pytorch_helpers.fpath_to_tensor', mock_fpath_to_tensor)
 
     # Instantiate denoiser
     denoiser = BM3D_Denoiser(in_channels=3, funit=25)
@@ -49,7 +49,7 @@ def test_bm3d_denoiser_forward_pass(monkeypatch):
     # Mock np_imgops.np_to_img to accept kwargs (precision=8)
     def mock_np_to_img(*args, **kwargs):
         pass
-    monkeypatch.setattr('rawnind.libs.np_imgops.np_to_img', mock_np_to_img)
+    monkeypatch.setattr('rawnind.dependencies.numpy_operations.np_to_img', mock_np_to_img)
 
     # Forward pass
     denoised_output = denoiser(noisy_input)

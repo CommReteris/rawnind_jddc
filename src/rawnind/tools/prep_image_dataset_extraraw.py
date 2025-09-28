@@ -10,6 +10,7 @@ import tqdm
 
 from rawnind.libs import raw
 from rawnind.dependencies import utilities
+from rawnind.dependencies.utilities import load_yaml
 
 from rawnind.libs.rawproc import EXTRARAW_DS_DPATH
 
@@ -101,7 +102,7 @@ if __name__ == "__main__":
         if args.overwrite or not os.path.exists(extraraw_content_fpath):
             cached_results = []
         else:
-            cached_results = utilities.load_yaml(
+            cached_results = load_yaml(
                 extraraw_content_fpath, error_on_404=True
             )
         files_endpaths: list[str] = os.listdir(bayer_ds_dpath)

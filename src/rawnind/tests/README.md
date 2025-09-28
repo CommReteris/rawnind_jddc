@@ -43,7 +43,7 @@ Markers and stability:
         - `rawnind.training.experiment_manager`: `ExperimentManager`
         - `rawnind.dataset.base_dataset`: `RawImageDataset`, `RawDatasetOutput`
         - `rawnind.inference.inference_engine`: `InferenceEngine`
-        - `rawnind.dependencies.utilities`: `load_yaml`, `dict_to_yaml`
+        - `rawnind.dependencies.json_saver`: `load_yaml`, `dict_to_yaml`
     - Marked `acceptance`.
 
 - `acceptance\test_inference_engine.py`

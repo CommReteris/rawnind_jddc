@@ -11,6 +11,7 @@ import os
 import torch
 
 from .base_inference import ImageToImageNN, BayerImageToImageNN
+from .configs import InferenceConfig
 from ..models import bm3d_denoiser, compression_autoencoders, denoise_then_compress, manynets_compression, \
     raw_denoiser, standard_compressor
 
@@ -24,7 +25,7 @@ class DenoiseCompress(ImageToImageNN):
     This class handles models that perform both denoising and compression
     operations on input images.
     """
-    MODELS_BASE_DPATH = os.path.join("..", "..", "models", "rawnind_dc")
+    MODELS_BASE_DPATH = os.path.join(os.path.dirname(__file__), "../..", "models", "rawnind_dc")
     ARCHS = {
         "ManyPriors"         : manynets_compression.ManyPriors_RawImageCompressor,
         "DenoiseThenCompress": denoise_then_compress.DenoiseThenCompress,
@@ -42,8 +43,21 @@ class DenoiseCompress(ImageToImageNN):
         "BayerTC": compression_autoencoders.BayerTCDecoder,
     }
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, config):
+        # Accept config dataclass or dict
+        if isinstance(config, dict):
+            config_obj = InferenceConfig(**config)
+        else:
+            config_obj = config
+        # Set attributes before calling super().__init__ because instantiate_model uses them
+        self.arch = getattr(config_obj, 'architecture', 'ManyPriors')
+        self.in_channels = getattr(config_obj, 'input_channels', 3)
+        self.funit = getattr(config_obj, 'filter_units', 48)
+        self.hidden_out_channels = getattr(config_obj, 'hidden_out_channels', 192)
+        self.bitstream_out_channels = getattr(config_obj, 'bitstream_out_channels', 64)
+        self.arch_enc = getattr(config_obj, 'encoder_arch', 'Balle')
+        self.arch_dec = getattr(config_obj, 'decoder_arch', 'Balle')
+        super().__init__(config_obj)
 
     def instantiate_model(self) -> None:
         self.model: torch.nn.Module = self.ARCHS[self.arch](
@@ -66,8 +80,20 @@ class DenoiseCompress(ImageToImageNN):
 class BayerDenoiseCompress(DenoiseCompress, BayerImageToImageNN):
     """Bayer-specific combined denoising and compression model for inference."""
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, config):
+        # Accept config dataclass or dict
+        if isinstance(config, dict):
+            config_obj = InferenceConfig(**config)
+        else:
+            config_obj = config
+        super().__init__(config_obj)
+        self.arch = getattr(config_obj, 'architecture', 'ManyPriors')
+        self.in_channels = getattr(config_obj, 'input_channels', 3)
+        self.funit = getattr(config_obj, 'filter_units', 48)
+        self.hidden_out_channels = getattr(config_obj, 'hidden_out_channels', 192)
+        self.bitstream_out_channels = getattr(config_obj, 'bitstream_out_channels', 64)
+        self.arch_enc = getattr(config_obj, 'encoder_arch', 'Balle')
+        self.arch_dec = getattr(config_obj, 'decoder_arch', 'Balle')
 
 
 class Denoiser(ImageToImageNN):
@@ -76,7 +102,7 @@ class Denoiser(ImageToImageNN):
     This class handles models that perform only denoising operations
     on input images.
     """
-    MODELS_BASE_DPATH = os.path.join("..", "..", "models", "rawnind_denoise")
+    MODELS_BASE_DPATH = os.path.join(os.path.dirname(__file__), "../..", "models", "rawnind_denoise")
     ARCHS = {
         "unet"    : raw_denoiser.UtNet2,
         "utnet3"  : raw_denoiser.UtNet3,
@@ -87,8 +113,18 @@ class Denoiser(ImageToImageNN):
         "bm3d"    : bm3d_denoiser.BM3D_Denoiser,
     }
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, config):
+        # Accept config dataclass or dict
+        if isinstance(config, dict):
+            config_obj = InferenceConfig(**config)
+        else:
+            config_obj = config
+        # Set attributes before calling super().__init__ because instantiate_model uses them
+        self.arch = getattr(config_obj, 'architecture', 'unet')
+        self.in_channels = getattr(config_obj, 'input_channels', 3)
+        self.funit = getattr(config_obj, 'filter_units', 48)
+        self.loss = getattr(config_obj, 'loss_function', 'mse')
+        super().__init__(config_obj)
 
     def _get_resume_suffix(self) -> str:
         return self.loss
@@ -106,8 +142,18 @@ class Denoiser(ImageToImageNN):
 class BayerDenoiser(Denoiser, BayerImageToImageNN):
     """Bayer-specific denoising model for inference."""
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, config):
+        # Accept config dataclass or dict
+        if isinstance(config, dict):
+            config_obj = InferenceConfig(**config)
+        else:
+            config_obj = config
+        # Set attributes before calling super().__init__ because instantiate_model uses them
+        self.arch = getattr(config_obj, 'architecture', 'unet')
+        self.in_channels = getattr(config_obj, 'input_channels', 3)
+        self.funit = getattr(config_obj, 'filter_units', 48)
+        self.loss = getattr(config_obj, 'loss_function', 'mse')
+        super().__init__(config_obj)
 
 
 # CLI interface removed - use clean factory functions instead:
@@ -115,13 +161,13 @@ class BayerDenoiser(Denoiser, BayerImageToImageNN):
 
 def get_and_load_test_object(**kwargs) -> ImageToImageNN:
     """DEPRECATED: Use clean factory functions instead.
-    
+
     This function is kept for backward compatibility but should not be used.
     Use the clean API factory functions instead:
     - create_rgb_denoiser() for RGB denoising
     - create_bayer_denoiser() for Bayer denoising
     - load_model_from_checkpoint() for loading trained models
-    
+
     Raises:
         DeprecationWarning: This function is deprecated
     """

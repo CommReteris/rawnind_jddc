@@ -19,13 +19,13 @@ Example usage:
         decoder_cls=BalleDecoder,           # Compression decoder
         device=torch.device("cuda:0")
     )
-    
+
     # Process an input image
     result = model(input_tensor)
-    
+
     # Access the compressed/reconstructed image
     reconstructed = result["reconstructed_image"]
-    
+
     # Access the bitrate (compression efficiency)
     bpp = result["bpp"]
 """
@@ -35,7 +35,7 @@ from typing import Literal, Optional
 import torch
 
 from rawnind.dependencies import raw_processing as rawproc
-# 
+#
 from .raw_denoiser import UtNet2
 from .manynets_compression import ManyPriors_RawImageCompressor
 
@@ -48,15 +48,15 @@ from .manynets_compression import ManyPriors_RawImageCompressor
 
 class DenoiseThenCompress(torch.nn.Module):
     """Sequential denoising followed by compression pipeline.
-    
-    This class implements a two-stage model where an image is first denoised 
-    using a pre-trained denoising network and then compressed using a neural 
+
+    This class implements a two-stage model where an image is first denoised
+    using a pre-trained denoising network and then compressed using a neural
     compression network. The pipeline represents a traditional approach where
     denoising and compression are treated as separate, sequential operations.
-    
+
     The model supports both Bayer pattern (4-channel) and profiled RGB (3-channel)
     inputs by loading the appropriate pre-trained denoising model.
-    
+
     Attributes:
         DENOISING_ARCH: The denoising architecture class (UtNet2)
         BAYER_DENOISING_MODEL_FPATH: Path to pre-trained Bayer pattern denoising model
@@ -66,10 +66,10 @@ class DenoiseThenCompress(torch.nn.Module):
     DENOISING_ARCH = UtNet2
 
     # Path to pre-trained Bayer pattern (4-channel) denoising model
-    BAYER_DENOISING_MODEL_FPATH = "../../models/rawnind_denoise/DenoiserTrainingBayerToProfiledRGB_4ch_2024-02-21-bayer_ms-ssim_mgout_notrans_valeither_-4/saved_models/iter_4350000.pt"
+    BAYER_DENOISING_MODEL_FPATH = "models/rawnind_denoise/DenoiserTrainingBayerToProfiledRGB_4ch_2024-02-21-bayer_ms-ssim_mgout_notrans_valeither_-4/saved_models/iter_4350000.pt"
 
     # Path to pre-trained profiled RGB (3-channel) denoising model
-    PRGB_DENOISING_MODEL_FPATH = "../../models/rawnind_denoise/DenoiserTrainingProfiledRGBToProfiledRGB_3ch_2024-10-09-prgb_ms-ssim_mgout_notrans_valeither_-1/saved_models/iter_3900000.pt"
+    PRGB_DENOISING_MODEL_FPATH = "models/rawnind_denoise/DenoiserTrainingProfiledRGBToProfiledRGB_3ch_2024-10-09-prgb_ms-ssim_mgout_notrans_valeither_-1/saved_models/iter_3900000.pt"
 
     def __init__(
             self,
@@ -85,7 +85,7 @@ class DenoiseThenCompress(torch.nn.Module):
             **kwargs,
     ):
         """Initialize the sequential denoising and compression pipeline.
-        
+
         Args:
             in_channels: Number of input channels (3 for RGB, 4 for Bayer)
             encoder_cls: Encoder class for the compression model
@@ -96,7 +96,7 @@ class DenoiseThenCompress(torch.nn.Module):
             num_distributions: Number of entropy distributions for compression model
             preupsample: Whether to upsample before compression
             *args, **kwargs: Additional arguments (ignored)
-            
+
         Raises:
             ValueError: If in_channels is not 3 or 4
         """
@@ -140,16 +140,16 @@ class DenoiseThenCompress(torch.nn.Module):
 
     def forward(self, x: torch.Tensor):
         """Process an image through the denoising and compression pipeline.
-        
+
         This method implements the forward pass through the sequential pipeline:
         1. First, denoise the input image using the pre-trained denoiser
         2. Match the gain of the denoised image to the original input
         3. Compress the denoised image using the neural compression model
-        
+
         Args:
             x: Input image tensor with shape [batch_size, channels, height, width]
                where channels is either 3 (RGB) or 4 (Bayer)
-               
+
         Returns:
             dict: Dictionary containing compression results with keys:
                 - "reconstructed_image": Decompressed image tensor
@@ -206,13 +206,13 @@ class DenoiseThenCompress(torch.nn.Module):
 
     def parameters(self, *args, **kwargs):
         """Return the trainable parameters of the model.
-        
+
         This method delegates to the compressor's parameters method, as only
         the compression model is trained (the denoiser is pre-trained and frozen).
-        
+
         Args:
             *args, **kwargs: Arguments to pass to the compressor's parameters method
-            
+
         Returns:
             Iterator over the trainable parameters
         """
@@ -220,10 +220,10 @@ class DenoiseThenCompress(torch.nn.Module):
 
     def load_state_dict(self, state_dict: dict):
         """Load state dictionary into the model.
-        
+
         This method loads only the compressor's state dictionary, as the
         denoiser is already loaded with pre-trained weights.
-        
+
         Args:
             state_dict: State dictionary containing model parameters
         """
@@ -231,13 +231,13 @@ class DenoiseThenCompress(torch.nn.Module):
 
     def get_parameters(self, *args, **kwargs):
         """Get specific parameters from the model.
-        
+
         This is a wrapper around the compressor's get_parameters method,
         which may return a filtered subset of parameters based on criteria.
-        
+
         Args:
             *args, **kwargs: Arguments to pass to the compressor's get_parameters method
-            
+
         Returns:
             Parameters returned by the compressor's get_parameters method
         """

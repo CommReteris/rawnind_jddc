@@ -130,3 +130,32 @@ class DatasetConfig:
         # Update with provided thresholds, keeping defaults for missing keys
         defaults.update(self.quality_thresholds)
         self.quality_thresholds = defaults
+
+    def is_valid(self) -> bool:
+        """Check if the configuration is valid.
+
+        Returns:
+            True if all validation checks pass, False otherwise.
+        """
+        try:
+            # Re-run validation checks
+            if self.crop_size <= 0 or self.crop_size % 2 != 0:
+                return False
+            if self.num_crops_per_image <= 0:
+                return False
+            if self.batch_size <= 0:
+                return False
+            if self.input_channels <= 0:
+                return False
+            if self.output_channels <= 0:
+                return False
+
+            # Validate dataset type and channel compatibility
+            if self.dataset_type == "bayer_pairs" and self.input_channels != 4:
+                return False
+            if self.dataset_type == "rgb_pairs" and self.input_channels != 3:
+                return False
+
+            return True
+        except:
+            return False

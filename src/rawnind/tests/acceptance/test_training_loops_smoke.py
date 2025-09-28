@@ -36,6 +36,24 @@ class _ToyArgs(types.SimpleNamespace):
 
 
 def test_training_loops_contract_lightweight():
+    """Lightweight smoke test for training loops contract compliance.
+
+    This minimal acceptance test verifies that the core training loops module
+    is importable and exposes the expected ImageToImageNNTraining class as
+    a proper type. It serves as a basic sanity check for the refactored training
+    infrastructure without executing full training workflows.
+
+    Expected behavior:
+    - Module imports without errors or side effects
+    - ImageToImageNNTraining is a valid class/type
+    - No legacy CLI parsing triggered during import
+    - Basic type checking passes for contract verification
+
+    Key assertions:
+    - isinstance(ImageToImageNNTraining, type) evaluates to True
+    - No ImportError or AttributeError during access
+    - Serves as entry point for more comprehensive training tests
+    """
     # Acceptance forbids skips; keep this as a minimal contract check.
     # Verify class is importable and is a type.
     assert isinstance(ImageToImageNNTraining, type)

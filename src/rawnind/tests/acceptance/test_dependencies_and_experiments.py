@@ -9,6 +9,22 @@ pytestmark = pytest.mark.acceptance
 
 
 def test_yaml_roundtrip(tmp_path):
+    """Test round-trip serialization of YAML configuration data.
+
+    This test verifies that YAML saving and loading preserves the exact structure
+    and values of nested configuration dictionaries, ensuring reliable configuration
+    persistence for training experiments and model parameters.
+
+    Expected behavior:
+    - dict_to_yaml saves the dictionary as valid YAML
+    - load_yaml correctly parses the YAML back to the original dictionary
+    - Nested structures and primitive types (int, str, dict) are preserved
+    - No data loss or type conversion during serialization/deserialization
+
+    Key assertions:
+    - Loaded data exactly matches original input dictionary
+    - File is created and readable as YAML
+    """
     data = {"a": 1, "b": {"c": 2}}
     fpath = tmp_path / "sample.yaml"
     dict_to_yaml(data, str(fpath))
@@ -17,6 +33,24 @@ def test_yaml_roundtrip(tmp_path):
 
 
 def test_experiment_manager_cleanup(tmp_path):
+    """Test experiment manager cleanup of saved model iterations.
+
+    This test verifies that the experiment manager correctly removes unnecessary
+    model checkpoint iterations while preserving specified keep iterations.
+    It ensures disk space management during long training runs by cleaning up
+    obsolete model weights.
+
+    Expected behavior:
+    - Non-kept checkpoint files are deleted
+    - Kept checkpoint files remain intact
+    - Directory structure is preserved minus removed files
+    - No errors when cleaning directories with mixed file types
+
+    Key assertions:
+    - Only specified iteration files remain after cleanup
+    - Removed files are no longer present in directory listing
+    - Cleanup operation completes without exceptions
+    """
     # Build fake structure: <save>/saved_models/iter_100.pt, iter_200.pt, iter_300.pt
     saved = tmp_path / "saved_models"
     saved.mkdir(parents=True)
@@ -30,6 +64,23 @@ def test_experiment_manager_cleanup(tmp_path):
 
 
 def test_experiment_manager_rm_empty(tmp_path):
+    """Test experiment manager removal of empty model checkpoint files.
+
+    This test verifies that the experiment manager identifies and removes empty
+    checkpoint files that may result from interrupted saves or corrupted writes,
+    ensuring only valid model weights are retained in the experiment directory.
+
+    Expected behavior:
+    - Empty checkpoint files (0 bytes) are deleted
+    - Non-empty checkpoint files are preserved
+    - Cleanup scans recursive directories for .pt files
+    - No errors when encountering non-checkpoint files
+
+    Key assertions:
+    - Only non-empty checkpoint files remain after cleanup
+    - Empty files are successfully removed from directory
+    - Directory structure remains intact for valid files
+    """
     saved = tmp_path / "saved_models"
     saved.mkdir(parents=True)
     (saved / "iter_0.pt").write_bytes(b"")

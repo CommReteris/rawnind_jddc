@@ -3,7 +3,7 @@
 Raw image denoising neural network implementations.
 
 This module contains various neural network architectures for denoising RAW
-and RGB images. The primary implementation is based on U-Net with transposed 
+and RGB images. The primary implementation is based on U-Net with transposed
 convolutions (ensuring consistent shape) and concatenations rather than additions
 for skip connections.
 
@@ -14,27 +14,27 @@ with appropriate output mechanisms for each case.
 import torch
 from torch import nn
 
-# 
+#
 from rawnind.dependencies import raw_processing as rawproc
 
 
 class Denoiser(nn.Module):
     """Base class for all image denoising models.
-    
+
     This abstract base class defines the common interface for all denoising models
     in the module. It ensures that models can work with either RGB (3-channel) or
     Bayer pattern (4-channel) inputs.
-    
+
     All denoiser implementations should inherit from this class and implement
     the forward method.
     """
 
     def __init__(self, in_channels: int):
         """Initialize a denoiser model.
-        
+
         Args:
             in_channels: Number of input channels (must be 3 for RGB or 4 for Bayer)
-        
+
         Raises:
             AssertionError: If in_channels is not 3 or 4
         """
@@ -44,18 +44,18 @@ class Denoiser(nn.Module):
 
 class Passthrough(Denoiser):
     """Identity model that optionally converts Bayer to RGB.
-    
+
     This model either passes through RGB images unchanged or performs
     demosaicing on Bayer pattern inputs. It's useful as a baseline or for
     testing the debayering pipeline.
-    
+
     For 3-channel inputs, it acts as a simple identity function.
     For 4-channel inputs, it applies demosaicing to convert to RGB.
     """
 
     def __init__(self, in_channels: int, **kwargs):
         """Initialize a Passthrough model.
-        
+
         Args:
             in_channels: Number of input channels (3 for RGB, 4 for Bayer)
             **kwargs: Additional arguments (ignored, for compatibility with other models)
@@ -70,14 +70,14 @@ class Passthrough(Denoiser):
 
     def forward(self, batch: torch.Tensor):
         """Process input images without denoising.
-        
+
         For RGB inputs, returns the input unchanged.
         For Bayer inputs, applies demosaicing to convert to RGB.
-        
+
         Args:
             batch: Input tensor with shape [batch_size, channels, height, width]
                   where channels is either 3 (RGB) or 4 (Bayer)
-                  
+
         Returns:
             RGB tensor with shape [batch_size, 3, height, width]
         """
@@ -90,20 +90,20 @@ class Passthrough(Denoiser):
 
 def get_activation_class_params(activation: str) -> tuple:
     """Get the PyTorch activation class and parameters for a given activation name.
-    
+
     This utility function maps activation function names to their corresponding
     PyTorch implementation classes and parameter dictionaries. It's used to
     configure activation functions throughout the network architecture.
-    
+
     Args:
         activation: Name of the activation function to use.
                    Supported values: "PReLU", "ELU", "Hardswish", "LeakyReLU"
-    
+
     Returns:
         Tuple of (activation_class, parameter_dict) where:
         - activation_class is a PyTorch nn.Module class for the activation
         - parameter_dict contains configuration parameters for the activation
-    
+
     Raises:
         SystemExit: If an unsupported activation name is provided
     """
@@ -122,7 +122,7 @@ def get_activation_class_params(activation: str) -> tuple:
 
 class UtNet2(Denoiser):
     """U-Net architecture for image denoising with transposed convolutions.
-    
+
     This implements a U-Net model optimized for image denoising, featuring:
     - Encoder path with 4 levels of downsampling (via max pooling)
     - Bottleneck layer at the lowest resolution
@@ -131,18 +131,18 @@ class UtNet2(Denoiser):
     - Consistent spatial dimensions through proper padding
     - Configurable capacity through the funit parameter
     - Support for both RGB (3-channel) and Bayer pattern (4-channel) inputs
-    
+
     The model can also optionally pre-upsample Bayer inputs before processing.
     When using 4-channel Bayer input, the output uses PixelShuffle to convert
     to 3-channel RGB while doubling the spatial resolution.
-    
+
     Architecture:
                   Skip Connections
                  ↙     ↙     ↙     ↙
     Input → Enc1 → Enc2 → Enc3 → Enc4 → Bottom
               ↓     ↓     ↓     ↓
     Output ← Dec4 ← Dec3 ← Dec2 ← Dec1
-    
+
     Where Enc = Convolution blocks with downsampling
           Dec = Convolution blocks with upsampling
     """
@@ -153,9 +153,10 @@ class UtNet2(Denoiser):
             funit: int = 32,
             activation: str = "LeakyReLU",
             preupsample: bool = False,
+            **kwargs,
     ):
         """Initialize a U-Net model for image denoising.
-        
+
         Args:
             in_channels: Number of input channels (3 for RGB, 4 for Bayer)
             funit: Base feature unit multiplier that determines network capacity
@@ -163,7 +164,7 @@ class UtNet2(Denoiser):
             activation: Activation function to use throughout the network
             preupsample: If True, upsample the input before processing
                         (only valid with 4-channel input)
-                        
+
         Raises:
             AssertionError: If trying to use preupsample with 3-channel input
             NotImplementedError: If in_channels is not 3 or 4
@@ -278,11 +279,11 @@ class UtNet2(Denoiser):
 
     def forward(self, l):
         """Process input through U-Net for denoising.
-        
+
         Args:
             l: Input tensor with shape [batch_size, channels, height, width]
                where channels is either 3 (RGB) or 4 (Bayer)
-               
+
         Returns:
             Denoised RGB image tensor with shape [batch_size, 3, height, width]
             or [batch_size, 3, height*2, width*2] if using Bayer input with PixelShuffle
@@ -309,11 +310,11 @@ class UtNet2(Denoiser):
 
 class ResBlock(torch.nn.Module):
     """Residual block with two convolutional layers and skip connection.
-    
+
     This implements a standard residual block that adds the input to the output
     of a series of convolutions, allowing better gradient flow and feature reuse.
     The block maintains the same number of channels and spatial dimensions.
-    
+
     Structure:
         Input → Conv2d → Activation → Conv2d → Activation → + → Output
                                                             ↑
@@ -326,7 +327,7 @@ class ResBlock(torch.nn.Module):
             activation="LeakyReLU",
     ):
         """Initialize a residual block.
-        
+
         Args:
             num_channels: Number of input and output channels
             activation: Activation function name to use (default: "LeakyReLU")
@@ -342,10 +343,10 @@ class ResBlock(torch.nn.Module):
 
     def forward(self, x):
         """Apply residual block to input tensor.
-        
+
         Args:
             x: Input tensor of shape [batch_size, num_channels, height, width]
-            
+
         Returns:
             Output tensor with same shape as input, with residual connection applied
         """
@@ -354,29 +355,29 @@ class ResBlock(torch.nn.Module):
 
 class UtNet3(UtNet2):
     """Enhanced U-Net model with additional ResBlocks in the output stage.
-    
+
     This model extends UtNet2 by adding a more complex output module with:
     1. A channel expansion layer (1x1 convolution)
     2. Two ResBlocks for additional feature refinement
     3. A channel reduction layer (1x1 convolution)
-    
+
     This additional processing can help with difficult denoising cases by
     allowing more complex feature transformations at the output stage.
     Currently only supports Bayer pattern inputs (4 channels).
     """
 
-    def __init__(self, in_channels: int = 4, funit: int = 32, activation="LeakyReLU"):
+    def __init__(self, in_channels: int = 4, funit: int = 32, activation="LeakyReLU", preupsample: bool = False, **kwargs):
         """Initialize an enhanced U-Net model with ResBlocks in output stage.
-        
+
         Args:
             in_channels: Number of input channels (must be 4 for Bayer pattern)
             funit: Base feature unit multiplier that determines network capacity
             activation: Activation function to use throughout the network
-            
+
         Raises:
             AssertionError: If in_channels is not 4
         """
-        super().__init__(in_channels=in_channels, funit=funit, activation=activation)
+        super().__init__(in_channels=in_channels, funit=funit, activation=activation, preupsample=preupsample, **kwargs)
         assert in_channels == 4
         # Replace the output module with an enhanced version that includes ResBlocks
         self.output_module = nn.Sequential(

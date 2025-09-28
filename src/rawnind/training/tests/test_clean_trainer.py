@@ -33,19 +33,19 @@ def mock_inference_denoiser_factory():
     """Mock `create_rgb_denoiser` and `create_bayer_denoiser` from inference.clean_api."""
     with patch('rawnind.inference.clean_api.create_rgb_denoiser') as mock_rgb_denoiser_factory, \
          patch('rawnind.inference.clean_api.create_bayer_denoiser') as mock_bayer_denoiser_factory:
-        
+
         mock_model = MagicMock(spec=torch.nn.Module)
         mock_model.to.return_value = mock_model # Ensure .to() returns self
         mock_model.parameters.return_value = [torch.nn.Parameter(torch.randn(1))]
 
         # For RGB denoiser
         mock_rgb_denoiser_factory.return_value = MagicMock(
-            model=mock_model, 
+            model=mock_model,
             demosaic_fn=None # RGB has no demosaic_fn
         )
         # For Bayer denoiser
         mock_bayer_denoiser_factory.return_value = MagicMock(
-            model=mock_model, 
+            model=mock_model,
             demosaic_fn=MagicMock() # Bayer has one
         )
         yield mock_rgb_denoiser_factory, mock_bayer_denoiser_factory
@@ -73,7 +73,7 @@ class TestCleanTrainer:
         assert isinstance(trainer.model, MagicMock)
         assert isinstance(trainer.optimizer, torch.optim.Adam)
         mock_inference_denoiser_factory[0].assert_called_once() # create_rgb_denoiser
-        
+
     def test_create_model_rgb(self, base_training_config, mock_inference_denoiser_factory):
         """Test _create_model for RGB training type."""
         trainer = CleanTrainer(config=base_training_config, training_type="rgb_to_rgb")
@@ -110,13 +110,17 @@ class TestCleanTrainer:
     ])
     def test_create_loss_function(self, base_training_config, mock_inference_denoiser_factory, mock_pt_losses, loss_name, expected_loss_class):
         """Test _create_loss_function mapping."""
-        config = TrainingConfig(**vars(base_training_config), loss_function=loss_name)
+        # Filter out aliased fields
+        config_dict = {k: v for k, v in vars(base_training_config).items()
+                      if k not in ['arch', 'architecture', 'in_channels', 'out_channels',
+                                 'funit', 'loss', 'preupsample', 'tot_steps', 'val_interval', 'metrics']}
+        config = TrainingConfig(**config_dict, loss_function=loss_name)
         trainer = CleanTrainer(config=config, training_type="rgb_to_rgb")
-        
+
         if loss_name == "l1":
             assert isinstance(trainer.loss_fn, torch.nn.L1Loss)
         else:
-            mock_losses[loss_name if loss_name=="mse" else "ms_ssim_loss"].assert_called_once()
+            mock_pt_losses[loss_name if loss_name=="mse" else "ms_ssim_loss"].assert_called_once()
 
 
     @pytest.mark.parametrize("has_masks, is_bayer, prediction_res_factor", [
@@ -129,9 +133,13 @@ class TestCleanTrainer:
     def test_compute_loss_masking_and_bayer_interpolation(self, base_training_config, mock_inference_denoiser_factory, has_masks, is_bayer, prediction_res_factor):
         """Test compute_loss with masking and Bayer mask/GT interpolation."""
         crop_size = 128
-        bayer_config = TrainingConfig(**vars(base_training_config), input_channels=4, output_channels=3, crop_size=crop_size)
+        # Filter out aliased fields
+        config_dict = {k: v for k, v in vars(base_training_config).items()
+                      if k not in ['arch', 'architecture', 'in_channels', 'out_channels',
+                                 'funit', 'loss', 'preupsample', 'tot_steps', 'val_interval', 'metrics']}
+        bayer_config = TrainingConfig(**config_dict, input_channels=4, output_channels=3, crop_size=crop_size)
         rgb_config = base_training_config
-        
+
         config = bayer_config if is_bayer else rgb_config
         training_type = "bayer_to_rgb" if is_bayer else "rgb_to_rgb"
         trainer = CleanTrainer(config=config, training_type=training_type)
@@ -164,7 +172,7 @@ class TestCleanTrainer:
         """Test update_learning_rate when model improves."""
         trainer = CleanTrainer(config=base_training_config, training_type="rgb_to_rgb")
         initial_lr = trainer.get_current_learning_rate()
-        
+
         # Simulate improvement
         trainer.update_learning_rate(validation_metrics={'loss': 0.05}, step=1)
         assert trainer.best_validation_losses['loss'] == 0.05
@@ -172,9 +180,13 @@ class TestCleanTrainer:
 
     def test_update_learning_rate_decay(self, base_training_config, mock_inference_denoiser_factory):
         """Test update_learning_rate when no improvement and patience reached."""
-        config = TrainingConfig(**vars(base_training_config), patience=5, lr_decay_factor=0.5)
+        # Filter out aliased fields
+        config_dict = {k: v for k, v in vars(base_training_config).items()
+                      if k not in ['arch', 'architecture', 'in_channels', 'out_channels',
+                                 'funit', 'loss', 'preupsample', 'tot_steps', 'val_interval', 'metrics']}
+        config = TrainingConfig(**config_dict, patience=5, lr_decay_factor=0.5)
         trainer = CleanTrainer(config=config, training_type="rgb_to_rgb")
-        
+
         initial_lr = trainer.get_current_learning_rate()
         trainer.best_validation_losses['loss'] = 0.1 # Some initial best loss
         trainer.lr_adjustment_allowed_step = 5 # Set patience step
@@ -212,7 +224,7 @@ class TestCleanTrainer:
         new_trainer = CleanTrainer(config=base_training_config, training_type="rgb_to_rgb")
         new_trainer.model.load_state_dict(trainer.model.state_dict()) # Pre-load state to avoid issues with mock
         new_trainer.optimizer.load_state_dict(trainer.optimizer.state_dict())
-        
+
         # Load checkpoint
         new_trainer.load_checkpoint(str(checkpoint_path)) # Call it directly
 
@@ -227,17 +239,17 @@ class TestCleanTrainer:
     def test_prepare_datasets_mock_fallback(self, base_training_config, mock_inference_denoiser_factory, fallback_present):
         """Test prepare_datasets uses mock fallback if dataset package import fails."""
         trainer = CleanTrainer(config=base_training_config, training_type="rgb_to_rgb")
-        
+
         if fallback_present:
             with patch('rawnind.training.clean_api.create_training_datasets', side_effect=ImportError), \
                  patch.object(trainer, '_create_mock_datasets') as mock_create_mock_datasets:
-                
+
                 mock_create_mock_datasets.return_value = {
                     'train_loader': MagicMock(),
                     'val_loader': MagicMock(),
                     'test_loader': MagicMock()
                 }
-                
+
                 datasets = trainer.prepare_datasets(dataset_config={})
                 mock_create_mock_datasets.assert_called_once()
                 assert 'train_loader' in datasets
@@ -246,7 +258,7 @@ class TestCleanTrainer:
             # We don't have enough mocks for the real dataset, so let's mock it again
             with patch('rawnind.training.clean_api.create_training_datasets') as mock_create_training_datasets, \
                  patch.object(trainer, '_create_mock_datasets') as mock_create_mock_datasets: # Ensure it's NOT called
-                
+
                 mock_create_training_datasets.return_value = { # Simulate successful return
                     'train_dataloader': MagicMock(),
                     'validation_dataloader': MagicMock(),
@@ -265,14 +277,14 @@ class TestCleanTrainer:
         """Test the basic flow of validate and test methods."""
         trainer = CleanTrainer(config=base_training_config, training_type="rgb_to_rgb")
         # Ensure model is in training mode initially
-        trainer.model.train() 
+        trainer.model.train()
 
         # Mock dataloader to return a few batches
         mock_dataloader_iter = iter([
             {'clean_images': torch.randn(1, 3, 128, 128), 'noisy_images': torch.randn(1, 3, 128, 128), 'masks': torch.ones(1, 1, 128, 128)},
             {'clean_images': torch.randn(1, 3, 128, 128), 'noisy_images': torch.randn(1, 3, 128, 128), 'masks': torch.ones(1, 1, 128, 128)}
         ])
-        
+
         # Patch compute_image_metrics
         with patch('rawnind.inference.clean_api.compute_image_metrics', return_value={'psnr': 25.0}) as mock_compute_metrics, \
              patch.object(trainer, '_save_validation_outputs') as mock_save_outputs:

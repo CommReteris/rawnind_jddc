@@ -22,7 +22,7 @@ class ConfigManager:
     """
 
     # Base paths for different types of models
-    MODELS_BASE_DPATH = os.path.join("..", "..", "models")
+    MODELS_BASE_DPATH = "models"
 
     @staticmethod
     def load_config(config_path: str) -> Dict[str, Any]:

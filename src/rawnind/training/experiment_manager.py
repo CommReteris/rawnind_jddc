@@ -27,9 +27,9 @@ class ExperimentManager:
     and managing experiment directories.
     """
 
-    def __init__(self, models_root_path: str = "../../models"):
+    def __init__(self, models_root_path: str = "models"):
         """Initialize the experiment manager.
-        
+
         Args:
             models_root_path: Root path for model storage
         """
@@ -121,19 +121,19 @@ class ExperimentManager:
 
     @staticmethod
     def cleanup_saved_models_iterations(
-        save_dpath: str, 
+        save_dpath: str,
         keep_iterations: List[int],
         model_type: Literal["compression", "denoising"] = None,
         delete: bool = True
     ) -> int:
         """Clean up saved model iterations, keeping only specified ones.
-        
+
         Args:
             save_dpath: Directory containing saved models
             keep_iterations: List of iteration numbers to keep
             model_type: Type of model for determining best steps
             delete: Whether to actually delete files
-            
+
         Returns:
             Total bytes that would be saved
         """
@@ -150,7 +150,7 @@ class ExperimentManager:
 
         keepers = [f"iter_{step}" for step in set(keep_iterations)]
         total_bytes_saved = 0
-        
+
         # Compile regex to match files like iter_{number}.pt and iter_{number}.pt.opt
         pattern = re.compile(r"^iter_(\d+)\.pt(?:\.opt)?$")
 
@@ -172,7 +172,7 @@ class ExperimentManager:
                             logging.error(f"Error deleting {file}: {e}")
                     else:
                         logging.info(f"Would delete: {file}")
-        
+
         return total_bytes_saved
 
     def _load_best_steps_from_yaml(self, yaml_path: Path, model_type: str) -> List[int]:
@@ -203,27 +203,27 @@ class ExperimentManager:
         return steps
 
     def cleanup_saved_models_unused_test_images(
-        self, 
-        save_dpath: str, 
+        self,
+        save_dpath: str,
         important_models: Set[str] = None,
         exclude_substring: str = "bm3d",
         delete: bool = True
     ) -> Tuple[List[str], int]:
         """Clean up unused test images from saved models directory.
-        
+
         Args:
-            save_dpath: Directory containing saved models  
+            save_dpath: Directory containing saved models
             important_models: Set of important model names to preserve
             exclude_substring: Substring to exclude from cleanup
             delete: Whether to actually delete files
-            
+
         Returns:
             Tuple of (models_cleaned, total_bytes_saved)
         """
         base_dir = Path(save_dpath)
         models_to_clean = []
         total_bytes_saved = 0
-        
+
         if important_models is None:
             important_models = set()
 
@@ -235,7 +235,7 @@ class ExperimentManager:
             if exclude_substring and exclude_substring.lower() in model_dir.name.lower():
                 logging.info(f"Excluding model due to '{exclude_substring}' in name: {model_dir.name}")
                 continue
-                
+
             # Find all .tif and .exr files recursively
             image_files = list(model_dir.rglob("*.tif")) + list(model_dir.rglob("*.exr"))
             if not image_files:
@@ -245,7 +245,7 @@ class ExperimentManager:
             model_size = sum(f.stat().st_size for f in image_files)
             total_bytes_saved += model_size
             models_to_clean.append(str(model_dir))
-            
+
             if delete:
                 for file in image_files:
                     try:
@@ -253,7 +253,7 @@ class ExperimentManager:
                         logging.info(f"Deleted image: {file}")
                     except Exception as e:
                         logging.error(f"Error deleting {file}: {e}")
-                        
+
         return models_to_clean, total_bytes_saved
 
     @staticmethod
@@ -267,21 +267,21 @@ class ExperimentManager:
         time_limit_trainres_empty: int = 60 * 60
     ) -> List[str]:
         """Remove empty model directories.
-        
+
         Args:
             root_models_dpaths: List of root model directory paths
             delete: Whether to actually delete directories
             time_limit_*: Various time limits for determining if models are empty
-            
+
         Returns:
             List of directories that were removed or would be removed
         """
         removed_dirs = []
-        
+
         for root_models_dpath in root_models_dpaths:
             if not os.path.exists(root_models_dpath):
                 continue
-            
+
             # Clean empty .pt files in saved_models if present
             saved_models_path = os.path.join(root_models_dpath, "saved_models")
             if os.path.exists(saved_models_path):
@@ -292,7 +292,7 @@ class ExperimentManager:
                         if delete:
                             os.unlink(file_path)
                             logging.info(f"Deleted empty file: {file_path}")
-            
+
             # Get a list of subdirectories in the model path
             models_dpaths = [f.path for f in os.scandir(root_models_dpath) if f.is_dir()]
 
@@ -378,7 +378,7 @@ class ExperimentManager:
             save_dpath: Directory containing saved models
             best_steps: List of step numbers that are considered best
             delete: Whether to actually delete files
-            
+
         Returns:
             Total bytes saved
         """
@@ -388,13 +388,13 @@ class ExperimentManager:
 
         keepers = [f"iter_{step}" for step in best_steps]
         total_bytes_saved = 0
-        
+
         pattern = re.compile(r"^iter_(\d+)\.pt(?:\.opt)?$")
 
         for file in models_dir.iterdir():
             if not file.is_file():
                 continue
-                
+
             match = pattern.match(file.name)
             if match:
                 step_str = f"iter_{match.group(1)}"
@@ -409,7 +409,7 @@ class ExperimentManager:
                             logging.error(f"Error deleting {file}: {e}")
                     else:
                         logging.info(f"rm_nonbest_model_iterations: would delete {file}")
-                        
+
         return total_bytes_saved
 
     @staticmethod
@@ -439,25 +439,25 @@ class ExperimentManager:
         delete: bool = True
     ) -> dict:
         """Comprehensive cleanup of an experiment directory.
-        
+
         Args:
             experiment_dir: Path to experiment directory
             keep_best_only: Whether to keep only best model iterations
             clean_images: Whether to clean test images
             delete: Whether to actually delete files
-            
+
         Returns:
             Dictionary with cleanup statistics
         """
         stats = {
             "models_cleaned": 0,
-            "images_cleaned": 0, 
+            "images_cleaned": 0,
             "bytes_saved": 0
         }
-        
+
         if not os.path.exists(experiment_dir):
             return stats
-            
+
         # Clean up model iterations
         if keep_best_only:
             trainres_path = os.path.join(experiment_dir, "trainres.yaml")
@@ -468,7 +468,7 @@ class ExperimentManager:
                 )
                 stats["bytes_saved"] += bytes_saved
                 stats["models_cleaned"] = len(best_steps)
-                
+
         # Clean up test images
         if clean_images:
             models_cleaned, bytes_saved = self.cleanup_saved_models_unused_test_images(
@@ -476,17 +476,17 @@ class ExperimentManager:
             )
             stats["images_cleaned"] = len(models_cleaned)
             stats["bytes_saved"] += bytes_saved
-            
+
         return stats
 
 
 # Factory functions for clean API compatibility
 def find_latest_model_expname_iteration(expname: str) -> str:
     """Find the latest model iteration for a given experiment name.
-    
+
     Args:
         expname: Base experiment name
-        
+
     Returns:
         Path to the latest model iteration
     """
@@ -501,13 +501,13 @@ def cleanup_experiments(
     delete: bool = True
 ) -> dict:
     """Clean up multiple experiment directories.
-    
+
     Args:
         root_models_paths: List of root model directory paths
         keep_best_only: Whether to keep only best iterations
         clean_images: Whether to clean test images
         delete: Whether to actually delete files
-        
+
     Returns:
         Dictionary with overall cleanup statistics
     """
@@ -518,11 +518,11 @@ def cleanup_experiments(
         "total_models_cleaned": 0,
         "total_images_cleaned": 0
     }
-    
+
     for root_path in root_models_paths:
         if not os.path.exists(root_path):
             continue
-            
+
         for exp_dir in os.listdir(root_path):
             exp_path = os.path.join(root_path, exp_dir)
             if os.path.isdir(exp_path):
@@ -533,5 +533,5 @@ def cleanup_experiments(
                 total_stats["total_bytes_saved"] += stats["bytes_saved"]
                 total_stats["total_models_cleaned"] += stats["models_cleaned"]
                 total_stats["total_images_cleaned"] += stats["images_cleaned"]
-                
+
     return total_stats

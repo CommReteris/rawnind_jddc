@@ -6,7 +6,7 @@ Instead of reimplementing the algorithm in Python/PyTorch, this wrapper interfac
 an external BM3D binary (https://github.com/gfacciol/bm3d) for better performance.
 
 BM3D algorithm overview:
-The BM3D algorithm, published by Dabov et al. in 2007 ("Image Denoising by Sparse 3-D 
+The BM3D algorithm, published by Dabov et al. in 2007 ("Image Denoising by Sparse 3-D
 Transform-Domain Collaborative Filtering"), operates in two major steps:
 
 1. Basic estimate using hard thresholding:
@@ -46,7 +46,7 @@ Example usage:
     ```python
     # Create a BM3D denoiser with RGB input and sigma=25
     denoiser = BM3D_Denoiser(in_channels=3, funit=25)
-    
+
     # Denoise an image
     noisy_tensor = torch.tensor(noisy_image).unsqueeze(0)  # Add batch dimension
     denoised_tensor = denoiser(noisy_tensor)
@@ -66,7 +66,7 @@ import torch
 from typing import Union
 from . import raw_denoiser
 from rawnind.dependencies import raw_processing as raw
-from rawnind.dependencies import pytorch_helpers
+from rawnind.dependencies import pytorch_helpers as pt_helpers
 from rawnind.dependencies import numpy_operations as np_imgops
 
 TMPDIR = f"tmp_{platform.uname().node}"
@@ -74,18 +74,18 @@ TMPDIR = f"tmp_{platform.uname().node}"
 
 class BM3D_Denoiser(raw_denoiser.Denoiser):
     """PyTorch-compatible wrapper for the BM3D denoising algorithm.
-    
+
     This class inherits from the abstract Denoiser class and implements
     a wrapper around an external BM3D binary for image denoising. The
     implementation uses a filesystem-based approach where:
     1. The noisy image is saved to a temporary file
     2. The BM3D binary is called via subprocess to process this file
     3. The denoised result is loaded back into a PyTorch tensor
-    
+
     This approach allows leveraging optimized C++ implementations of BM3D
     without reimplementing the algorithm in PyTorch, while still providing
     a compatible interface with other PyTorch-based denoisers.
-    
+
     Note that this implementation requires the BM3D binary to be installed
     and available in the system PATH. It also requires write access to a
     temporary directory for intermediate file storage.
@@ -93,18 +93,18 @@ class BM3D_Denoiser(raw_denoiser.Denoiser):
 
     def __init__(self, in_channels: int, funit: Union[int, str], *args, **kwargs):
         """Initialize the BM3D denoiser.
-        
+
         Args:
             in_channels: Number of input image channels (must be 3 for RGB)
-            funit: Noise standard deviation for the BM3D algorithm. 
+            funit: Noise standard deviation for the BM3D algorithm.
                   This parameter controls the denoising strength.
                   (Named 'funit' for compatibility with other models)
             *args, **kwargs: Additional arguments (unused, for compatibility)
-            
+
         Raises:
             AssertionError: If in_channels is not 3 (RGB)
             AssertionError: If the BM3D binary is not found in PATH
-            
+
         Notes:
             - Creates a temporary directory for file-based operations
             - Adds a dummy parameter to make the model compatible with PyTorch's
@@ -123,30 +123,30 @@ class BM3D_Denoiser(raw_denoiser.Denoiser):
 
     def forward(self, noisy_image):
         """Denoise an image using the external BM3D binary.
-        
+
         This method performs the actual denoising by:
         1. Converting the PyTorch tensor to a NumPy array
         2. Saving the image to a temporary PNG file
         3. Calling the external BM3D binary via subprocess
         4. Loading the denoised result back as a PyTorch tensor
-        
+
         The method handles batch dimension removal/addition and performs
         validation on the input shape to ensure compatibility with BM3D.
-        
+
         Args:
             noisy_image: PyTorch tensor containing the noisy image to denoise.
                         Expected shape is [1, 3, H, W] (batch of 1 RGB image)
                         or [3, H, W] (single RGB image).
-                        
+
         Returns:
             PyTorch tensor containing the denoised image with shape [1, 3, H, W]
             (always includes batch dimension)
-            
+
         Raises:
             AssertionError: If input doesn't have 3 channels (RGB)
             AssertionError: If input shape is invalid
             AssertionError: If BM3D subprocess fails
-            
+
         Notes:
             - Uses 8-bit PNG for file exchange (BM3D binary limitation)
             - Generates random filenames to avoid collisions in parallel usage
@@ -217,13 +217,13 @@ class BM3D_Denoiser(raw_denoiser.Denoiser):
         # The section below is an alternative implementation using OpenCV's BM3D
         # It's kept for reference but was found not to work correctly with RGB images
         # and is therefore disabled in favor of the binary-based approach above
-        # 
+        #
         # orig_dtype = noisy_image.dtype
         # # convert image to opencv dimension order (HWC instead of CHW)
         # noisy_image = np.moveaxis(noisy_image, 0, -1)
         # # convert noisy_image to uint8 for OpenCV processing
         # noisy_image = (noisy_image * 255).astype(np.uint8)
-        # 
+        #
         # denoised_image = cv2.xphoto.bm3dDenoising(src=noisy_image, h=float(self.sigma))
         # denoised_image = (
         #     torch.from_numpy(denoised_image).to(dtype=orig_dtype) / 255
@@ -239,18 +239,18 @@ architectures = {"bm3d": BM3D_Denoiser}
 # Command-line interface for direct usage of the BM3D denoiser
 if __name__ == "__main__":
     """Command-line interface for the BM3D denoiser.
-    
+
     This script provides a direct way to denoise images using the BM3D algorithm
     from the command line, without requiring the full training framework.
-    
+
     Usage:
         python bm3d_denoiser.py <noisy_image_fpath> <sigma> <denoised_fpath>
-        
+
     Arguments:
         noisy_image_fpath: Path to the input noisy image
         sigma: Noise standard deviation parameter for BM3D
         denoised_fpath: Path where the denoised output will be saved
-        
+
     The script loads the noisy image, runs BM3D denoising with the specified
     sigma value, and saves the result to the specified output path using the
     lin_rec2020 color profile for HDR image saving.

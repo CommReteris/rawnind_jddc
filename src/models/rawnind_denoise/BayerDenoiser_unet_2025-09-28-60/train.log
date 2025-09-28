@@ -1,0 +1,5 @@
+2025-09-28 11:11:49 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind --tb=no -q
+2025-09-28 11:11:49 INFO     PID: 703709
+2025-09-28 11:11:49 INFO     Experiment 'test_bayer_matrices' initialized in /tmp/tmp0cx0k9l5
+2025-09-28 11:11:50 WARNING  No training batches available at step 1, advancing step counter
+2025-09-28 11:11:50 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/Denoiser_unet_2025-09-28-342/train_cmd.sh.config

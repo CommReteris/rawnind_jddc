@@ -61,7 +61,7 @@ TIFF_PROVIDER = detect_tiff_provider()
 try:
     # This dependency for libraw_process function (which is removed from public API)
     # is only conditionally imported to avoid unnecessary ImportError if function is not used.
-    import imageio 
+    import imageio
 except ImportError:
     logger.warning("imageio not found.")
     imageio = None
@@ -146,7 +146,7 @@ class RawLoader:
             if np.array_equal(pattern_arr, metadata_dict["rgbg_pattern"]):
                 matched_pattern = name
                 break
-        
+
         if matched_pattern: # Ensure it is a BayerPattern Enum
             metadata_dict["bayer_pattern"] = BayerPattern[matched_pattern]
         else:
@@ -164,7 +164,7 @@ class RawLoader:
             metadata_dict["sizes"]["raw_height"] -= metadata_dict["sizes"]["top_margin"]
             metadata_dict["sizes"]["raw_width"] -= metadata_dict["sizes"]["left_margin"]
             metadata_dict["sizes"]["top_margin"] = metadata_dict["sizes"]["left_margin"] = 0
-        
+
         if self.config.crop_all:
             _, h, w = mono_img.shape
             min_h = min(
@@ -227,7 +227,7 @@ class RawLoader:
                 metadata_dict["sizes"]["iwidth"] -= 2
             else:
                 raise UnsupportedFormatError(f"Unsupported Bayer pattern for conversion: {metadata_dict['bayer_pattern']=}")
-        
+
         # For non-RGGB patterns, after cropping to shift pixels, the final pattern must be RGGB
         metadata_dict["rgbg_pattern"] = BAYER_PATTERNS["RGGB"]
         self._set_bayer_pattern_name(metadata_dict)
@@ -241,7 +241,7 @@ class RawLoader:
             h,
             w,
         ), f"Image shape {mono_img.shape[1:]=} does not match metadata raw dimensions {metadata_dict['sizes']=}"
-        
+
         if h % 4 > 0:
             mono_img = mono_img[:, : -(h % 4)]
             metadata_dict["sizes"]["raw_height"] -= h % 4
@@ -266,7 +266,7 @@ class RawLoader:
 
         for ch in range(img.shape[-3]):
             scaled_img[ch] -= metadata_dict["black_level_per_channel"][ch]
-            
+
             # Normalize s.t. white level is 1
             if compat:
                 vrange = metadata_dict["white_level"] - metadata_dict["black_level_per_channel"][ch]
@@ -291,7 +291,7 @@ class RawLoader:
         """
         Loads raw image data from a given file path and extracts LibRaw metadata.
         Applies initial processing steps based on ProcessingConfig.
-        
+
         Returns:
             Tuple[np.ndarray, Metadata]: (mono_image, metadata)
         """
@@ -317,14 +317,14 @@ class RawLoader:
             "rgbg_pattern": rawpy_img.raw_pattern, # Initial raw pattern
             "overexposure_lb": 1.0 # Placeholder, updated by _scale_img_to_bw_points
         }
-        
+
         # Assertions from legacy
         assert metadata_dict["rgb_xyz_matrix"].any(), f"rgb_xyz_matrix of {fpath} is empty"
         assert rawpy_img.color_desc.decode() == "RGBG", f"{fpath} does not seem to have bayer pattern ({rawpy_img.color_desc.decode()})"
         assert metadata_dict["rgbg_pattern"] is not None, f"{fpath} has no bayer pattern information"
 
         self._set_bayer_pattern_name(metadata_dict) # Sets metadata_dict["bayer_pattern"]
-        
+
         # Legacy check - raw_colors represents the overall sensor pattern
         assert_correct_metadata = (
             metadata_dict["rgbg_pattern"] == rawpy_img.raw_colors[:2, :2]
@@ -356,7 +356,7 @@ class RawLoader:
         mono_img = self._ensure_correct_shape(mono_img, metadata_dict)
         if self.config.return_float:
             mono_img = self._scale_img_to_bw_points(mono_img, metadata_dict)
-        
+
         # Create Metadata NamedTuple from the potentially modified dictionary
         # Explicit conversion to ensure `bayer_pattern` is BayerPattern Enum
         metadata_dict["bayer_pattern"] = BayerPattern(metadata_dict["bayer_pattern"])
@@ -371,13 +371,13 @@ class BayerProcessor:
         self.config = config
 
     def apply_white_balance(self, bayer_mosaic: BayerImage, metadata: Metadata, reverse: bool = False, in_place: bool = False) -> Optional[BayerImage]:
-        '''Apply/reverse WB; vectorized broadcasting for speed.''' 
+        '''Apply/reverse WB; vectorized broadcasting for speed.'''
         if not in_place:
             bayer_mosaic = bayer_mosaic.copy()
 
         op = np.divide if reverse else operator.mul # Using operator.mul for clarity with np arrays
         wb_norm = getattr(metadata, f"{self.config.wb_type}_whitebalance_norm")
-        
+
         # Align with original legacy_raw.py logic (lines 422-433)
         # Assuming wb_norm has R, G1, B, G2 from rawpy order
         bayer_mosaic[0, 0::2, 0::2] = op(bayer_mosaic[0, 0::2, 0::2], wb_norm[0]) # R
@@ -388,13 +388,13 @@ class BayerProcessor:
         return bayer_mosaic if not in_place else None
 
     def mono_to_rggb(self, bayer_mosaic: BayerImage, metadata: Metadata) -> RGGBImage:
-        '''Convert mono to 4-channel RGGB; assumes RGGB pattern.''' 
+        '''Convert mono to 4-channel RGGB; assumes RGGB pattern.'''
         if metadata.bayer_pattern != BayerPattern.RGGB:
             raise UnsupportedFormatError(f"Expected RGGB for mono_to_rggb: {metadata.bayer_pattern}")
 
         bayer_flat = bayer_mosaic[0]  # Drop channel dim
         h, w = bayer_flat.shape
-        
+
         # Ensure image dimensions are even.
         if h % 2 != 0 or w % 2 != 0:
             raise ValueError(f"Image dimensions must be even for RGGB conversion: H={h}, W={w}")
@@ -408,7 +408,7 @@ class BayerProcessor:
         return np.stack([r, g1, g2, b], axis=0).astype(np.float32)
 
     def rggb_to_mono(self, rggb_image: RGGBImage) -> BayerImage:
-        '''Reverse: RGGB to mono Bayer; vectorized interleaving.''' 
+        '''Reverse: RGGB to mono Bayer; vectorized interleaving.'''
         assert rggb_image.shape[0] == 4, f"Expected 4-channel RGGB: {rggb_image.shape}"
         h2, w2 = rggb_image.shape[1:]
         h, w = h2 * 2, w2 * 2
@@ -423,7 +423,7 @@ class BayerProcessor:
         return mono
 
     def demosaic(self, bayer_mosaic: BayerImage, metadata: Metadata) -> RGBImage:
-        '''Demosaic to RGB; optimized with uint16 conversion only once.''' 
+        '''Demosaic to RGB; optimized with uint16 conversion only once.'''
         if metadata.bayer_pattern != BayerPattern.RGGB:
             raise UnsupportedFormatError(f"Demosaic requires RGGB: {metadata.bayer_pattern}")
 
@@ -442,7 +442,7 @@ class BayerProcessor:
 
 
         return rgb
-    
+
 
 class ColorTransformer:
     '''Handles color space transformations.'''
@@ -463,7 +463,7 @@ class ColorTransformer:
                 [0.05563942, -0.2040112, 1.05714897],
             ], dtype=np.float32)
         raise NotImplementedError(f"Unsupported profile: {profile}")
-    
+
     @classmethod
     def get_camRGB_to_profiledRGB_img_matrix(cls, metadata: Metadata, output_color_profile: str) -> np.ndarray:
         """
@@ -490,7 +490,7 @@ class ColorTransformer:
             # If application of gamma is needed here, it should call an external utility.
             raise NotImplementedError("Applying gamma via ColorTransformer.camRGB_to_profiledRGB_img is not supported. Use gamma_pt or equivalent post-processing.")
         return profiledRGB_img
-    
+
 def get_sample_raw_file(url: str = SAMPLE_RAW_URL) -> str:
     """Get a testing image online."""
     fn = url.split("/")[-1]
@@ -513,7 +513,7 @@ def is_exposure_ok(
     config = ProcessingConfig()
     bayer_processor = BayerProcessor(config)
     rggb_img = bayer_processor.mono_to_rggb(mono_float_img, metadata)
-    
+
     local_overexposure_lb = metadata.overexposure_lb # Access directly from NamedTuple
 
     overexposed = (rggb_img >= oe_threshold * local_overexposure_lb).any(0)
@@ -579,14 +579,14 @@ def hdr_nparray_to_file(
              raise NotImplementedError(
                 f"hdr_nparray_to_file: bit_depth={bit_depth} requires np.float{bit_depth}, but got {img.dtype=}"
             )
-        
+
         # Use the global OPENEXR_PROVIDER detected earlier
         if OPENEXR_PROVIDER == "OpenImageIO":
             import OpenImageIO as oiio
             output = oiio.ImageOutput.create(fpath)
             if not output:
                 raise RuntimeError(f"Could not create output for {fpath}")
-            
+
             spec = oiio.ImageSpec(
                 img.shape[2],
                 img.shape[1],
@@ -605,7 +605,7 @@ def hdr_nparray_to_file(
                 logger.warning(f"No color profile for {fpath}")
 
             spec.attribute("compression", "zips")
-            
+
             if output.open(fpath, spec):
                 success = output.write_image(
                     np.ascontiguousarray(img.transpose(1, 2, 0))
@@ -699,7 +699,7 @@ def hdr_nparray_to_file(
             output = oiio.ImageOutput.create(fpath)
             if not output:
                 raise RuntimeError(f"Could not create output for {fpath}")
-            
+
             spec = oiio.ImageSpec(
                 img.shape[2],
                 img.shape[1],
@@ -751,16 +751,16 @@ def raw_fpath_to_hdr_img_file(
         config = ProcessingConfig(crop_all=crop_all, return_float=True)
         raw_loader = RawLoader(config)
         mono_img, metadata = raw_loader.load_raw_data(src_fpath)
-        
+
         if check_exposure and not is_exposure_ok(mono_img, metadata):
             logger.info(f"# bad exposure for {src_fpath} ({mono_img.mean()=})")
             return "BAD_EXPOSURE", src_fpath, dest_fpath
-        
+
         # Demosaic and color transform
         config = ProcessingConfig(output_color_profile=output_color_profile)
         bayer_processor = BayerProcessor(config)
         rgb_img = bayer_processor.demosaic(mono_img, metadata)
-        
+
         color_transformer = ColorTransformer() # Static methods don't need instance, but conceptually fine
         final_img = color_transformer.camRGB_to_profiledRGB_img(
             rgb_img, metadata, output_color_profile=output_color_profile
@@ -772,7 +772,7 @@ def raw_fpath_to_hdr_img_file(
     except Exception as e:
         logger.error(f"# Unknown error {e} with {src_fpath}", exc_info=True)
         return "UNKNOWN_ERROR", src_fpath, dest_fpath
-    
+
     hdr_nparray_to_file(final_img, dest_fpath, output_color_profile, bit_depth, src_fpath)
     logger.info(f"# Wrote {dest_fpath}")
     return "OK", src_fpath, dest_fpath
@@ -797,3 +797,83 @@ def raw_fpath_to_rggb_img_and_metadata(fpath: str, return_float: bool = True) ->
 def raw_fpath_to_hdr_img_file_mtrunner(argslist):
     """Multithreaded runner for raw_fpath_to_hdr_img_file."""
     return raw_fpath_to_hdr_img_file(*argslist)
+
+
+def scenelin_to_pq(img: np.ndarray, in_range: tuple = (0.0, 1.0), out_range: tuple = (0.0, 1.0)) -> np.ndarray:
+    """
+    Convert scene-linear image to Perceptual Quantizer (PQ) encoding.
+    Args:
+        img: Input image (float32 or float64), values in in_range.
+        in_range: Input range (min, max) for normalization.
+        out_range: Output range (min, max) for PQ encoding.
+    Returns:
+        PQ-encoded image, same shape as input.
+    """
+    # Normalize input
+    img_norm = np.clip((img - in_range[0]) / (in_range[1] - in_range[0]), 0, 1)
+    # PQ constants (SMPTE ST 2084)
+    m1 = 0.1593017578125
+    m2 = 78.84375
+    c1 = 0.8359375
+    c2 = 18.8515625
+    c3 = 18.6875
+    # PQ encoding
+    pq = ((c1 + c2 * np.power(img_norm, m1)) / (1 + c3 * np.power(img_norm, m1))) ** m2
+    # Scale to out_range
+    pq_scaled = pq * (out_range[1] - out_range[0]) + out_range[0]
+    return pq_scaled
+
+
+def gamma(img: np.ndarray, gamma_value: float = 2.2, in_range: tuple = (0.0, 1.0), out_range: tuple = (0.0, 1.0)) -> np.ndarray:
+    """
+    Apply gamma correction to image.
+    Args:
+        img: Input image (float32 or float64), values in in_range.
+        gamma_value: Gamma exponent (e.g., 2.2 for sRGB).
+        in_range: Input range (min, max) for normalization.
+        out_range: Output range (min, max) for output.
+    Returns:
+        Gamma-corrected image, same shape as input.
+    """
+    img_norm = np.clip((img - in_range[0]) / (in_range[1] - in_range[0]), 0, 1)
+    img_gamma = np.power(img_norm, 1.0 / gamma_value)
+    img_scaled = img_gamma * (out_range[1] - out_range[0]) + out_range[0]
+    return img_scaled
+
+
+def camRGB_to_lin_rec2020_images(camRGB_img: np.ndarray, metadata: Metadata) -> np.ndarray:
+    """
+    Convert camera RGB image to linear Rec.2020 RGB image using metadata color matrix.
+    Args:
+        camRGB_img: Input image (3, H, W), camera RGB.
+        metadata: Metadata object with rgb_xyz_matrix.
+    Returns:
+        Linear Rec.2020 RGB image (3, H, W).
+    """
+    # Get conversion matrix from camera RGB to Rec.2020
+    cam_to_xyzd65 = np.linalg.inv(metadata.rgb_xyz_matrix[:3])
+    rec2020_matrix = ColorTransformer.get_xyz_to_rgb_matrix("lin_rec2020")
+    color_matrix = rec2020_matrix @ cam_to_xyzd65
+    orig_shape = camRGB_img.shape
+    img_flat = camRGB_img.reshape(3, -1)
+    rec2020_img = (color_matrix @ img_flat).reshape(orig_shape)
+    return rec2020_img
+
+def demosaic(bayer_mosaic):
+    """Demosaic Bayer pattern tensor to RGB.
+
+    Args:
+        bayer_mosaic: torch.Tensor [1, H, W] Bayer pattern
+
+    Returns:
+        torch.Tensor [3, H, W] RGB image
+    """
+    import cv2
+    bayer_np = bayer_mosaic.detach().cpu().numpy()
+    min_val, max_val = bayer_np.min(), bayer_np.max()
+    offset = max(0, -min_val)
+    scale = 65535 / (max_val + offset) if max_val + offset > 0 else 1
+    prep = ((bayer_np + offset) * scale).astype(np.uint16)[0]
+    rgb_hwc = cv2.demosaicing(prep, cv2.COLOR_BayerRGGB2RGB_EA)
+    rgb_chw = rgb_hwc.transpose(2, 0, 1).astype(np.float32) / 65535 * (max_val + offset) - offset
+    return torch.from_numpy(rgb_chw).to(bayer_mosaic.device)

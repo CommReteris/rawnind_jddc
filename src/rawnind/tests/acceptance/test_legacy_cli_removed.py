@@ -7,7 +7,33 @@ import pytest
 
 @pytest.mark.acceptance
 class TestLegacyCliRemoved:
+    """Test suite verifying complete removal of legacy CLI components.
+
+    This class contains acceptance tests ensuring that the refactored package
+    has successfully eliminated all legacy CLI dependencies and structures.
+    It validates the clean API design by confirming that old entry points,
+    namespaces, and implicit CLI parsing are no longer accessible or functional.
+    """
+
     def test_no_legacy_libs_namespace(self):
+        """Test that legacy libs namespace is completely removed.
+
+        This test verifies that the refactored package structure no longer exposes
+        the old rawnind.libs namespace, which contained legacy implementations with
+        CLI dependencies. Attempting to import it should fail immediately, ensuring
+        that downstream code cannot accidentally use deprecated components.
+
+        Expected behavior:
+        - Direct import of "rawnind.libs" raises ModuleNotFoundError
+        - Submodule imports like "rawnind.libs.raw" also fail with ModuleNotFoundError
+        - No partial or shadowed access to legacy modules remains
+        - Import errors are clean and immediate, without side effects
+
+        Key assertions:
+        - importlib.import_module("rawnind.libs") raises ModuleNotFoundError
+        - All known legacy submodules raise ModuleNotFoundError
+        - No exceptions or warnings during failed imports
+        """
         """
         The refactored package must not expose the old rawnind.libs namespace
         (e.g., rawnind.libs.raw, rawnind.libs.rawds, etc.). Attempting to
@@ -21,6 +47,25 @@ class TestLegacyCliRemoved:
                 importlib.import_module(f"rawnind.libs.{sub}")
 
     def test_legacy_root_modules_not_under_package(self):
+        """Test that legacy root modules are not importable via package namespace.
+
+        This test ensures that legacy script modules remain outside the main
+        rawnind package namespace, preventing accidental imports and maintaining
+        the clean separation between historical code and the refactored production
+        API. Legacy files may exist for reference but should not interfere with
+        package imports.
+
+        Expected behavior:
+        - Attempts to import legacy modules via "rawnind.legacy_*" fail
+        - ModuleNotFoundError is raised for each legacy module
+        - No partial loading or shadowing of legacy code occurs
+        - Package integrity is preserved without legacy contamination
+
+        Key assertions:
+        - importlib.import_module("rawnind.legacy_raw") raises ModuleNotFoundError
+        - All specified legacy modules are inaccessible via package
+        - Import failures are consistent and immediate
+        """
         """
         Legacy root-level modules must not be packaged under rawnind.*. They may
         exist in the repository root for historical reference, but cannot be
@@ -35,6 +80,25 @@ class TestLegacyCliRemoved:
                 importlib.import_module(f"rawnind.{mod}")
 
     def test_core_modules_have_no_main_blocks(self):
+        """Test that core modules contain no legacy main blocks or entry points.
+
+        This test scans source code of critical core modules to ensure they do not
+        contain legacy __main__ blocks or main() functions that could trigger
+        implicit CLI execution during imports. It enforces the clean API principle
+        by requiring explicit invocation rather than script-like behavior in modules.
+
+        Expected behavior:
+        - Core module source code lacks "__main__" guards
+        - No "def main(" function definitions present
+        - Module imports do not execute side-effect code
+        - Source scanning completes without parsing errors
+
+        Key assertions:
+        - "__main__" string absent from module source
+        - "def main(" pattern not found in source code
+        - Specific error messages identify problematic modules
+        - All core modules pass the clean code check
+        """
         """
         Ensure core modules do not contain legacy __main__ blocks or main()
         entry points. CLI should be driven by higher-level tooling or explicit

@@ -37,11 +37,11 @@ from .clean_api import TrainingConfig
 
 class BayerImageToImageNNTraining:
     '''Base class for Bayer image processing functionality.
-    
+
     This class provides Bayer-specific processing capabilities including
     color space conversion and exposure matching.
     '''
-    
+
     def __init__(self, config: TrainingConfig):
         self.config = config
 
@@ -52,10 +52,10 @@ class BayerImageToImageNNTraining:
         gt_images: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         '''Process camRGB output for Bayer images.
-        
+
         1. Match exposure if gt_images is provided
         2. Apply Lin. Rec. 2020 color profile
-        
+
         Args:
             camRGB_images: network output to convert
             rgb_xyz_matrix: camRGB to lin_rec2020 conversion matrices
@@ -84,7 +84,7 @@ class TrainingLoops:
     ImageToImageNNTraining class.
     '''
 
-    MODELS_BASE_DPATH = '../../models/rawnind'
+    MODELS_BASE_DPATH = 'models/rawnind'
     CLS_CONFIG_FPATHS = []  # No longer used for CLI configs
 
     def __init__(self, config: TrainingConfig):
@@ -185,7 +185,7 @@ class TrainingLoops:
 
         expname: CLASS_NAME_<in_channels>ch<-iteration>
         load_path (optional): can be dpath (autopick best model), expname (autocomplete to dpath), fpath (end-result)
-        save_dpath: ../../models/rawnind/<expname>
+        save_dpath: models/rawnind/<expname>
 
         to continue:
             determine expname
@@ -449,7 +449,7 @@ class TrainingLoops:
         # Validation lock (simplified for now, but based on original implementation)
         own_lock = bypass_lock = printed_lock_warning = False
         lock_fpath = f"validation_{platform.node()}_{os.environ.get('CUDA_VISIBLE_DEVICES', 'unk')}.lock"
-        
+
         # Bypass lock for certain conditions (from original logic)
         if (platform.node() == "sd" or platform.node() == "bd") and (
             "manproc" not in test_name or self.config.arbitrary_proc_method == "opencv"
@@ -493,7 +493,7 @@ class TrainingLoops:
             losses = {lossn: [] for lossn in (self.loss, *self.metrics)}
 
             individual_results = {}
-            
+
             # Load individual results if they exist
             if save_individual_results:
                 assert test_name is not None
@@ -510,7 +510,7 @@ class TrainingLoops:
                     common_test_name = test_name.replace("_q99", "")
                 else:
                     common_test_name = test_name
-                    
+
                 os.makedirs(
                     os.path.join(self.save_dpath, common_test_name), exist_ok=True
                 )
@@ -544,7 +544,7 @@ class TrainingLoops:
                     print(
                         f"No previous individual results {individual_results_fpath=} found"
                     )
-                    
+
             individual_images_dpath = os.path.join(
                 self.save_dpath, common_test_name, f"iter_{getattr(self, 'step_n', 0)}"
             )
@@ -557,7 +557,7 @@ class TrainingLoops:
                 )
             ):
                 os.makedirs(individual_images_dpath, exist_ok=True)
-                
+
             for i, batch in enumerate(tqdm.tqdm(dataloader)):
                 # Create image key for tracking individual results
                 if "y_fpath" in batch:
@@ -568,7 +568,7 @@ class TrainingLoops:
                     )
                     y_fn = os.path.basename(y_fn)
                     image_key = y_fn
-                    
+
                     if "image_set" in batch:
                         image_key = f"{batch['image_set']}_{image_key}"
                     if "gt_fpath" in batch and "aligned_to" not in image_key:
@@ -592,12 +592,12 @@ class TrainingLoops:
                             losses[lossn] = []
                         losses[lossn].append(lossv)
                     continue
-                    
+
                 individual_results[image_key] = {}
                 x_crops = batch["x_crops"].to(self.device)
                 y_crops = batch["y_crops"].to(self.device, x_crops.dtype)
                 mask_crops = batch["mask_crops"].to(self.device)
-                
+
                 try:
                     model_output = self.model(y_crops)
                     if isinstance(model_output, dict):
@@ -618,17 +618,17 @@ class TrainingLoops:
                         f"Error {e} with {batch.get('gt_fpath', 'unknown')=}, {batch.get('y_fpath', 'unknown')=}, {y_crops.shape=}, {x_crops.shape=}, {mask_crops.shape=}"
                     )
                     raise e
-                    
+
                 if self.match_gain == "output":
                     processed_output = rawproc.match_gain(x_crops, reconstructed_image)
                 else:
                     processed_output = reconstructed_image
-                    
+
                 if hasattr(self, "process_net_output"):  # Bayer color transform
                     processed_output = self.process_net_output(
                         processed_output, batch["rgb_xyz_matrix"], x_crops
                     )
-                    
+
                 if "output_valtest_images" in self.debug_options:
                     self._dbg_output_testval_images(
                         batch=batch,
@@ -639,24 +639,24 @@ class TrainingLoops:
                         y_crops=y_crops,
                         mask_crops=mask_crops,
                     )
-                    
+
                 if "net_output_processor_fun" in batch:
                     processed_output_fpath = os.path.join(
                         individual_images_dpath,
                         image_key,
                     )
-                    processed_output = batch["net_output_processor_fun"]( 
+                    processed_output = batch["net_output_processor_fun"](
                         processed_output, output_fpath=processed_output_fpath
                     )
                 else:
                     processed_output = self.transfer_vt(processed_output)
                     x_crops = self.transfer_vt(x_crops)
-                    
+
                 # Compute losses
                 loss_functions = self.metrics.copy()
                 from ..dependencies.pt_losses import losses as loss_module
                 loss_functions[self.loss] = getattr(self, 'lossf', loss_module[self.loss]())
-                
+
                 for lossn, lossf in loss_functions.items():
                     try:
                         lossv = lossf(
@@ -682,7 +682,7 @@ class TrainingLoops:
                         losses["combined"] = []
                     losses["bpp"].append(float(bpp))
                     individual_results[image_key]["bpp"] = float(bpp)
-                    
+
                     # Compute combined loss for compression
                     train_lambda = getattr(self, 'train_lambda', 1.0)
                     # Compute combined loss for compression
@@ -703,14 +703,14 @@ class TrainingLoops:
             # Save individual results
             if save_individual_results:
                 numpy_operations.dict_to_yaml(individual_results, individual_results_fpath)
-                
+
         torch.cuda.empty_cache()
         try:
             if not bypass_lock:
                 os.remove(lock_fpath)
         except FileNotFoundError:
             pass
-            
+
         try:
             return {lossn: statistics.mean(lossv) for lossn, lossv in losses.items()}
         except statistics.StatisticsError as e:
@@ -721,7 +721,7 @@ class TrainingLoops:
         '''Main training loop with proper step management.'''
         # Initialize step counters
         last_test_step = last_val_step = self.step_n = getattr(self, 'init_step', 0)
-        
+
         # Run an initial validation and test to ensure everything works well
         validation_losses = self.validate_or_test(
             dataloader=self.cleannoisy_val_dataloader,
@@ -729,7 +729,7 @@ class TrainingLoops:
             test_name="val",
         )
         torch.cuda.empty_cache()
-        
+
         if "skip_initial_validation" in self.debug_options:
             self.best_validation_losses: dict[str, float] = {
                 ln: 9001 for ln in validation_losses
@@ -744,7 +744,7 @@ class TrainingLoops:
                 },
             )
             self.best_validation_losses = validation_losses
-            
+
         # Initial sanity test
         self.validate_or_test(
             dataloader=self.cleannoisy_test_dataloader,
@@ -752,7 +752,7 @@ class TrainingLoops:
             test_name="sanitytest",
         )
         torch.cuda.empty_cache()
-        
+
         # Main training loop
         while self.step_n <= self.tot_steps:
             num_training_steps = min(
@@ -761,17 +761,17 @@ class TrainingLoops:
             )
             if "spam" in self.debug_options:
                 logging.debug(f"{num_training_steps=} to do")
-                
+
             training_loss = self.train(
                 optimizer=self.optimizer,
                 num_steps=num_training_steps,
                 dataloader_cc=self.cleanclean_dataloader,
                 dataloader_cn=self.cleannoisy_dataloader,
             )
-            
+
             # CRITICAL: Increment step counter to avoid infinite loop
             self.step_n += num_training_steps
-            
+
             logging.info(
                 f"training_loop: {self.step_n=}, {training_loss=} (over {num_training_steps=})"
             )
@@ -779,7 +779,7 @@ class TrainingLoops:
                 self.step_n,
                 {f"train_{self.loss}": training_loss},
             )
-            
+
             # Validation
             if self.step_n >= last_val_step + self.val_interval:
                 validation_losses = self.validate_or_test(
@@ -796,7 +796,7 @@ class TrainingLoops:
                 )
                 last_val_step = self.step_n
                 self.adjust_lr(validation_losses=validation_losses, step=self.step_n)
-                
+
             # Testing
             if self.step_n >= last_test_step + self.test_interval:
                 test_losses = self.validate_or_test(
@@ -836,7 +836,7 @@ class TrainingLoops:
                         f"cleanup_models: rm {os.path.join(models_dir, fn)}"
                     )
                     os.remove(os.path.join(models_dir, fn))
-                    
+
         # Clean up visualization files too
         if "output_valtest_images" in self.debug_options:
             visu_dir = os.path.join(self.save_dpath, "visu")
@@ -863,14 +863,14 @@ class TrainingLoops:
         step_losses: list[float] = []
         first_step: bool = True
         i: int = 0
-        
+
         for batch in itertools.islice(zip(dataloader_cc, dataloader_cn), 0, num_steps):
             if "timing" in self.debug_options or "spam" in self.debug_options:
                 logging.debug(f"data {i} loading time: {time.time() - last_time}")
                 last_time: float = time.time()
-                
+
             locking.check_pause()
-            
+
             step_losses.append(
                 self.step(
                     batch,
@@ -880,14 +880,14 @@ class TrainingLoops:
                     ),
                 )
             )
-            
+
             if "timing" in self.debug_options or "spam" in self.debug_options:
                 logging.debug(f"total step {i} time: {time.time() - last_time}")
                 last_time: float = time.time()
                 i += 1
-                
+
             first_step = False
-            
+
         return statistics.mean(step_losses)
 
     def compute_train_loss(
@@ -907,7 +907,7 @@ class TrainingLoops:
         # Add rate penalty for compression models
         if bpp is not None:
             loss += bpp
-            
+
         return loss
 
     def _get_lossn_extension(self):
@@ -1015,7 +1015,7 @@ class ImageToImageNNTraining(TrainingLoops):
 
     def step(self, batch, optimizer: torch.optim.Optimizer, output_train_images: bool = False):
         '''Perform a single training step.
-        
+
         This method should be implemented by subclasses to handle specific
         data formats (RGB vs Bayer) and loss computation.
         '''
