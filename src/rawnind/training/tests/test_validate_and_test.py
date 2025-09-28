@@ -1,94 +1,109 @@
 import pytest
+import torch
 from unittest.mock import MagicMock
 
-from rawnind.training import (
-    denoise_compress_trainer,
-    denoiser_trainer,
+from rawnind.training.clean_api import (
+    TrainingConfig,
+    CleanDenoiserTrainer,
+    CleanDenoiseCompressTrainer,
+    create_denoiser_trainer,
+    create_denoise_compress_trainer,
 )
-from rawnind.training import training_loops
-from rawnind.training.clean_api import TrainingConfig
 
 """
-Objective: Validate offline_validation and offline_std_test pipeline integrity across all 4 training class variants using parametrized tests for comprehensive coverage without real dataset dependencies.
-Test Criteria: For each class, instantiate with preset_args; mock methods to no-op; call offline_validation() and offline_std_test(); assert methods called once and json_saver.results populated (no skips).
-Fulfillment: Ensures validation methods execute successfully across variants, simulating original standalone scripts (preset_args init of training class, direct calls to offline_validation/offline_std_test without params, json_saver.results check implicit); single parametrized test replaces 4 redundant files, reducing duplication while covering all classes.
-Components Mocked/Fixtured: training_class fixture (parametrized with 4 classes); model.offline_validation/offline_std_test (MagicMock to no-op return None, simulating empty runs); model.json_saver (MagicMock with results={} for population check).
-Reasons for Mocking/Fixturing: Real instantiation requires config YAML/files which may not exist or cause I/O errors; mocks simulate calls without running full training/validation (no dataloaders/checkpoints needed); fixture ensures CPU compatibility and avoids native crashes; mocking allows hermetic execution of method calls (no params/returns in originals) while asserting expected behavior (calls made, results exist), fulfilling validation of pipeline intent (basic execution without errors) without real components' overhead or instability.
+Objective: Validate validation and test pipeline integrity across all 4 training class variants using the Clean API architecture.
+Test Criteria: For each trainer type, instantiate with TrainingConfig; create mock dataloaders; call validate() and test(); assert methods return valid results.
+Fulfillment: Ensures validation methods execute successfully across variants using the Clean API that was designed for TrainingConfig, completing the architectural refactoring vision.
+Components: Uses Clean API trainers (CleanDenoiserTrainer, CleanDenoiseCompressTrainer) with TrainingConfig objects via factory functions and their native validate()/test() interface.
+Architectural Vision: This test completes the refactoring from legacy CLI-based classes to modern Clean API classes, using the Clean API's native interface instead of forcing legacy patterns.
 """
 
 @pytest.fixture
-def training_config():
-    """Minimal TrainingConfig for testing."""
+def base_training_config():
+    """Base TrainingConfig for Clean API testing."""
     return TrainingConfig(
-        test_only=True,
-        init_step=None,
-        load_path=None,
-        noise_dataset_yamlfpaths=["../../datasets/RawNIND/RawNIND_masks_and_alignments.yaml"],
-        device="cpu",
-        in_channels=3,
-        crop_size=64,
-        batch_size=1,
-        epochs=1,
+        model_architecture="unet",
+        input_channels=3,  # Will be adjusted per training type
+        output_channels=3,
         learning_rate=1e-4,
-        save_dpath="test_save",
-        debug_options=[],
-        metrics=["mse"],
-        loss="mse",
-        val_interval=1,
-        test_interval=1,
+        batch_size=1,
+        crop_size=64,
+        total_steps=10,
+        validation_interval=1,
+        loss_function="mse",
+        device="cpu",
         patience=1,
-        lr_multiplier=0.5,
-        warmup_nsteps=0,
-        reset_lr=False,
-        reset_optimizer_on_fallback_load_path=True,
-        continue_training_from_last_model_if_exists=False,
-        fallback_load_path=None,
-        comment="",
-        config=None,
-        clean_dataset_yamlfpaths=[],
-        test_reserve=[],
-        bayer_only=False,
-        data_pairing="x_y",
-        arbitrary_proc_method=None,
-        match_gain="never",
+        lr_decay_factor=0.5,
+        additional_metrics=["mse"],
+        filter_units=48,
         compression_lambda=1.0,
-        val_crop_size=64,
+        bit_estimator_lr_multiplier=1.0,
+        test_interval=1,
         test_crop_size=64,
+        val_crop_size=64,
         num_crops_per_image=1,
-        batch_size_clean=1,
-        batch_size_noisy=1,
-        tot_steps=1,
-        transfer_function="None",
-        transfer_function_valtest="None",
+        save_training_images=False,
     )
 
 @pytest.fixture(params=[
-    denoise_compress_trainer.DCTrainingBayerToProfiledRGB,
-    denoise_compress_trainer.DCTrainingProfiledRGBToProfiledRGB,
-    denoiser_trainer.DenoiserTrainingBayerToProfiledRGB,
-    denoiser_trainer.DenoiserTrainingProfiledRGBToProfiledRGB,
+    ("denoise_compress", "bayer_to_rgb"),
+    ("denoise_compress", "rgb_to_rgb"),
+    ("denoise", "bayer_to_rgb"),
+    ("denoise", "rgb_to_rgb"),
 ])
-def training_class(request):
-    """Parametrized fixture for the 4 training classes."""
+def trainer_spec(request):
+    """Parametrized fixture for trainer specifications."""
     return request.param
 
-
-def test_validate_and_test(training_class, training_config):
-    """Parametrized test for validate_and_test across all training classes."""
-    training_class_instance = training_class(config=training_config)
+def test_validate_and_test_clean_api(trainer_spec, base_training_config):
+    """Parametrized test for validation and testing using Clean API architecture."""
+    trainer_type, training_type = trainer_spec
     
-    training_class_instance.json_saver = MagicMock()
-    training_class_instance.json_saver.results = {}
+    # Adjust config for training type
+    training_config = base_training_config
+    if training_type == "bayer_to_rgb":
+        training_config.input_channels = 4
+        training_config.output_channels = 3
+    else:  # rgb_to_rgb
+        training_config.input_channels = 3
+        training_config.output_channels = 3
     
-    # Mock methods to no-op (originals call without args/returns; simulate empty validation/test)
-    training_class_instance.offline_validation = MagicMock(return_value=None)
-    training_class_instance.offline_std_test = MagicMock(return_value=None)
+    # Create trainer using Clean API factory functions
+    if trainer_type == "denoise_compress":
+        trainer = create_denoise_compress_trainer(training_type, training_config)
+    else:  # denoise
+        trainer = create_denoiser_trainer(training_type, training_config)
     
-    # Simulate direct calls as in originals
-    training_class_instance.offline_validation()
-    training_class_instance.offline_std_test()
+    # Create mock dataloader that provides proper tensor shapes
+    def create_mock_dataloader():
+        """Create a mock dataloader that yields one batch with proper tensor shapes."""
+        return iter([{
+            'clean_images': torch.randn(1, training_config.output_channels, 64, 64),
+            'noisy_images': torch.randn(1, training_config.input_channels, 64, 64), 
+            'masks': torch.ones(1, 1, 64, 64)
+        }])
     
-    # Assert calls made and results exist (reflecting json_saver usage in originals)
-    training_class_instance.offline_validation.assert_called_once()
-    training_class_instance.offline_std_test.assert_called_once()
-    assert training_class_instance.json_saver.results is not None
+    # Test validation using Clean API's native interface
+    val_result = trainer.validate(validation_dataloader=create_mock_dataloader())
+    assert val_result is not None
+    assert isinstance(val_result, dict)
+    assert 'loss' in val_result
+    assert isinstance(val_result['loss'], (int, float))
+    
+    # Test testing using Clean API's native interface  
+    test_result = trainer.test(test_dataloader=create_mock_dataloader())
+    assert test_result is not None
+    assert isinstance(test_result, dict)
+    assert 'loss' in test_result
+    assert 'test_name' in test_result
+    assert test_result['test_name'] == 'test'
+    assert isinstance(test_result['loss'], (int, float))
+    
+    # Verify trainer was created successfully with Clean API
+    assert trainer.config == training_config
+    assert trainer.training_type == training_type
+    assert hasattr(trainer, 'model')
+    assert hasattr(trainer, 'optimizer')
+    assert hasattr(trainer, '_create_model')
+    assert hasattr(trainer, '_create_optimizer')
+    assert hasattr(trainer, 'compute_loss')

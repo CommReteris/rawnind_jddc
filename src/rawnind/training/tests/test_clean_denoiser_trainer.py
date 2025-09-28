@@ -55,7 +55,7 @@ class TestCleanDenoiserTrainer:
 
     def test_init_bayer_valid(self, base_denoiser_config, mock_inference_denoiser_factory):
         """Test Bayer denoiser trainer initialization with valid config."""
-        bayer_config = TrainingConfig(**vars(base_denoiser_config), input_channels=4, output_channels=3, crop_size=256)
+        bayer_config = TrainingConfig(**{k: v for k, v in vars(base_denoiser_config).items() if k != 'input_channels'}, input_channels=4, output_channels=3, crop_size=256)
         trainer = CleanDenoiserTrainer(config=bayer_config, training_type="bayer_to_rgb")
         assert trainer.training_type == "bayer_to_rgb"
         assert trainer.config.input_channels == 4
@@ -64,13 +64,13 @@ class TestCleanDenoiserTrainer:
 
     def test_init_rgb_invalid_channels(self, base_denoiser_config, mock_inference_denoiser_factory):
         """Test RGB denoiser trainer init with invalid input channels."""
-        invalid_config = TrainingConfig(**vars(base_denoiser_config), input_channels=4)
+        invalid_config = TrainingConfig(**{k: v for k, v in vars(base_denoiser_config).items() if k != 'input_channels'}, input_channels=4)
         with pytest.raises(ValueError, match="RGB training requires 3 input channels"):
             CleanDenoiserTrainer(config=invalid_config, training_type="rgb_to_rgb")
 
     def test_init_bayer_invalid_channels(self, base_denoiser_config, mock_inference_denoiser_factory):
         """Test Bayer denoiser trainer init with invalid input channels."""
-        invalid_config = TrainingConfig(**vars(base_denoiser_config), input_channels=3)
+        invalid_config = TrainingConfig(**{k: v for k, v in vars(base_denoiser_config).items() if k != 'input_channels'}, input_channels=3)
         with pytest.raises(ValueError, match="Bayer training requires 4 input channels"):
             CleanDenoiserTrainer(config=invalid_config, training_type="bayer_to_rgb")
 
@@ -82,7 +82,7 @@ class TestCleanDenoiserTrainer:
     @patch('rawnind.dependencies.raw_processing.camRGB_to_lin_rec2020_images')
     def test_process_bayer_output(self, mock_camrgb, mock_demosaic, model_output_channels, expected_demosaic_call, expected_camrgb_call_shape, base_denoiser_config, mock_inference_denoiser_factory):
         """Test process_bayer_output with mock data for demosaicing and color transformation."""
-        bayer_config = TrainingConfig(**vars(base_denoiser_config), input_channels=4, output_channels=3, crop_size=128)
+        bayer_config = TrainingConfig(**{k: v for k, v in vars(base_denoiser_config).items() if k != 'input_channels'}, input_channels=4, output_channels=3, crop_size=128)
         trainer = CleanDenoiserTrainer(config=bayer_config, training_type="bayer_to_rgb")
 
         # Mock outputs for raw processing functions
@@ -112,7 +112,7 @@ class TestCleanDenoiserTrainer:
 
     def test_process_bayer_output_unsupported_channels(self, base_denoiser_config, mock_inference_denoiser_factory):
         """Test process_bayer_output with unexpected model output channels."""
-        bayer_config = TrainingConfig(**vars(base_denoiser_config), input_channels=4, output_channels=3)
+        bayer_config = TrainingConfig(**{k: v for k, v in vars(base_denoiser_config).items() if k != 'input_channels'}, input_channels=4, output_channels=3)
         trainer = CleanDenoiserTrainer(config=bayer_config, training_type="bayer_to_rgb")
         
         with pytest.raises(ValueError, match="Unexpected model output channels"):

@@ -65,6 +65,55 @@ class TrainingConfig:
     val_crop_size: Optional[int] = None
     num_crops_per_image: int = 1
     save_training_images: bool = False
+    
+    # Testing and validation flags
+    test_only: bool = False
+    
+    # Legacy compatibility attributes for training_loops
+    expname: Optional[str] = None
+    save_dpath: Optional[str] = None
+    load_path: Optional[str] = None
+    init_step: int = 0
+    debug_options: List[str] = field(default_factory=list)
+    
+    # Data loading configuration
+    clean_dataset_yamlfpaths: List[str] = field(default_factory=list)
+    noise_dataset_yamlfpaths: List[str] = field(default_factory=list)
+    test_reserve: List[str] = field(default_factory=list)
+    
+    # Processing configuration
+    match_gain: str = "output"
+    transfer_function: str = "None"
+    transfer_function_valtest: str = "pq"
+    arbitrary_proc_method: Optional[str] = None
+    bayer_only: bool = False
+    data_pairing: str = "pair"
+    
+    # Batch configuration
+    batch_size_clean: Optional[int] = None
+    batch_size_noisy: Optional[int] = None
+    
+    # Training continuation
+    continue_training_from_last_model_if_exists: bool = False
+    fallback_load_path: Optional[str] = None
+    reset_optimizer_on_fallback_load_path: bool = True
+    reset_lr: bool = False
+    
+    # Logging and debugging
+    warmup_nsteps: int = 0
+    comment: Optional[str] = None
+    config: Optional[str] = None  # Path to config file
+    
+    # Legacy parameter aliases for backward compatibility
+    arch: Optional[str] = None
+    in_channels: Optional[int] = None
+    out_channels: Optional[int] = None
+    init_lr: Optional[float] = None
+    tot_steps: Optional[int] = None
+    val_interval: Optional[int] = None
+    loss: Optional[str] = None
+    lr_multiplier: Optional[float] = None
+    metrics: List[str] = field(default_factory=lambda: ["mse"])
 
     def __post_init__(self):
         """Validate configuration after initialization."""
@@ -92,6 +141,12 @@ class TrainingConfig:
             self.test_crop_size = self.crop_size
         if self.val_crop_size is None:
             self.val_crop_size = self.crop_size
+            
+        # Set batch size defaults for legacy compatibility
+        if self.batch_size_clean is None:
+            self.batch_size_clean = self.batch_size
+        if self.batch_size_noisy is None:
+            self.batch_size_noisy = self.batch_size
 
     def is_valid(self) -> bool:
         """Check if configuration is valid."""
@@ -101,6 +156,74 @@ class TrainingConfig:
         except ValueError:
             return False
 
+@dataclass
+class LegacyTrainingConfig:
+    """Legacy configuration class with parameter names matching original training scripts."""
+
+    # Core parameters (legacy naming)
+    in_channels: int
+    out_channels: int
+    arch: str = "unet"
+    init_lr: float = 1e-4
+    batch_size: int = 4
+    crop_size: int = 128
+    tot_steps: int = 1000
+    val_interval: int = 100
+    loss: str = "mse"
+    device: str = "cpu"
+    patience: int = 1000
+    lr_multiplier: float = 0.5
+
+    # Model-specific parameters
+    filter_units: int = 48
+
+    # Compression-specific (legacy naming)
+    compression_lambda: Optional[float] = None
+    bit_estimator_lr_multiplier: float = 1.0
+
+    # Training behavior
+    test_interval: Optional[int] = None
+    test_crop_size: Optional[int] = None
+    val_crop_size: Optional[int] = None
+    num_crops_per_image: int = 1
+    save_training_images: bool = False
+
+    # Additional metrics
+    additional_metrics: List[str] = field(default_factory=list)
+
+    # Legacy-specific fields that may be expected
+    metrics: List[str] = field(default_factory=lambda: ["mse"])
+
+    def __post_init__(self):
+        """Validate configuration after initialization."""
+        if self.init_lr <= 0:
+            raise ValueError("Learning rate must be positive")
+        if self.batch_size <= 0:
+            raise ValueError("Batch size must be positive")
+        if self.crop_size <= 0:
+            raise ValueError("Crop size must be positive")
+        if self.tot_steps <= 0:
+            raise ValueError("Total steps must be positive")
+        if self.val_interval <= 0:
+            raise ValueError("Validation interval must be positive")
+        if self.arch not in ["unet", "utnet3", "autoencoder", "utnet2", "standard"]:
+            raise ValueError(f"Unsupported model architecture: {self.arch}")
+        if self.loss not in ["mse", "ms_ssim", "l1"]:
+            raise ValueError(f"Unsupported loss function: {self.loss}")
+
+        # Set defaults based on values
+        if self.test_crop_size is None:
+            self.test_crop_size = self.crop_size
+        if self.val_crop_size is None:
+            self.val_crop_size = self.crop_size
+
+    def is_valid(self) -> bool:
+        """Check if configuration is valid."""
+        try:
+            self.__post_init__()
+            return True
+        except ValueError:
+            return False
 
 @dataclass
 class ExperimentConfig:
@@ -969,7 +1092,7 @@ class CleanExperimentManager:
                         self.best_steps[metric_name] = {'step': step, 'value': metric_value}
 
         # Save to results file
-        self.json_saver.add_res(step, metrics)
+        self.json_saver.add_res(metrics, step=step)
 
     def get_best_steps(self) -> Dict[str, int]:
         """Get best step numbers for each tracked metric.

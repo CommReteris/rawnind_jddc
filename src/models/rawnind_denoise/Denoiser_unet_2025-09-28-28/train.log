@@ -1,0 +1,5 @@
+2025-09-28 09:16:10 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py --tb=short
+2025-09-28 09:16:10 INFO     PID: 586398
+2025-09-28 09:16:10 INFO     Experiment 'test_resume' initialized in /tmp/tmp8ghbcjjp
+2025-09-28 09:16:10 WARNING  No training batches available at step 3, advancing step counter
+2025-09-28 09:16:11 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/Denoiser_unet_2025-09-28-29/train_cmd.sh.config

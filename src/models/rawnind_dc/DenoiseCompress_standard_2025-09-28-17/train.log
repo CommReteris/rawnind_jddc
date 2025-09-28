@@ -1,0 +1,2 @@
+2025-09-28 16:57:21 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind/tests/test_e2e_inference_clean_api.py::TestCleanInferenceE2EPipeline::test_compression_end_to_end_pipeline -v
+2025-09-28 16:57:21 INFO     PID: 1045175

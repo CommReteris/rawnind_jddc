@@ -1,0 +1,4 @@
+2025-09-28 09:48:26 INFO     /home/rengo/.vscode/extensions/ms-python.python-2025.14.0-linux-x64/python_files/vscode_pytest/run_pytest_script.py --rootdir=/home/rengo/rawnind_jddc
+2025-09-28 09:48:26 INFO     PID: 619921
+2025-09-28 09:48:27 WARNING  Skipping ms_ssim: image size 64 too small (need ≥162)
+2025-09-28 09:48:27 INFO     Saved validation output to /tmp/tmp8rdno_n6/batch_0_sample_0_output.exr

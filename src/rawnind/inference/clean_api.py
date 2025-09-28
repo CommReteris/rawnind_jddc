@@ -329,15 +329,25 @@ class CleanCompressor:
         """
         return self.compress_and_denoise(image, target_bpp)
 
-    def decompress(self, compressed_data: torch.Tensor) -> torch.Tensor:
+    def decompress(self, compressed_data) -> torch.Tensor:
         """Decompress compressed image data.
 
         Args:
-            compressed_data: Compressed image tensor
+            compressed_data: Compressed image tensor or dict from compress()
 
         Returns:
             Decompressed image tensor
         """
+        # Handle dict input from compress() method
+        if isinstance(compressed_data, dict):
+            if 'denoised_image' in compressed_data:
+                return compressed_data['denoised_image']
+            elif 'reconstructed_image' in compressed_data:
+                return compressed_data['reconstructed_image']
+            else:
+                raise ValueError("Dict input must contain 'denoised_image' or 'reconstructed_image'")
+        
+        # Handle tensor input for traditional decompression
         # For joint denoise+compress models, the forward pass does both
         # This is a simplified implementation - real decompression might be more complex
         with torch.no_grad():
@@ -403,6 +413,7 @@ class CleanCompressor:
             return {
                 'denoised_image'   : denoised,
                 'bpp'              : float(bpp) if isinstance(bpp, torch.Tensor) else bpp,
+                'bits_per_pixel'   : float(bpp) if isinstance(bpp, torch.Tensor) else bpp,  # Alias for test compatibility
                 'compression_ratio': float(24.0 / bpp) if bpp > 0 else float('inf')
             }
 

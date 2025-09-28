@@ -1,0 +1,4 @@
+2025-09-28 09:46:31 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind
+2025-09-28 09:46:31 INFO     PID: 618743
+2025-09-28 09:46:31 WARNING  Unknown metric: msssim
+2025-09-28 09:46:31 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/BayerDenoiser_unet_2025-09-28-35/train_cmd.sh.config

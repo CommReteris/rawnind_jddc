@@ -1,0 +1,10 @@
+2025-09-28 13:04:10 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind -q --cov
+2025-09-28 13:04:10 INFO     PID: 819465
+2025-09-28 13:04:15 ERROR    Error computing ms_ssim: ms_ssim_metric() missing 2 required positional arguments: 'input' and 'target'
+2025-09-28 13:04:15 ERROR    Error computing mse: 'Tensor' object is not callable
+2025-09-28 13:04:15 ERROR    Error computing psnr: 'Tensor' object is not callable
+2025-09-28 13:04:15 ERROR    Error computing ms_ssim: 'Tensor' object is not callable
+2025-09-28 13:04:16 ERROR    Error computing mse: 'Tensor' object is not callable
+2025-09-28 13:04:16 INFO     Deleted: /tmp/pytest-of-rengo/pytest-131/test_experiment_manager_cleanu0/saved_models/iter_300.pt
+2025-09-28 13:04:16 INFO     Deleted: /tmp/pytest-of-rengo/pytest-131/test_experiment_manager_cleanu0/saved_models/iter_100.pt
+2025-09-28 13:04:17 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/Denoiser_unet_2025-09-28-425/train_cmd.sh.config

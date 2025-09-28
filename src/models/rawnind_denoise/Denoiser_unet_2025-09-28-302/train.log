@@ -1,0 +1,8 @@
+2025-09-28 10:03:13 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind
+2025-09-28 10:03:13 INFO     PID: 634798
+2025-09-28 10:03:13 INFO     Experiment 'test_metrics' initialized in /tmp/tmplxh1xxb8
+2025-09-28 10:03:13 WARNING  No training batches available at step 3, advancing step counter
+2025-09-28 10:03:14 WARNING  Skipping ms_ssim: image size 64 too small (need ≥162)
+2025-09-28 10:03:14 WARNING  Skipping ms_ssim: image size 64 too small (need ≥162)
+2025-09-28 10:03:14 WARNING  Skipping ms_ssim: image size 64 too small (need ≥162)
+2025-09-28 10:03:14 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/BayerDenoiser_unet_2025-09-28-52/train_cmd.sh.config

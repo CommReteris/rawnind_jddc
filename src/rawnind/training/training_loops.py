@@ -167,7 +167,8 @@ class TrainingLoops:
     def save_args(config: TrainingConfig):
         os.makedirs(config.save_dpath, exist_ok=True)
         out_fpath = os.path.join(config.save_dpath, "args.yaml")
-        numpy_operations.dict_to_yaml(vars(config), out_fpath)
+        from ..dependencies.json_saver import dict_to_yaml
+        dict_to_yaml(vars(config), out_fpath)
 
     def save_cmd(self):
         os.makedirs(self.save_dpath, exist_ok=True)
@@ -176,7 +177,8 @@ class TrainingLoops:
         )
         # Log configuration instead of command for clean API
         config_fpath = out_fpath + '.config'
-        numpy_operations.dict_to_yaml(vars(self.config), config_fpath)
+        from ..dependencies.json_saver import dict_to_yaml
+        dict_to_yaml(vars(self.config), config_fpath)
         logging.info(f"Configuration saved to {config_fpath}")
 
     def autocomplete_config(self, config: TrainingConfig):

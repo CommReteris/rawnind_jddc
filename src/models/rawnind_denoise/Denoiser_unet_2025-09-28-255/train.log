@@ -1,0 +1,5 @@
+2025-09-28 09:47:47 INFO     /home/rengo/.vscode/extensions/ms-python.python-2025.14.0-linux-x64/python_files/vscode_pytest/run_pytest_script.py --rootdir=/home/rengo/rawnind_jddc
+2025-09-28 09:47:47 INFO     PID: 619921
+2025-09-28 09:47:47 INFO     Experiment 'test_resume' initialized in /tmp/tmpz48ybhul
+2025-09-28 09:47:49 WARNING  No training batches available at step 3, advancing step counter
+2025-09-28 09:47:50 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/Denoiser_unet_2025-09-28-256/train_cmd.sh.config

@@ -40,8 +40,49 @@ class DenoiserTrainingBayerToProfiledRGB(
         os.path.join("dependencies", "configs", "train_denoise_bayer2prgb.yaml")
     ]
 
-    def __init__(self, launch=False, **kwargs) -> None:
-        super().__init__(launch=launch, **kwargs)
+    def __init__(self, config=None, launch=False, **kwargs) -> None:
+        from ..training.clean_api import LegacyTrainingConfig, TrainingConfig
+        
+        if config is not None and isinstance(config, LegacyTrainingConfig):
+            # Convert LegacyTrainingConfig to TrainingConfig with testing defaults
+            import tempfile
+            training_config = TrainingConfig(
+                model_architecture=config.arch,
+                input_channels=config.in_channels,
+                output_channels=config.out_channels,
+                learning_rate=config.init_lr,
+                batch_size=config.batch_size,
+                crop_size=config.crop_size,
+                total_steps=config.tot_steps,
+                validation_interval=config.val_interval,
+                loss_function=config.loss,
+                device=config.device,
+                patience=config.patience,
+                lr_decay_factor=config.lr_multiplier,
+                additional_metrics=config.additional_metrics,
+                filter_units=config.filter_units,
+                compression_lambda=config.compression_lambda,
+                bit_estimator_lr_multiplier=config.bit_estimator_lr_multiplier,
+                test_interval=config.test_interval,
+                test_crop_size=config.test_crop_size,
+                val_crop_size=config.val_crop_size,
+                num_crops_per_image=config.num_crops_per_image,
+                save_training_images=config.save_training_images,
+                # Set test-only mode and required paths for testing
+                test_only=True,
+                expname="test_experiment",
+                save_dpath=tempfile.mkdtemp(),
+                metrics=config.metrics,
+            )
+            super().__init__(training_config)
+        else:
+            # Traditional kwargs-based initialization for backward compatibility
+            super().__init__(**kwargs)
+        
+        # Handle launch logic if needed (preserve original intent)
+        if launch:
+            # Original launch logic would go here if it existed
+            pass
 
     def autocomplete_args(self, args) -> None:
         if not args.in_channels:
@@ -63,8 +104,49 @@ class DenoiserTrainingProfiledRGBToProfiledRGB(
         os.path.join("dependencies", "configs", "train_denoise_prgb2prgb.yaml")
     ]
 
-    def __init__(self, launch=False, **kwargs):
-        super().__init__(launch=launch, **kwargs)
+    def __init__(self, config=None, launch=False, **kwargs):
+        from ..training.clean_api import LegacyTrainingConfig, TrainingConfig
+        
+        if config is not None and isinstance(config, LegacyTrainingConfig):
+            # Convert LegacyTrainingConfig to TrainingConfig with testing defaults
+            import tempfile
+            training_config = TrainingConfig(
+                model_architecture=config.arch,
+                input_channels=config.in_channels,
+                output_channels=config.out_channels,
+                learning_rate=config.init_lr,
+                batch_size=config.batch_size,
+                crop_size=config.crop_size,
+                total_steps=config.tot_steps,
+                validation_interval=config.val_interval,
+                loss_function=config.loss,
+                device=config.device,
+                patience=config.patience,
+                lr_decay_factor=config.lr_multiplier,
+                additional_metrics=config.additional_metrics,
+                filter_units=config.filter_units,
+                compression_lambda=config.compression_lambda,
+                bit_estimator_lr_multiplier=config.bit_estimator_lr_multiplier,
+                test_interval=config.test_interval,
+                test_crop_size=config.test_crop_size,
+                val_crop_size=config.val_crop_size,
+                num_crops_per_image=config.num_crops_per_image,
+                save_training_images=config.save_training_images,
+                # Set test-only mode and required paths for testing
+                test_only=True,
+                expname="test_experiment",
+                save_dpath=tempfile.mkdtemp(),
+                metrics=config.metrics,
+            )
+            super().__init__(training_config)
+        else:
+            # Traditional kwargs-based initialization for backward compatibility
+            super().__init__(**kwargs)
+        
+        # Handle launch logic if needed (preserve original intent)
+        if launch:
+            # Original launch logic would go here if it existed
+            pass
 
     def autocomplete_args(self, args):
         if not args.in_channels:

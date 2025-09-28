@@ -1,7 +1,7 @@
 """
 Neural network architectures for image compression.
 
-This module implements various neural network architectures for learned image compression, 
+This module implements various neural network architectures for learned image compression,
 primarily based on the Ballé et al. approach to transform coding with autoencoders.
 The models support both regular RGB (3-channel) and Bayer pattern (4-channel) images.
 
@@ -45,18 +45,18 @@ from ..dependencies import external_libraries as gdn
 class AbstractRawImageCompressor(nn.Module):
     """
     Abstract base class for neural image compression models.
-    
+
     This class defines the interface for all compression models in the module,
-    providing a framework for encoder-decoder architectures. It handles the 
+    providing a framework for encoder-decoder architectures. It handles the
     instantiation of encoder and decoder components and defines the expected
     input/output format.
-    
+
     The compression pipeline typically consists of:
     1. Encoding an input image to a latent representation
     2. Quantizing the latent representation (simulated during training)
     3. Entropy coding the quantized representation (simulated during training)
     4. Decoding the latent representation back to an image
-    
+
     Derived classes must implement the forward method to complete this pipeline.
     """
 
@@ -72,7 +72,7 @@ class AbstractRawImageCompressor(nn.Module):
     ):
         """
         Initialize the compression model with encoder and decoder components.
-        
+
         Args:
             device: Device to place the model on (CPU or CUDA)
             in_channels: Number of input channels (3 for RGB, 4 for Bayer)
@@ -102,14 +102,14 @@ class AbstractRawImageCompressor(nn.Module):
     def forward(self, input_image: torch.Tensor) -> dict:
         """
         Process an image through the compression pipeline.
-        
+
         Takes an input image batch, encodes it to a latent representation,
         applies quantization (simulated during training), and decodes it
         back to an image. Also calculates rate and distortion metrics.
-        
+
         Args:
             input_image: Batch of images with shape (batch_size, channels, height, width)
-            
+
         Returns:
             Dictionary containing:
             - "reconstructed_image": Tensor of reconstructed images, shape (b, c, h, w)
@@ -118,12 +118,62 @@ class AbstractRawImageCompressor(nn.Module):
             - "bpp_feature": (optional) Float tensor, bpp of the main features
             - "bpp_sidestring": (optional) Float tensor, bpp of the side information
         """
-        pass
+        # Encode input to latent representation
+        latent = self.Encoder(input_image)
+
+        # Simulate quantization during training (straight-through estimator)
+        if self.training:
+            # Add uniform noise to simulate quantization during training
+            noise = torch.rand_like(latent) - 0.5
+            quantized_latent = latent + noise
+        else:
+            # Round to nearest integer during evaluation
+            quantized_latent = torch.round(latent)
+
+        # Decode latent back to image
+        reconstructed_image = self.Decoder(quantized_latent)
+
+        ### THIS IS A BIG NONO #TODO ACTUALLY IMPLEMENT ENTROPY MODELS
+
+        # Calculate bits per pixel (simplified estimation for testing)
+        # This is a basic estimate - real implementation would use entropy models
+        latent_numel = latent.numel()
+        pixel_count = input_image.shape[0] * input_image.shape[2] * input_image.shape[3]
+        bpp = torch.tensor(latent_numel / pixel_count * 8.0, device=input_image.device, dtype=torch.float32)
+
+        return {
+            "reconstructed_image": reconstructed_image,
+            "bpp": bpp,
+        }
+    
+    def get_parameters(self, lr=None, bitEstimator_lr_multiplier=None):
+        """Get model parameters for optimization with separate learning rates.
+        
+        Args:
+            lr: Base learning rate for main model parameters
+            bitEstimator_lr_multiplier: Multiplier for bit estimator learning rate
+            
+        Returns:
+            List of parameter groups for optimizer
+        """
+        if lr is None:
+            lr = 1e-4
+        if bitEstimator_lr_multiplier is None:
+            bitEstimator_lr_multiplier = 1.0
+            
+        # Return encoder and decoder parameters with base learning rate
+        param_groups = [
+            {'params': self.Encoder.parameters(), 'lr': lr},
+            {'params': self.Decoder.parameters(), 'lr': lr}
+        ]
+        
+        return param_groups
+        ### END BIG NONO #TODO
 
     def cpu(self) -> Self:
         """
         Move the model to CPU device.
-        
+
         Returns:
             Self reference for method chaining
         """
@@ -133,10 +183,10 @@ class AbstractRawImageCompressor(nn.Module):
     def todev(self, device: torch.device) -> Self:
         """
         Move the model to the specified device.
-        
+
         Args:
             device: Target device (CPU or CUDA)
-            
+
         Returns:
             Self reference for method chaining
         """
@@ -147,21 +197,21 @@ class AbstractRawImageCompressor(nn.Module):
 class BalleEncoder(nn.Module):
     """
     Encoder network based on Ballé et al. architecture for image compression.
-    
+
     This encoder takes an image (RGB or Bayer pattern) and transforms it into
     a latent representation suitable for entropy coding. The architecture consists
     of multiple strided convolutional layers with Generalized Divisive Normalization
     (GDN) activation, progressively reducing spatial dimensions while increasing
     the feature channel count.
-    
+
     Features:
     - Support for both RGB (3-channel) and Bayer pattern (4-channel) inputs
     - Optional pre-upsampling for Bayer pattern inputs
     - 4 levels of downsampling (16x spatial reduction)
     - GDN activations for better statistical decorrelation
     - Carefully initialized weights for stable training
-    
-    The network reduces spatial dimensions by a factor of 16 (2^4) while 
+
+    The network reduces spatial dimensions by a factor of 16 (2^4) while
     transforming input channels to bitstream_out_channels features.
     """
 
@@ -175,7 +225,7 @@ class BalleEncoder(nn.Module):
     ):
         """
         Initialize the encoder network.
-        
+
         Args:
             device: Device to place the model on (CPU or CUDA)
             hidden_out_channels: Number of channels in the hidden layers (default: 192)
@@ -183,7 +233,7 @@ class BalleEncoder(nn.Module):
             in_channels: Number of input channels (3 for RGB, 4 for Bayer)
             preupsample: Whether to upsample Bayer pattern inputs before encoding
                          (only applicable when in_channels=4)
-        
+
         Raises:
             AssertionError: If trying to use preupsample with RGB input (in_channels=3)
         """
@@ -236,13 +286,13 @@ class BalleEncoder(nn.Module):
     def forward(self, x):
         """
         Encode input image to latent representation.
-        
+
         Args:
             x: Input image tensor with shape [batch_size, channels, height, width]
                where channels is either 3 (RGB) or 4 (Bayer)
-        
+
         Returns:
-            Latent representation with shape 
+            Latent representation with shape
             [batch_size, bitstream_out_channels, height/16, width/16]
         """
         x = self.preprocess(x)  # Optional upsampling for Bayer inputs
@@ -277,19 +327,19 @@ class BalleEncoder(nn.Module):
 class BalleDecoder(nn.Module):
     """
     Decoder network based on Ballé et al. architecture for image compression.
-    
-    This decoder transforms a latent representation back into an RGB image. 
-    The architecture consists of multiple transposed convolutional layers with 
-    inverse Generalized Divisive Normalization (GDN) activation, progressively 
+
+    This decoder transforms a latent representation back into an RGB image.
+    The architecture consists of multiple transposed convolutional layers with
+    inverse Generalized Divisive Normalization (GDN) activation, progressively
     increasing spatial dimensions while decreasing the feature channel count.
-    
+
     Features:
     - Reconstructs RGB (3-channel) images from latent representations
     - 4 levels of upsampling (16x spatial expansion)
     - Inverse GDN activations to match the encoder's normalization
     - Carefully initialized weights for stable training
     - Symmetric structure to the BalleEncoder
-    
+
     The network increases spatial dimensions by a factor of 16 (2^4) while
     transforming bitstream_out_channels features to 3 RGB channels.
     """
@@ -302,7 +352,7 @@ class BalleDecoder(nn.Module):
     ):
         """
         Initialize the decoder network.
-        
+
         Args:
             device: Device to place the model on (CPU or CUDA)
             hidden_out_channels: Number of channels in the hidden layers (default: 192)
@@ -381,11 +431,11 @@ class BalleDecoder(nn.Module):
     def forward(self, x):
         """
         Decode latent representation to RGB image.
-        
+
         Args:
-            x: Latent representation tensor with shape 
+            x: Latent representation tensor with shape
                [batch_size, bitstream_out_channels, height/16, width/16]
-        
+
         Returns:
             Reconstructed RGB image with shape [batch_size, 3, height, width]
         """
@@ -398,17 +448,17 @@ class BalleDecoder(nn.Module):
 class BayerPSDecoder(BalleDecoder):
     """
     Specialized decoder for Bayer pattern images using PixelShuffle upsampling.
-    
+
     This decoder extends BalleDecoder to handle Bayer pattern outputs, converting
     latent representations to RGB images with 2x the spatial resolution of the
     standard decoder output. This is designed for use with Bayer pattern inputs
     that need to maintain their higher effective resolution.
-    
+
     The key difference from BalleDecoder is the output stage, which:
     1. Adds an additional transposed convolution (deconv4)
     2. Uses a 1x1 convolution to generate 12 channels (4 Bayer x 3 RGB)
     3. Applies PixelShuffle to rearrange these channels into a 2x upsampled RGB image
-    
+
     This approach effectively doubles the spatial resolution compared to the
     standard BalleDecoder, making it suitable for Bayer pattern processing.
     """
@@ -421,7 +471,7 @@ class BayerPSDecoder(BalleDecoder):
     ):
         """
         Initialize the Bayer pattern decoder with PixelShuffle upsampling.
-        
+
         Args:
             device: Device to place the model on (CPU or CUDA)
             hidden_out_channels: Number of channels in the hidden layers (default: 192)
@@ -464,17 +514,17 @@ class BayerPSDecoder(BalleDecoder):
 class BayerTCDecoder(BalleDecoder):
     """
     Specialized decoder for Bayer pattern images using transposed convolutions.
-    
+
     This decoder extends BalleDecoder to handle Bayer pattern outputs, converting
     latent representations to RGB images with 2x the spatial resolution of the
     standard decoder output. Unlike BayerPSDecoder which uses PixelShuffle, this
     decoder uses an additional transposed convolution for the final upsampling.
-    
+
     The key difference from BalleDecoder is the output stage, which:
     1. Adds an additional transposed convolution (deconv4)
     2. Includes a LeakyReLU activation
     3. Uses a final transposed convolution to generate RGB output at 2x resolution
-    
+
     This approach provides an alternative to PixelShuffle while still achieving
     the 2x spatial resolution needed for Bayer pattern processing.
     """
@@ -487,7 +537,7 @@ class BayerTCDecoder(BalleDecoder):
     ):
         """
         Initialize the Bayer pattern decoder with transposed convolution upsampling.
-        
+
         Args:
             device: Device to place the model on (CPU or CUDA)
             hidden_out_channels: Number of channels in the hidden layers (default: 192)

@@ -28,10 +28,12 @@ def mock_compression_model():
     mock_model = MagicMock(spec=torch.nn.Module)
     mock_model.to.return_value = mock_model
     # Simulate get_parameters from the actual model
-    mock_model.get_parameters.return_value = [
-        {'params': [torch.nn.Parameter(torch.randn(1))], 'lr': 1e-4, 'name': 'encoder'},
-        {'params': [torch.nn.Parameter(torch.randn(1))], 'lr': 1e-4, 'name': 'decoder'}
-    ]
+    def mock_get_parameters(lr=None, bitEstimator_lr_multiplier=None):
+        return [
+            {'params': [torch.nn.Parameter(torch.randn(1))], 'lr': lr or 1e-4, 'name': 'encoder'},
+            {'params': [torch.nn.Parameter(torch.randn(1))], 'lr': lr or 1e-4, 'name': 'decoder'}
+        ]
+    mock_model.get_parameters = mock_get_parameters
     mock_model.Encoder = MagicMock() # For lowercase alias check
     mock_model.Decoder = MagicMock() # For lowercase alias check
     return mock_model

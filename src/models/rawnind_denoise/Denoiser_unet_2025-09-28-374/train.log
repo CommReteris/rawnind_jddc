@@ -1,0 +1,7 @@
+2025-09-28 11:13:56 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind --tb=no -q
+2025-09-28 11:13:56 INFO     PID: 705987
+2025-09-28 11:13:57 INFO     Preparing datasets with config: {'dataset_type': 'rgb_pairs', 'train_data_paths': ['/path/to/train'], 'val_data_paths': ['/path/to/val'], 'crop_size': 128, 'augmentations': ['flip', 'rotate']}
+2025-09-28 11:13:57 WARNING  Dataset package not available, using mock datasets
+2025-09-28 11:13:57 INFO     Experiment 'test_dataset_integration' initialized in /tmp/tmpqghnyuwd
+2025-09-28 11:13:58 WARNING  No training batches available at step 3, advancing step counter
+2025-09-28 11:13:58 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/Denoiser_unet_2025-09-28-375/train_cmd.sh.config

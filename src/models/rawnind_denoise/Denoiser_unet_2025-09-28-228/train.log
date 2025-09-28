@@ -1,0 +1,5 @@
+2025-09-28 09:46:55 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind
+2025-09-28 09:46:55 INFO     PID: 618743
+2025-09-28 09:46:56 INFO     Experiment 'test_visualizations' initialized in /tmp/tmp8_q4jzge
+2025-09-28 09:46:56 WARNING  No training batches available at step 2, advancing step counter
+2025-09-28 09:46:56 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/Denoiser_unet_2025-09-28-229/train_cmd.sh.config

@@ -103,7 +103,8 @@ class MSE_loss(torch.nn.MSELoss):
 losses = {
     "l1"         : L1_loss,
     "mse"        : MSE_loss,  # Standard Mean Squared Error loss
-    "ms_ssim": MS_SSIM_loss  # Perceptual MS-SSIM loss (1 - MS_SSIM)
+    "ms_ssim": MS_SSIM_loss,  # Perceptual MS-SSIM loss (1 - MS_SSIM)
+    "ms_ssim_loss": MS_SSIM_loss  # Alias for consistency with legacy code
 }
 
 # Dictionary mapping metric names to their implementation classes

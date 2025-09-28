@@ -1,0 +1,7 @@
+2025-09-28 16:49:44 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind/tests/test_e2e_training_clean_api.py::TestTrainingMetrics -v
+2025-09-28 16:49:44 INFO     PID: 1036155
+2025-09-28 16:49:44 INFO     Experiment 'test_metrics' initialized in /tmp/tmpzrnmlbhy
+2025-09-28 16:49:45 WARNING  No training batches available at step 3, advancing step counter
+2025-09-28 16:49:46 WARNING  Skipping ms_ssim: image size 64 too small (need ≥162)
+2025-09-28 16:49:46 WARNING  Skipping ms_ssim: image size 64 too small (need ≥162)
+2025-09-28 16:49:46 WARNING  Skipping ms_ssim: image size 64 too small (need ≥162)

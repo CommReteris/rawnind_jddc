@@ -37,6 +37,8 @@ def mock_denoiser_model():
     mock_model = MagicMock(spec=torch.nn.Module)
     # Ensure forward returns a tensor of appropriate shape
     mock_model.return_value = torch.randn(1, 3, 128, 128)
+    # Add get_parameters method
+    mock_model.get_parameters = MagicMock(return_value=[])
     return mock_model
 
 @pytest.fixture
@@ -62,6 +64,8 @@ def mock_bayer_denoiser_model():
     mock_model = MagicMock(spec=torch.nn.Module)
     # Bayer input results in RGB output (often 2x resolution)
     mock_model.return_value = torch.randn(1, 3, 256, 256)
+    # Add get_parameters method
+    mock_model.get_parameters = MagicMock(return_value=[])
     return mock_model
 
 @pytest.fixture

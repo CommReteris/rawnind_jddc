@@ -863,12 +863,16 @@ def demosaic(bayer_mosaic):
     """Demosaic Bayer pattern tensor to RGB.
 
     Args:
-        bayer_mosaic: torch.Tensor [1, H, W] Bayer pattern
+        bayer_mosaic: torch.Tensor [1, H, W] Bayer pattern or [4, H, W] RGGB
 
     Returns:
-        torch.Tensor [3, H, W] RGB image
+        torch.Tensor [3, H*2, W*2] RGB image if input is [1, H, W]
+        torch.Tensor [3, H*2, W*2] RGB image if input is [4, H, W] RGGB
     """
     import cv2
+    if bayer_mosaic.shape[0] == 4:
+        # Convert RGGB to mono Bayer
+        bayer_mosaic = rggb_to_mono(bayer_mosaic.unsqueeze(0)).squeeze(0)
     bayer_np = bayer_mosaic.detach().cpu().numpy()
     min_val, max_val = bayer_np.min(), bayer_np.max()
     offset = max(0, -min_val)
@@ -877,3 +881,21 @@ def demosaic(bayer_mosaic):
     rgb_hwc = cv2.demosaicing(prep, cv2.COLOR_BayerRGGB2RGB_EA)
     rgb_chw = rgb_hwc.transpose(2, 0, 1).astype(np.float32) / 65535 * (max_val + offset) - offset
     return torch.from_numpy(rgb_chw).to(bayer_mosaic.device)
+
+def rggb_to_mono(rggb_image):
+    """Convert RGGB tensor to mono Bayer.
+
+    Args:
+        rggb_image: torch.Tensor [1, 4, H, W] RGGB
+
+    Returns:
+        torch.Tensor [1, 2*H, 2*W] Bayer mosaic
+    """
+    r, g1, g2, b = rggb_image[0]
+    h, w = r.shape
+    mono = torch.zeros((1, 2*h, 2*w), dtype=rggb_image.dtype, device=rggb_image.device)
+    mono[0, 0::2, 0::2] = r  # R
+    mono[0, 0::2, 1::2] = g1  # G1
+    mono[0, 1::2, 0::2] = g2  # G2
+    mono[0, 1::2, 1::2] = b  # B
+    return mono

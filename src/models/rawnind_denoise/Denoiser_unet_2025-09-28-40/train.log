@@ -1,0 +1,4 @@
+2025-09-28 09:16:29 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py --tb=short
+2025-09-28 09:16:29 INFO     PID: 586398
+2025-09-28 09:16:29 WARNING  Skipping ms_ssim: image size 64 too small (need ≥162)
+2025-09-28 09:16:29 INFO     Saved validation output to /tmp/tmpo3k6k0_c/batch_0_sample_0_output.exr

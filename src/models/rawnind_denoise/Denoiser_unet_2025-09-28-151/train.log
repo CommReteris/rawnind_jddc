@@ -1,0 +1,11 @@
+2025-09-28 09:27:00 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py -q src/rawnind --cov
+2025-09-28 09:27:00 INFO     PID: 598095
+2025-09-28 09:27:00 WARNING  Skipping ms_ssim: image size 64 too small (need ≥162)
+2025-09-28 09:27:00 INFO     Saved validation output to /tmp/tmpr9k_ftss/batch_0_sample_0_output.exr
+2025-09-28 09:27:01 INFO     Experiment 'test_experiment' initialized in /tmp/pytest-of-rengo/pytest-47/test_init0/exp_dir
+2025-09-28 09:27:01 INFO     Experiment 'test_experiment' initialized in /tmp/pytest-of-rengo/pytest-47/test_record_metrics_loss_impro0/exp_dir
+2025-09-28 09:27:01 INFO     Experiment 'psnr_test' initialized in /tmp/pytest-of-rengo/pytest-47/test_record_metrics_psnr_impro0/exp_psnr
+2025-09-28 09:27:01 INFO     Experiment 'test_experiment' initialized in /tmp/pytest-of-rengo/pytest-47/test_get_best_steps1/exp_dir
+2025-09-28 09:27:01 INFO     Experiment 'test_experiment' initialized in /tmp/pytest-of-rengo/pytest-47/test_should_save_checkpoint0/exp_dir
+2025-09-28 09:27:01 INFO     Experiment 'test_experiment' initialized in /tmp/pytest-of-rengo/pytest-47/test_cleanup_checkpoints0/exp_dir
+2025-09-28 09:27:01 INFO     Experiment 'test_experiment' initialized in /tmp/pytest-of-rengo/pytest-47/test_cleanup_checkpoints_not_e0/exp_dir

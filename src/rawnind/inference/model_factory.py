@@ -32,6 +32,8 @@ class DenoiseCompress(ImageToImageNN):
         "JPEGXL"             : standard_compressor.JPEGXL_ImageCompressor,
         "JPEG"               : standard_compressor.JPEGXL_ImageCompressor,
         "Passthrough"        : standard_compressor.Passthrough_ImageCompressor,
+        "standard"           : standard_compressor.Std_ImageCompressor,
+        "autoencoder"        : compression_autoencoders.AbstractRawImageCompressor,
     }
     ARCHS_ENC = {
         "Balle": compression_autoencoders.BalleEncoder,

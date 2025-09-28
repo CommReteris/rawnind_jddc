@@ -1,0 +1,6 @@
+2025-09-28 09:46:42 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind
+2025-09-28 09:46:42 INFO     PID: 618743
+2025-09-28 09:46:42 WARNING  Skipping ms_ssim: image size 64 too small (need ≥162)
+2025-09-28 09:46:42 WARNING  Skipping ms_ssim: image size 64 too small (need ≥162)
+2025-09-28 09:46:42 WARNING  Skipping ms_ssim: image size 64 too small (need ≥162)
+2025-09-28 09:46:42 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/Denoiser_unet_2025-09-28-221/train_cmd.sh.config

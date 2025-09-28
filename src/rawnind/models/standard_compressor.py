@@ -17,6 +17,11 @@ TMP_OUTIMG_DPATH = os.path.join("tmp", "outimg")
 
 class Std_ImageCompressor(compression_autoencoders.AbstractRawImageCompressor):
     """Abstract model used as base for other standards."""
+    
+    # Base class attributes that subclasses can override
+    REQ_DEC: bool = False  # Whether decompression is required
+    ENCEXT: str = "std"    # Default extension for compressed files
+    BINARY: str = "gm"     # Default binary for compression
 
     def __init__(self, funit, in_channels: Literal[3] = 3, **kwargs):
         assert in_channels == 3
@@ -29,6 +34,19 @@ class Std_ImageCompressor(compression_autoencoders.AbstractRawImageCompressor):
         self.quality = funit  # using this parameter because it's common to other models
         self.dummy_parameter = torch.nn.Parameter(torch.randn(3))
         self.force_16bit = False
+    
+    def file_encdec(self, infpath: str, outfpath: str, **kwargs):
+        """Basic file encode/decode for standard compression."""
+        # Simple passthrough implementation for base class
+        import shutil
+        shutil.copy2(infpath, outfpath)
+        return {
+            "infpath": infpath,
+            "outfpath": outfpath,
+            "enctime": 0.0,
+            "encsize": os.path.getsize(outfpath),
+            "dectime": 0.0
+        }
 
     def make_input_image_file(self, input_image) -> str:
         """Save tensor image to lossless file, return filepath."""
@@ -82,6 +100,9 @@ class Std_ImageCompressor(compression_autoencoders.AbstractRawImageCompressor):
 
 class JPEG_ImageCompressor(Std_ImageCompressor, stdcompression.JPG_Compression):
     """JPG PyTorch compression model interface."""
+    
+    REQ_DEC = stdcompression.JPG_Compression.REQ_DEC
+    ENCEXT = stdcompression.JPG_Compression.ENCEXT
 
     def __init__(self, funit, **kwargs):
         super().__init__(funit=funit, **kwargs)
@@ -89,6 +110,9 @@ class JPEG_ImageCompressor(Std_ImageCompressor, stdcompression.JPG_Compression):
 
 class BPG_ImageCompressor(Std_ImageCompressor, stdcompression.BPG_Compression):
     """BPG PyTorch compression model interface."""
+    
+    REQ_DEC = stdcompression.BPG_Compression.REQ_DEC
+    ENCEXT = stdcompression.BPG_Compression.ENCEXT
 
     def __init__(self, funit, **kwargs):
         super().__init__(funit=funit, **kwargs)
@@ -96,6 +120,9 @@ class BPG_ImageCompressor(Std_ImageCompressor, stdcompression.BPG_Compression):
 
 class JPEGXS_ImageCompressor(Std_ImageCompressor, stdcompression.JPEGXS_Compression):
     """JPEG XS PyTorch compression model interface."""
+    
+    REQ_DEC = stdcompression.JPEGXS_Compression.REQ_DEC
+    ENCEXT = stdcompression.JPEGXS_Compression.ENCEXT
 
     def __init__(self, funit, **kwargs):
         super().__init__(funit=funit, **kwargs)
@@ -103,6 +130,9 @@ class JPEGXS_ImageCompressor(Std_ImageCompressor, stdcompression.JPEGXS_Compress
 
 class JPEGXL_ImageCompressor(Std_ImageCompressor, stdcompression.JPEGXL_Compression):
     """JPEG XL PyTorch compression model interface."""
+    
+    REQ_DEC = stdcompression.JPEGXL_Compression.REQ_DEC
+    ENCEXT = stdcompression.JPEGXL_Compression.ENCEXT
 
     def __init__(self, funit, **kwargs):
         super().__init__(funit=funit, **kwargs)
@@ -110,6 +140,9 @@ class JPEGXL_ImageCompressor(Std_ImageCompressor, stdcompression.JPEGXL_Compress
 
 class Passthrough_ImageCompressor(Std_ImageCompressor):
     """Passthrough PyTorch compression model interface."""
+    
+    REQ_DEC = False  # No decompression needed for passthrough
+    ENCEXT = "png"   # Use PNG for output files
 
     def __init__(self, funit, **kwargs):
         super().__init__(funit, **kwargs)
