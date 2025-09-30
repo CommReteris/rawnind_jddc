@@ -1,0 +1,4 @@
+2025-09-29 02:33:06 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind --tb=no -q
+2025-09-29 02:33:06 INFO     PID: 112970
+2025-09-29 02:33:06 WARNING  Unknown metric: nonexistent_metric
+2025-09-29 02:33:06 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/Denoiser_unet_2025-09-29-102/train_cmd.sh.config
