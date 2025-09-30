@@ -95,6 +95,10 @@ __all__ = [
     'camRGB_to_lin_rec2020_images',
     'demosaic',
     'rggb_to_mono',
+    'match_gain',
+    'shift_images',
+    'shape_is_compatible',
+    'shift_mask',
 ]
 
 
@@ -887,6 +891,125 @@ def camRGB_to_lin_rec2020_images(camRGB_img: np.ndarray, metadata: Metadata) -> 
     img_flat = camRGB_img.reshape(3, -1)
     rec2020_img = (color_matrix @ img_flat).reshape(orig_shape)
     return rec2020_img
+
+
+
+def match_gain(
+    anchor_img: Union[np.ndarray, torch.Tensor],
+    other_img: Union[np.ndarray, torch.Tensor],
+    return_val: bool = False,
+) -> Union[np.ndarray, torch.Tensor, torch.Tensor]:
+    """Match mean luminance between anchor and other images.
+
+    Args:
+        anchor_img: Reference image whose mean signal remains unchanged.
+        other_img: Image scaled to match ``anchor_img``.
+        return_val: If ``True`` return only the gain factor, else scale ``other_img``.
+
+    Returns:
+        Either the scaled ``other_img`` or the gain factor depending on ``return_val``.
+
+    Raises:
+        ValueError: If tensors with unsupported rank are provided.
+    """
+    if anchor_img.ndim == 4:
+        anchor_avg = anchor_img.mean((-1, -2, -3)).view(-1, 1, 1, 1)
+        other_avg = other_img.mean((-1, -2, -3)).view(-1, 1, 1, 1)
+    elif anchor_img.ndim == 3:
+        anchor_avg = anchor_img.mean()
+        other_avg = other_img.mean()
+    else:
+        raise ValueError(f"Unsupported ndim for match_gain: {anchor_img.ndim}")
+
+    gain = anchor_avg / other_avg
+    return gain if return_val else other_img * gain
+
+
+def shape_is_compatible(shape1: tuple, shape2: tuple) -> bool:
+    """Return ``True`` when shapes are equivalent under Bayer scaling rules."""
+    scale1 = (shape1[-3] == 4) + 1
+    scale2 = (shape2[-3] == 4) + 1
+    return np.all(np.multiply(shape1[-2:], scale1) == np.multiply(shape2[-2:], scale2))
+
+
+def shift_images(
+    anchor_img: Union[np.ndarray, torch.Tensor],
+    target_img: Union[np.ndarray, torch.Tensor],
+    shift: Tuple[int, int],
+) -> Tuple[Union[np.ndarray, torch.Tensor], Union[np.ndarray, torch.Tensor]]:
+    """Align ``target_img`` to ``anchor_img`` applying pixel and Bayer-aware shifts."""
+    anchor_img_out = anchor_img
+    target_img_out = target_img
+
+    target_is_bayer = target_img.shape[0] == 4
+    if anchor_img.shape[0] == 4:
+        raise NotImplementedError("shift_images: Bayer anchor images are not supported")
+
+    target_shift_divisor = 1 if not target_is_bayer else 2
+
+    if shift[0] > 0:
+        anchor_img_out = anchor_img_out[..., shift[0]:, :]
+        target_img_out = target_img_out[
+            ..., : -(shift[0] // target_shift_divisor) or None, :
+        ]
+        if shift[0] % 2:
+            anchor_img_out = anchor_img_out[..., :-1, :]
+            target_img_out = target_img_out[..., :-1, :]
+    elif shift[0] < 0:
+        anchor_img_out = anchor_img_out[..., :shift[0], :]
+        target_img_out = target_img_out[..., -shift[0] // target_shift_divisor:, :]
+        if shift[0] % 2:
+            anchor_img_out = anchor_img_out[..., 1:, :]
+            target_img_out = target_img_out[..., 1:, :]
+
+    if shift[1] > 0:
+        anchor_img_out = anchor_img_out[..., shift[1]:]
+        target_img_out = target_img_out[
+            ..., : -(shift[1] // target_shift_divisor) or None
+        ]
+        if shift[1] % 2:
+            anchor_img_out = anchor_img_out[..., :-1]
+            target_img_out = target_img_out[..., :-1]
+    elif shift[1] < 0:
+        anchor_img_out = anchor_img_out[..., :shift[1]]
+        target_img_out = target_img_out[..., -shift[1] // target_shift_divisor:]
+        if shift[1] % 2:
+            anchor_img_out = anchor_img_out[..., 1:]
+            target_img_out = target_img_out[..., 1:]
+
+    assert shape_is_compatible(anchor_img_out.shape, target_img_out.shape), (
+        f"Shape mismatch after shift: {anchor_img_out.shape=} vs {target_img_out.shape=}"
+    )
+    return anchor_img_out, target_img_out
+
+
+def shift_mask(
+    mask: Union[np.ndarray, torch.Tensor],
+    shift: Tuple[int, int],
+    crop_to_bayer: bool = True,
+) -> Union[np.ndarray, torch.Tensor]:
+    """Shift a mask and crop according to the provided alignment offsets."""
+    mask_out = mask
+
+    if shift[0] > 0:
+        mask_out = mask_out[..., shift[0]:, :]
+        if crop_to_bayer and shift[0] % 2:
+            mask_out = mask_out[..., :-1, :]
+    elif shift[0] < 0:
+        mask_out = mask_out[..., :shift[0], :]
+        if crop_to_bayer and shift[0] % 2:
+            mask_out = mask_out[..., 1:, :]
+
+    if shift[1] > 0:
+        mask_out = mask_out[..., shift[1]:]
+        if crop_to_bayer and shift[1] % 2:
+            mask_out = mask_out[..., :-1]
+    elif shift[1] < 0:
+        mask_out = mask_out[..., :shift[1]]
+        if crop_to_bayer and shift[1] % 2:
+            mask_out = mask_out[..., 1:]
+
+    return mask_out
 
 def demosaic(bayer_mosaic):
     """Demosaic Bayer pattern tensor to RGB.

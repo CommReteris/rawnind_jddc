@@ -20,6 +20,7 @@ import rawpy as rp
 
 from ..dependencies import pytorch_helpers as pt_helpers
 from ..dependencies.raw_processing import *
+from ..dependencies import raw_processing as rawproc
 
 MAX_MASKED: float = 0.5  # Must ensure that we don't send a crop with this more than this many masked pixels
 MAX_RANDOM_CROP_ATTEMPS = 10

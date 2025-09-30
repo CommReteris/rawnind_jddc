@@ -8,20 +8,23 @@ functions and configuration classes for the existing dataset infrastructure.
 
 import logging
 import random
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import field
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional
 
 import torch
 import yaml
 
-# Import existing dataset classes
-from .base_dataset import (
-    RawImageDataset
-)
-# Import dependencies
+from ..dependencies import pytorch_helpers as pt_helpers
+from ..dependencies import raw_processing as rawproc
 from ..dependencies.json_saver import load_yaml
+from .base_dataset import (
+    RawImageDataset,
+    ALIGNMENT_MAX_LOSS,
+    MASK_MEAN_MIN,
+    TOY_DATASET_LEN,
+    OVEREXPOSURE_LB,
+)
 
 
 from .dataset_config import DatasetConfig
@@ -70,54 +73,419 @@ class DatasetMetadata:
 
 
 class ConfigurableDataset(torch.utils.data.Dataset):
-    """A unified, configuration-driven dataset."""
+    """Unified configuration-driven dataset (translated from 4 legacy classes)."""
 
     def __init__(self, config: DatasetConfig, data_paths: Dict[str, Any]):
+        """Initialize dataset with config-driven logic (merged from 4 legacy __init__)."""
         self.config = config
         self.data_paths = data_paths
-        self._dataset = self._load_dataset()
-        self.raw_image_dataset = RawImageDataset(self.config.num_crops_per_image, self.config.crop_size)
 
-    def _load_dataset(self):
-        dataset = []
-        min_score = self.config.quality_thresholds.get('min_image_quality_score', 0.0)
-        max_score = self.config.quality_thresholds.get('max_image_quality_score', 1.0)
-        
-        for fpath in self.data_paths.get('noise_dataset_yamlfpaths', []):
-            content = load_yaml(fpath, error_on_404=True)
-            if content:
-                for image in content['images']:
-                    score = image.get('rgb_msssim_score', 0.0)
-                    if min_score <= score <= max_score:
-                        dataset.append(image)
-        return dataset
+        self.raw_image_dataset = RawImageDataset(
+            num_crops=config.num_crops_per_image,
+            crop_size=config.crop_size,
+        )
 
-    def __len__(self):
-        return len(self._dataset)
+        self.match_gain = config.match_gain
+        self.data_pairing = (
+            getattr(config.config, "data_pairing", "x_y") if config.config else "x_y"
+        )
+        self.arbitrary_proc_method = getattr(config, "arbitrary_proc_method", None)
 
-    def __getitem__(self, idx):
+        if self.arbitrary_proc_method and not self.match_gain:
+            raise AssertionError("arbitrary_proc_method requires match_gain=True")
+
+        self._dataset: List[Dict[str, Any]] = []
+        self._load_dataset()
+
+    def _load_dataset(self) -> None:
+        """Load dataset from YAML files (translated from 4 legacy __init__ methods)."""
+        content_fpaths = self.data_paths.get("noise_dataset_yamlfpaths", [])
+
+        min_score = self.config.quality_thresholds.get("min_image_quality_score", 0.0)
+        max_score = self.config.quality_thresholds.get("max_image_quality_score", 1.0)
+        alignment_max_loss = self.config.quality_thresholds.get(
+            "max_alignment_error", ALIGNMENT_MAX_LOSS
+        )
+        mask_mean_min = self.config.quality_thresholds.get(
+            "min_mask_mean", MASK_MEAN_MIN
+        )
+        toy_dataset = self.config.max_samples == 25
+        test_mode = self.config.save_individual_results
+        if self.config.config and hasattr(self.config.config, "bayer_only"):
+            bayer_only = self.config.config.bayer_only
+        else:
+            bayer_only = "bayer" in self.config.dataset_type
+
+        for content_fpath in content_fpaths:
+            logging.info("ConfigurableDataset: loading %s", content_fpath)
+            contents = load_yaml(content_fpath, error_on_404=True)
+
+            for image in contents:
+                if toy_dataset and len(self._dataset) >= TOY_DATASET_LEN:
+                    break
+
+                if (
+                    self.config.data_format == "clean_noisy"
+                    and bayer_only
+                    and not image.get("is_bayer", False)
+                ):
+                    continue
+
+                if test_mode:
+                    if image["image_set"] not in self.config.test_reserve_images:
+                        continue
+                else:
+                    if image["image_set"] in self.config.test_reserve_images:
+                        continue
+
+                try:
+                    score = image.get("rgb_msssim_score", 1.0)
+                    if min_score and min_score > score:
+                        logging.debug(
+                            "Skipping %s: score %.4f < %.4f",
+                            image.get("f_fpath"),
+                            score,
+                            min_score,
+                        )
+                        continue
+                    if max_score and max_score != 1.0 and max_score < score:
+                        logging.debug(
+                            "Skipping %s: score %.4f > %.4f",
+                            image.get("f_fpath"),
+                            score,
+                            max_score,
+                        )
+                        continue
+                except KeyError as exc:
+                    if min_score > 0 or max_score < 1.0:
+                        raise KeyError(
+                            f"Image {image.get('f_fpath')} missing rgb_msssim_score"
+                        ) from exc
+
+                if self.config.data_format == "clean_noisy":
+                    if (
+                        image.get("best_alignment_loss", 0) > alignment_max_loss
+                        or image.get("mask_mean", 1.0) < mask_mean_min
+                    ):
+                        logging.info(
+                            "Rejected %s (alignment or mask criteria)",
+                            image.get("f_fpath"),
+                        )
+                        continue
+
+                if not image.get("crops"):
+                    logging.warning(
+                        "Image %s has no crops; skipping", image.get("f_fpath")
+                    )
+                    continue
+
+                image["crops"] = sorted(
+                    image["crops"], key=lambda crop_meta: crop_meta["coordinates"]
+                )
+                self._dataset.append(image)
+
+        if len(self._dataset) == 0:
+            raise ValueError(
+                "ConfigurableDataset is empty. "
+                f"content_fpaths={content_fpaths}, "
+                f"test_reserve={self.config.test_reserve_images}"
+            )
+
+        logging.info(
+            "ConfigurableDataset initialized with %d images", len(self._dataset)
+        )
+
+    @staticmethod
+    def get_mask(ximg: torch.Tensor, metadata: Dict[str, Any]) -> torch.BoolTensor:
+        """Compute overexposure mask (from CleanCleanImageDataset in base_dataset.py)."""
+        overexposure_lb = metadata.get("overexposure_lb", OVEREXPOSURE_LB)
+
+        if ximg.shape[0] == 4:
+            upsampled = torch.nn.functional.interpolate(
+                ximg.unsqueeze(0), scale_factor=2
+            ).squeeze(0)
+            mask = upsampled.max(0).values < overexposure_lb
+            return mask.unsqueeze(0).repeat(3, 1, 1)
+
+        return ximg < overexposure_lb
+
+    def __getitem__(self, idx: int) -> Dict[str, Any]:
+        """Load and return batch (translated from 4 legacy __getitem__ with bug fixes)."""
         image_data = self._dataset[idx]
-        ximg = torch.randn(self.config.input_channels, self.config.crop_size, self.config.crop_size)
-        yimg = torch.randn(self.config.output_channels, self.config.crop_size, self.config.crop_size)
-        mask = torch.ones(self.config.input_channels, self.config.crop_size, self.config.crop_size, dtype=torch.bool)
-        x_crops, y_crops, mask_crops = self.raw_image_dataset.random_crops(
-            ximg=ximg,
-            yimg=yimg,
-            whole_img_mask=mask
-        ) or (None, None, None)
-        if x_crops is None:
-            return self.__getitem__(random.randint(0, len(self) - 1))
-        gain = image_data.get('raw_gain') if self.config.config.is_bayer else image_data.get('rgb_gain')
-        if self.config.match_gain:
-            gain = 1.0
+        crop = random.choice(image_data["crops"])
 
-        return {
-            'clean_images': y_crops,
-            'noisy_images': x_crops,
-            'masks'       : mask_crops,
-            'noise_info'  : {'estimated_std': 0.1},
-            'gain'        : gain
-        }
+        if (
+            self.config.data_format == "clean_noisy"
+            and "bayer" in self.config.dataset_type
+        ):
+            if self.data_pairing == "x_y":
+                gt_img = pt_helpers.fpath_to_tensor(crop["gt_linrec2020_fpath"])
+                noisy_img = pt_helpers.fpath_to_tensor(crop["f_bayer_fpath"])
+
+                gt_img, noisy_img = rawproc.shift_images(
+                    gt_img, noisy_img, image_data["best_alignment"]
+                )
+
+                whole_img_mask = pt_helpers.fpath_to_tensor(image_data["mask_fpath"])[
+                    :,
+                    crop["coordinates"][1] : crop["coordinates"][1] + gt_img.shape[1],
+                    crop["coordinates"][0] : crop["coordinates"][0] + gt_img.shape[2],
+                ]
+                whole_img_mask = whole_img_mask.expand(gt_img.shape)
+            elif self.data_pairing == "x_x":
+                gt_img = pt_helpers.fpath_to_tensor(crop["gt_linrec2020_fpath"])
+                noisy_img = pt_helpers.fpath_to_tensor(crop["gt_bayer_fpath"])
+                whole_img_mask = torch.ones_like(gt_img)
+            elif self.data_pairing == "y_y":
+                gt_img = pt_helpers.fpath_to_tensor(crop["f_linrec2020_fpath"])
+                noisy_img = pt_helpers.fpath_to_tensor(crop["f_bayer_fpath"])
+                whole_img_mask = torch.ones_like(gt_img)
+            else:
+                raise ValueError(f"Unsupported data_pairing: {self.data_pairing}")
+
+            try:
+                x_crops, y_crops, mask_crops = self.raw_image_dataset.random_crops(
+                    gt_img, noisy_img, whole_img_mask
+                )
+            except TypeError:
+                logging.warning(
+                    "Crop %s has insufficient valid pixels; removing", crop
+                )
+                current_image = self._dataset[idx]
+                current_image["crops"].remove(crop)
+                if len(current_image["crops"]) == 0:
+                    logging.warning(
+                        "Image %s has no more valid crops; removing from dataset",
+                        current_image.get("f_fpath", current_image.get("image_set", "unknown")),
+                    )
+                    del self._dataset[idx]
+                    if not self._dataset:
+                        raise ValueError(
+                            "ConfigurableDataset has no remaining crops after filtering"
+                        )
+                    return self.__getitem__(idx % len(self._dataset))
+                return self.__getitem__(idx)
+
+            output: Dict[str, Any] = {
+                "x_crops": x_crops.float(),
+                "y_crops": y_crops.float(),
+                "mask_crops": mask_crops,
+                "rgb_xyz_matrix": torch.tensor(image_data["rgb_xyz_matrix"]),
+            }
+
+            if self.match_gain:
+                output["y_crops"] *= image_data["raw_gain"]
+                output["gain"] = 1.0
+            else:
+                output["gain"] = image_data["raw_gain"]
+
+            return output
+
+        if (
+            self.config.data_format == "clean_noisy"
+            and "rgb" in self.config.dataset_type
+        ):
+            if self.data_pairing == "x_y":
+                gt_img = pt_helpers.fpath_to_tensor(crop["gt_linrec2020_fpath"])
+                noisy_img = pt_helpers.fpath_to_tensor(crop["f_linrec2020_fpath"])
+
+                gt_img, noisy_img = rawproc.shift_images(
+                    gt_img, noisy_img, image_data["best_alignment"]
+                )
+
+                whole_img_mask = pt_helpers.fpath_to_tensor(image_data["mask_fpath"])[
+                    :,
+                    crop["coordinates"][1] : crop["coordinates"][1] + gt_img.shape[1],
+                    crop["coordinates"][0] : crop["coordinates"][0] + gt_img.shape[2],
+                ]
+                whole_img_mask = whole_img_mask.expand(gt_img.shape)
+            elif self.data_pairing == "x_x":
+                gt_img = pt_helpers.fpath_to_tensor(crop["gt_linrec2020_fpath"])
+                noisy_img = pt_helpers.fpath_to_tensor(crop["gt_linrec2020_fpath"])
+                whole_img_mask = torch.ones_like(gt_img)
+            elif self.data_pairing == "y_y":
+                gt_img = pt_helpers.fpath_to_tensor(crop["f_linrec2020_fpath"])
+                noisy_img = pt_helpers.fpath_to_tensor(crop["f_linrec2020_fpath"])
+                whole_img_mask = torch.ones_like(gt_img)
+            else:
+                raise ValueError(f"Unsupported data_pairing: {self.data_pairing}")
+
+            if self.arbitrary_proc_method:
+                from ..dependencies.arbitrary_processing import (
+                    arbitrarily_process_images,
+                )
+
+                gt_img = arbitrarily_process_images(
+                    gt_img,
+                    randseed=crop["gt_linrec2020_fpath"],
+                    method=self.arbitrary_proc_method,
+                )
+                noisy_img = arbitrarily_process_images(
+                    noisy_img,
+                    randseed=crop["gt_linrec2020_fpath"],
+                    method=self.arbitrary_proc_method,
+                )
+
+            try:
+                x_crops, y_crops, mask_crops = self.raw_image_dataset.random_crops(
+                    gt_img, noisy_img, whole_img_mask
+                )
+            except TypeError:
+                logging.warning(
+                    "Crop %s has insufficient valid pixels; removing", crop
+                )
+                current_image = self._dataset[idx]
+                current_image["crops"].remove(crop)
+                if len(current_image["crops"]) == 0:
+                    logging.warning(
+                        "Image %s has no more valid crops; removing from dataset",
+                        current_image.get("f_fpath", current_image.get("image_set", "unknown")),
+                    )
+                    del self._dataset[idx]
+                    if not self._dataset:
+                        raise ValueError(
+                            "ConfigurableDataset has no remaining crops after filtering"
+                        )
+                    return self.__getitem__(idx % len(self._dataset))
+                return self.__getitem__(idx)
+
+            output = {
+                "x_crops": x_crops.float(),
+                "y_crops": y_crops.float(),
+                "mask_crops": mask_crops,
+            }
+
+            if self.match_gain:
+                output["y_crops"] *= image_data["rgb_gain"]
+                output["gain"] = 1.0
+            else:
+                output["gain"] = image_data["rgb_gain"]
+
+            return output
+
+        if (
+            self.config.data_format == "clean_clean"
+            and "bayer" in self.config.dataset_type
+        ):
+            try:
+                gt = pt_helpers.fpath_to_tensor(crop["gt_linrec2020_fpath"]).float()
+                rgbg_img = pt_helpers.fpath_to_tensor(crop["gt_bayer_fpath"]).float()
+            except ValueError as exc:
+                logging.error(exc)
+                return self.__getitem__(random.randrange(len(self._dataset)))
+
+            mask = self.get_mask(rgbg_img, image_data)
+
+            try:
+                x_crops, y_crops, mask_crops = self.raw_image_dataset.random_crops(
+                    gt, rgbg_img, mask
+                )
+            except (AssertionError, RuntimeError) as exc:
+                logging.error("Error with %s: %s", crop, exc)
+                logging.error(
+                    "Shapes: gt=%s, rgbg=%s, mask=%s",
+                    gt.shape,
+                    rgbg_img.shape,
+                    mask.shape,
+                )
+                raise
+            except TypeError:
+                logging.warning(
+                    "Crop %s has insufficient valid pixels; removing", crop
+                )
+                current_image = self._dataset[idx]
+                current_image["crops"].remove(crop)
+                if len(current_image["crops"]) == 0:
+                    logging.warning(
+                        "Image %s has no more valid crops; removing from dataset",
+                        current_image.get("f_fpath", current_image.get("image_set", "unknown")),
+                    )
+                    del self._dataset[idx]
+                    if not self._dataset:
+                        raise ValueError(
+                            "ConfigurableDataset has no remaining crops after filtering"
+                        )
+                    return self.__getitem__(idx % len(self._dataset))
+                return self.__getitem__(idx)
+
+            return {
+                "x_crops": x_crops,
+                "y_crops": y_crops,
+                "mask_crops": mask_crops,
+                "rgb_xyz_matrix": image_data["rgb_xyz_matrix"],
+                "gain": 1.0,
+            }
+
+        if (
+            self.config.data_format == "clean_clean"
+            and "rgb" in self.config.dataset_type
+        ):
+            try:
+                gt = pt_helpers.fpath_to_tensor(crop["gt_linrec2020_fpath"]).float()
+                rgbg_img = pt_helpers.fpath_to_tensor(crop["gt_bayer_fpath"]).float()
+            except ValueError as exc:
+                logging.error(exc)
+                return self.__getitem__(random.randrange(len(self._dataset)))
+
+            mask = self.get_mask(rgbg_img, image_data)
+
+            if self.arbitrary_proc_method:
+                from ..dependencies.arbitrary_processing import (
+                    arbitrarily_process_images,
+                )
+
+                gt = arbitrarily_process_images(
+                    gt,
+                    randseed=crop["gt_linrec2020_fpath"],
+                    method=self.arbitrary_proc_method,
+                )
+
+            try:
+                x_crops, mask_crops = self.raw_image_dataset.random_crops(
+                    gt, None, mask
+                )
+            except (AssertionError, RuntimeError) as exc:
+                logging.error("Error with %s: %s", crop, exc)
+                logging.error(
+                    "Shapes: gt=%s, rgbg=%s, mask=%s",
+                    gt.shape,
+                    rgbg_img.shape,
+                    mask.shape,
+                )
+                raise
+            except TypeError:
+                logging.warning(
+                    "Crop %s has insufficient valid pixels; removing", crop
+                )
+                current_image = self._dataset[idx]
+                current_image["crops"].remove(crop)
+                if len(current_image["crops"]) == 0:
+                    logging.warning(
+                        "Image %s has no more valid crops; removing from dataset",
+                        current_image.get("f_fpath", current_image.get("image_set", "unknown")),
+                    )
+                    del self._dataset[idx]
+                    if not self._dataset:
+                        raise ValueError(
+                            "ConfigurableDataset has no remaining crops after filtering"
+                        )
+                    return self.__getitem__(idx % len(self._dataset))
+                return self.__getitem__(idx)
+
+            return {
+                "x_crops": x_crops,
+                "mask_crops": mask_crops,
+                "gain": 1.0,
+            }
+
+        raise ValueError(
+            "Unsupported combination: "
+            f"data_format={self.config.data_format}, "
+            f"dataset_type={self.config.dataset_type}"
+        )
+
+    def __len__(self) -> int:
+        return len(self._dataset)
 
 
 class CleanDataset:
@@ -206,8 +574,14 @@ class CleanDataset:
         """
         # Handle different batch formats
         if isinstance(batch, dict):
-            # Already in dictionary format
             standardized = batch.copy()
+
+            if "x_crops" in standardized and "noisy_images" not in standardized:
+                standardized["noisy_images"] = standardized["x_crops"]
+            if "y_crops" in standardized and "clean_images" not in standardized:
+                standardized["clean_images"] = standardized["y_crops"]
+            if "mask_crops" in standardized and "masks" not in standardized:
+                standardized["masks"] = standardized["mask_crops"]
         elif isinstance(batch, (tuple, list)):
             # Convert tuple/list to dictionary
             if len(batch) >= 3:

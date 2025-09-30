@@ -13,6 +13,36 @@ Remove all duplicate class definitions and legacy reference implementation files
 
 ## Files to Delete
 
+### Root Directory Legacy Reference Files
+
+Delete all 6 legacy_*.py files from project root after translation verification:
+
+**File 1**: `legacy_raw.py`
+- Translation: ✅ Complete in raw_processing.py (RawLoader, BayerProcessor, ColorTransformer)
+- Action: `rm legacy_raw.py`
+
+**File 2**: `legacy_arbitrary_proc_fun.py`
+- Translation: ✅ Complete in dependencies/arbitrary_processing.py
+- Action: `rm legacy_arbitrary_proc_fun.py`
+
+**File 3**: `legacy_rawproc.py`
+- Translation: ✅ Complete after Phase 0 (preprocessing functions added)
+- Action: `rm legacy_rawproc.py`
+
+**File 4**: `legacy_rawds.py`
+- Translation: ✅ Complete in clean_api.py (ConfigurableDataset)
+- Action: `rm legacy_rawds.py`
+
+**File 5**: `legacy_abstract_trainer.py`
+- Translation: ✅ Complete in training/clean_api.py (CleanDenoiserTrainer, CleanDenoiseCompressTrainer)
+- Action: `rm legacy_abstract_trainer.py`
+
+**File 6**: `legacy_rawds_manproc.py`
+- Translation: ⏸️ Deferred (test infrastructure only, non-critical)
+- Action: OPTIONAL - can delete or keep as technical debt
+
+### Dataset Package Duplicate Files
+
 ### Immediate Deletion (Duplicates)
 
 **File 1**: `src/rawnind/dataset/clean_datasets.py`

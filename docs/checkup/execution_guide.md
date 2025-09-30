@@ -33,9 +33,32 @@ Read entities:
 └── Clean-Noisy + RGB branch
 ```
 
+## Current State
+
+**Phase 0**: NOT STARTED - 5 preprocessing functions missing
+**Phase 1**: NOT STARTED - 3 syntax errors blocking
+**Phase 2**: ✅ COMPLETE - ConfigurableDataset fully translated (previous agent)
+**Phase 3**: NOT STARTED - Integration function missing
+**Phase 4**: NOT STARTED - Legacy files still present
+**Phase 5**: NOT STARTED - Wrapper simplification pending
+
 ## Execution Sequence
 
 Execute phases in strict order:
+
+### Phase 0: Add Preprocessing Functions (90 min) - NEW PHASE
+**Prompt**: Read `phase0_translate_preprocessing_functions.md`
+**Purpose**: Add 5 missing preprocessing functions to raw_processing.py for offline YAML generation
+**Tasks**:
+- Add 14 constants from legacy_rawproc.py lines 16-36
+- Add make_overexposure_mask() function
+- Add make_loss_mask() function
+- Add find_best_alignment() function
+- Add get_best_alignment_compute_gain_and_make_loss_mask() function
+- Add dt_proc_img() function
+- Adapt function calls to use refactored class-based APIs
+
+**Verification**: tools/prep_image_dataset.py can import preprocessing functions
 
 ### Phase 1: Syntax Fixes (10 min)
 **Prompt**: Read `phase1_syntax_fixes.md`
@@ -46,17 +69,20 @@ Execute phases in strict order:
 
 **Verification**: All .py files compile without SyntaxError
 
-### Phase 2: Translate ConfigurableDataset (180 min) - MAIN WORK
-**Prompt**: Read `phase2_translate_configurabledataset.md`
-**Tasks**:
-- Update imports in clean_api.py
-- Rewrite ConfigurableDataset.__init__() 
-- Rewrite ConfigurableDataset._load_dataset()
-- Rewrite ConfigurableDataset.__getitem__() with 4 branches
-- Add ConfigurableDataset.get_mask() method
-- Fix all bugs during translation
+### Phase 2: Verify ConfigurableDataset Translation (15 min) - ALREADY COMPLETE ✅
+**Prompt**: Read `phase2_translate_configurabledataset.md` (now verification checklist)
+**Status**: Previous agent completed the translation
+**What Was Done**:
+- ✅ All imports updated in clean_api.py
+- ✅ ConfigurableDataset.__init__() merged from 4 legacy classes
+- ✅ ConfigurableDataset._load_dataset() with YAML loading and filtering
+- ✅ ConfigurableDataset.__getitem__() with all 4 conditional branches
+- ✅ ConfigurableDataset.get_mask() method implemented
+- ✅ All domain logic preserved with 100% fidelity
 
-**Verification**: ConfigurableDataset loads real data, not random tensors
+**Current Task**: Run verification checklist to confirm correctness
+
+**Verification**: Check each domain logic item in phase2 checklist is present
 
 ### Phase 3: Integration Function (45 min)
 **Prompt**: Read `phase3_integration_function.md`
@@ -85,7 +111,7 @@ Execute phases in strict order:
 **Verification**: Batch format conversion works correctly
 
 ## Total Estimated Time
-~4.5 hours focused work
+~3 hours focused work (reduced from 4.5 hours - Phase 2 already complete)
 
 ## Success Criteria Checklist
 

@@ -1,0 +1,16 @@
+# Style and Conventions
+- **Language**: Python 3.13+, heavy use of dataclasses for configs and NamedTuples for metadata.
+- **Docstrings**: Google-style, triple-quoted with explicit Args/Returns sections when useful. Module and class docstrings present across packages.
+- **Type Hints**: Strict typing with Optional/List/Dict generics; Tensor shapes documented via comments. Functions expect torch/numpy types explicitly.
+- **Logging**: `logging.getLogger(__name__)` used; domain logic surfaces informative logs/warnings.
+- **Constants**: Uppercase module-level constants (e.g., `MASK_MEAN_MIN`, `ALIGNMENT_MAX_LOSS`).
+- **Imports**: Grouped standard library → third-party → local; relative imports inside package (`from ..dependencies...`).
+- **Randomness**: Deterministic alignment by enforcing even crop coordinates. `random` module used for crop selection.
+- **Testing**: PyTest with strict markers; fixtures in `conftest.py`. Acceptance tests enforce architectural rules.
+- **Pytorch Usage**: Tensors stored channel-first, boolean masks; code maintains device compatibility.
+- **Data Handling**: YAML loading via `load_yaml`; dataset configs validated in `DatasetConfig.__post_init__`.
+- **Mask/Quality Checks**: Alignment loss, mask mean, gain handling follow legacy thresholds stored in constants.
+- **Serialization**: Color matrices stored as `torch.tensor`; YAML/JSON parsing via `yaml.safe_load` or project helpers.
+- **Error Handling**: Domain-specific exceptions (`RawProcessingError`), `ValueError` for config misuse.
+- **Naming**: snake_case for functions/variables, PascalCase for classes. Dataset branches named by format (e.g., `clean_noisy`).
+- **Cropping Utilities**: `RawImageDataset` base class responsible for random/center crops; ensures Bayer alignment.
