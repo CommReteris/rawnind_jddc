@@ -30,6 +30,22 @@ DEFAULT_UE_THRESHOLD = 0.001
 DEFAULT_QTY_THRESHOLD = 0.75
 MAX_FILE_SIZE_MB = 500  # Prevent OOM on large RAWs
 
+# Preprocessing constants (legacy parity for offline tooling)
+BW_POINT = 16383
+MAX_GAIN = 10
+MIN_BRIGHT_PIXELS_PROPORTION = 0.01
+OVEREXPOSURE_LB = 0.997
+DC_MAX_LOSS = 0.005
+ALIGNMENT_LOSS_LB = 1
+ALIGNMENT_MAX_LOSS = 0.002
+BAYER_PATTERN_NAME = "RGGB"
+MASK_MEAN_MIN = 0.9995
+PROC_IMGS_DPATH = "proc"
+MIN_L1_FOR_DC = 0.01
+MIN_L1_FOR_DENOISE = 0.005
+MIN_MS_SSIM_FOR_DC = 0.97
+MIN_MS_SSIM_FOR_DENOISE = 0.98
+
 # Logging setup
 logger = logging.getLogger(__name__)
 
@@ -873,6 +889,118 @@ def gamma(img: np.ndarray, gamma_value: float = 2.2, in_range: tuple = (0.0, 1.0
     img_scaled = img_gamma * (out_range[1] - out_range[0]) + out_range[0]
     return img_scaled
 
+
+
+
+def make_overexposure_mask(
+    img: np.ndarray,
+    overexposure_lb: float = OVEREXPOSURE_LB,
+) -> np.ndarray:
+    """Return mask where True indicates pixel is below the overexposure threshold."""
+    return img < overexposure_lb
+
+
+def make_loss_mask(
+    img_gt: np.ndarray,
+    img_noisy: np.ndarray,
+    best_alignment: Tuple[int, int],
+    overexposure_lb: float = OVEREXPOSURE_LB,
+) -> np.ndarray:
+    """Generate loss mask enforcing overexposure filtering and minimum valid coverage.
+
+    Args:
+        img_gt: Ground-truth reference image.
+        img_noisy: Noisy counterpart image.
+        best_alignment: (v_shift, h_shift) alignment tuple.
+        overexposure_lb: Overexposure threshold.
+
+    Returns:
+        Boolean mask suitable for loss computation.
+
+    Raises:
+        AssertionError: If the resulting mask has insufficient valid pixels.
+    """
+    img_gt_shifted, img_noisy_shifted = shift_images(img_gt, img_noisy, best_alignment)
+    mask_gt = make_overexposure_mask(img_gt_shifted, overexposure_lb)
+    mask_noisy = make_overexposure_mask(img_noisy_shifted, overexposure_lb)
+    combined_mask = np.logical_and(mask_gt, mask_noisy)
+    mask_mean = combined_mask.mean()
+    assert (
+        mask_mean > MASK_MEAN_MIN
+    ), f"Insufficient valid pixels in loss mask: {mask_mean} <= {MASK_MEAN_MIN}"
+    return combined_mask
+
+
+def find_best_alignment(
+    img_gt: np.ndarray,
+    img_noisy: np.ndarray,
+    max_v_shift: int = 8,
+    max_h_shift: int = 8,
+) -> Tuple[int, int, float]:
+    """Search over shifts to minimize L1 loss between ground-truth and noisy images."""
+    min_loss = float("inf")
+    best_v_shift = 0
+    best_h_shift = 0
+    for v_shift in range(-max_v_shift, max_v_shift + 1):
+        for h_shift in range(-max_h_shift, max_h_shift + 1):
+            shifted_gt, shifted_noisy = shift_images(img_gt, img_noisy, (v_shift, h_shift))
+            loss = np.abs(shifted_gt - shifted_noisy).mean()
+            if loss < min_loss:
+                min_loss = loss
+                best_v_shift = v_shift
+                best_h_shift = h_shift
+    return best_v_shift, best_h_shift, min_loss
+
+
+def get_best_alignment_compute_gain_and_make_loss_mask(
+    gt_fpath: str,
+    noisy_fpath: str,
+    overexposure_lb: float = OVEREXPOSURE_LB,
+    max_v_shift: int = 8,
+    max_h_shift: int = 8,
+) -> dict:
+    """Find alignment, compute gain, and generate/s persist loss mask for image pair."""
+    from . import numpy_operations as np_ops
+
+    img_gt = np_ops.img_fpath_to_np_flt(gt_fpath)
+    img_noisy = np_ops.img_fpath_to_np_flt(noisy_fpath)
+
+    best_v_shift, best_h_shift, alignment_loss = find_best_alignment(
+        img_gt, img_noisy, max_v_shift, max_h_shift
+    )
+    best_alignment = (best_v_shift, best_h_shift)
+
+    img_gt_aligned, img_noisy_aligned = shift_images(img_gt, img_noisy, best_alignment)
+    gain = match_gain(img_gt_aligned, img_noisy_aligned, return_val=True)
+    loss_mask = make_loss_mask(img_gt, img_noisy, best_alignment, overexposure_lb)
+
+    mask_fpath = noisy_fpath.replace(".tif", "_mask.tif").replace(".exr", "_mask.exr")
+    np_ops.np_to_img(loss_mask.astype(np.float32), mask_fpath)
+
+    mask_mean = float(loss_mask.mean())
+    return {
+        "best_alignment": best_alignment,
+        "best_alignment_loss": float(alignment_loss),
+        "gain": float(gain),
+        "mask_fpath": mask_fpath,
+        "mask_mean": mask_mean,
+    }
+
+
+def dt_proc_img(
+    raw_fpath: str,
+    output_fpath: str,
+    xmp_fpath: str,
+    darktable_cli: str = "darktable-cli",
+) -> None:
+    """Invoke darktable-cli with provided XMP settings to process RAW image."""
+    cmd = [darktable_cli, raw_fpath, xmp_fpath, output_fpath]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(
+            f"darktable-cli failed processing {raw_fpath}: {exc.stderr}"
+        ) from exc
 
 def camRGB_to_lin_rec2020_images(camRGB_img: np.ndarray, metadata: Metadata) -> np.ndarray:
     """

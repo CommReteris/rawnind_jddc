@@ -1,6 +1,9 @@
 import numpy as np
 import pytest
 import cv2
+import subprocess
+import numpy as np
+import torch
 from unittest.mock import patch, MagicMock
 from rawnind.dependencies import raw_processing as raw
 

@@ -21,10 +21,10 @@ def deterministic_random():
 
 def _make_fake_tensor(path: str) -> torch.Tensor:
     if "mask" in path:
-        return torch.ones(1, 4, 4, dtype=torch.bool)
+        return torch.ones(1, 16, 16, dtype=torch.bool)
     if "bayer" in path:
-        return torch.ones(4, 4, 4, dtype=torch.float32)
-    return torch.ones(3, 4, 4, dtype=torch.float32)
+        return torch.ones(4, 16, 16, dtype=torch.float32)
+    return torch.ones(3, 16, 16, dtype=torch.float32)
 
 
 def _make_rgb_xyz():
@@ -119,6 +119,7 @@ def test_configurable_dataset_clean_clean_rgb(monkeypatch, tmp_path):
             "mask_mean": 1.0,
             "best_alignment": [0, 0],
             "rgb_xyz_matrix": _make_rgb_xyz(),
+            "overexposure_lb": 2.0,
             "crops": [
                 {
                     "coordinates": [0, 0],
@@ -177,13 +178,13 @@ def test_clean_dataset_standardizes_dict_batches():
         num_crops_per_image=1,
         batch_size=1,
     )
-    dataset = CleanDataset(config, data_paths={}, data_loader_override=[])
-
     batch = {
         "x_crops": torch.ones(1, 3, 2, 2),
         "y_crops": torch.ones(1, 3, 2, 2),
         "mask_crops": torch.ones(1, 3, 2, 2, dtype=torch.bool),
     }
+
+    dataset = CleanDataset(config, data_paths={}, data_loader_override=iter([batch]))
 
     standardized = dataset._standardize_batch_format(batch)
 

@@ -247,7 +247,7 @@ class ConfigurableDataset(torch.utils.data.Dataset):
                 x_crops, y_crops, mask_crops = self.raw_image_dataset.random_crops(
                     gt_img, noisy_img, whole_img_mask
                 )
-            except TypeError:
+            except (TypeError, ValueError):
                 logging.warning(
                     "Crop %s has insufficient valid pixels; removing", crop
                 )
@@ -330,7 +330,7 @@ class ConfigurableDataset(torch.utils.data.Dataset):
                 x_crops, y_crops, mask_crops = self.raw_image_dataset.random_crops(
                     gt_img, noisy_img, whole_img_mask
                 )
-            except TypeError:
+            except (TypeError, ValueError):
                 logging.warning(
                     "Crop %s has insufficient valid pixels; removing", crop
                 )
@@ -389,7 +389,7 @@ class ConfigurableDataset(torch.utils.data.Dataset):
                     mask.shape,
                 )
                 raise
-            except TypeError:
+            except (TypeError, ValueError):
                 logging.warning(
                     "Crop %s has insufficient valid pixels; removing", crop
                 )
@@ -427,7 +427,7 @@ class ConfigurableDataset(torch.utils.data.Dataset):
                 logging.error(exc)
                 return self.__getitem__(random.randrange(len(self._dataset)))
 
-            mask = self.get_mask(rgbg_img, image_data)
+            mask = self.get_mask(gt, image_data)
 
             if self.arbitrary_proc_method:
                 from ..dependencies.arbitrary_processing import (
@@ -453,7 +453,7 @@ class ConfigurableDataset(torch.utils.data.Dataset):
                     mask.shape,
                 )
                 raise
-            except TypeError:
+            except (TypeError, ValueError):
                 logging.warning(
                     "Crop %s has insufficient valid pixels; removing", crop
                 )
