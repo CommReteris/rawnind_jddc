@@ -1,4 +1,0 @@
-2025-09-28 13:04:33 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind -q --cov
-2025-09-28 13:04:33 INFO     PID: 819465
-2025-09-28 13:04:33 INFO     Learning rate decayed: 0.001 -> 0.0005
-2025-09-28 13:04:33 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/Denoiser_unet_2025-09-28-456/train_cmd.sh.config

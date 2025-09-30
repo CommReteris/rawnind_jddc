@@ -1,3 +1,0 @@
-2025-09-28 09:27:51 INFO     python --invalid --arch invalid --nonexistent
-2025-09-28 09:27:51 INFO     PID: 599299
-2025-09-28 09:27:51 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/Denoiser_unet_2025-09-28-163/train_cmd.sh.config

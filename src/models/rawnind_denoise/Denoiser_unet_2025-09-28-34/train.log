@@ -1,4 +1,0 @@
-2025-09-28 09:16:17 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py --tb=short
-2025-09-28 09:16:17 INFO     PID: 586398
-2025-09-28 09:16:17 INFO     Experiment 'test_early_stopping' initialized in /tmp/tmpyxi93vss
-2025-09-28 09:16:25 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/Denoiser_unet_2025-09-28-35/train_cmd.sh.config

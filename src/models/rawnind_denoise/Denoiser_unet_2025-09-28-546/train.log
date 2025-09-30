@@ -1,3 +1,0 @@
-2025-09-28 16:49:44 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind/tests/test_e2e_training_clean_api.py::TestTrainingMetrics -v
-2025-09-28 16:49:44 INFO     PID: 1036155
-2025-09-28 16:49:44 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/Denoiser_unet_2025-09-28-547/train_cmd.sh.config

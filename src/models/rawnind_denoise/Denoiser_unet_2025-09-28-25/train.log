@@ -1,4 +1,0 @@
-2025-09-28 09:16:07 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py --tb=short
-2025-09-28 09:16:07 INFO     PID: 586398
-2025-09-28 09:16:07 INFO     Experiment 'test_rgb_denoiser' initialized in /tmp/tmpl8w304yk
-2025-09-28 09:16:09 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/BayerDenoiser_unet_2025-09-28-4/train_cmd.sh.config

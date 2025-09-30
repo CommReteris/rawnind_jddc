@@ -1,2 +1,0 @@
-2025-09-28 16:48:52 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind/tests/test_e2e_training_clean_api.py::TestTrainingMetrics::test_loss_computation -v
-2025-09-28 16:48:52 INFO     PID: 1035269

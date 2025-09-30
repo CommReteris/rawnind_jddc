@@ -1,3 +1,0 @@
-2025-09-28 11:11:23 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind --tb=no -q
-2025-09-28 11:11:23 INFO     PID: 703709
-2025-09-28 11:11:23 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/Denoiser_unet_2025-09-28-311/train_cmd.sh.config

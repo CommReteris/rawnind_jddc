@@ -1,3 +1,0 @@
-2025-09-28 09:26:05 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py -q --cov src/rawnind
-2025-09-28 09:26:05 INFO     PID: 597494
-2025-09-28 09:26:05 INFO     Configuration saved to /home/rengo/rawnind_jddc/src/rawnind/inference/../../models/rawnind_denoise/BayerDenoiser_unet_2025-09-28-15/train_cmd.sh.config
