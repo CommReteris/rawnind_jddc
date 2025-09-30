@@ -297,12 +297,6 @@ class CleanProfiledRGBNoisyProfiledRGBImageCropsDataset(
         output["mask_crops"] = mask_crops
 
         return output
-        return {
-            "x_crops": x_crops.float(),
-            "y_crops": y_crops.float(),
-            "mask_crops": mask_crops,
-            "gain": image["rgb_gain"],
-        }
 
 
 class CleanProfiledRGBNoisyProfiledRGBImageCropsValidationDataset(

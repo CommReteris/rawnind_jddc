@@ -195,4 +195,4 @@ class CleanProfiledRGBNoisyBayerImageCropsDataset(
         }
         if self.match_gain:
             output["y_crops"] *= image["raw_gain"]
-            output["gain"]
+            output["gain"] = 1.0
