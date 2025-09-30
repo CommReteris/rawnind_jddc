@@ -1,2 +1,0 @@
-2025-09-28 09:23:51 INFO     /home/rengo/rawnind_jddc/.venv/lib/python3.13/site-packages/pytest/__main__.py src/rawnind/inference/tests/test_e2e_inference_clean_api.py::TestE2EInferenceCleanAPI::test_bayer_denoiser_inference_e2e -v
-2025-09-28 09:23:51 INFO     PID: 595445

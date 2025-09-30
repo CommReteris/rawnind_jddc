@@ -38,7 +38,9 @@ class ExperimentManager:
     @staticmethod
     def _get_model_type(expname: str) -> Literal["rawnind_dc", "rawnind_denoise"]:
         """Get the model's root directory path for a given experiment."""
-        if expname.startswith("DenoiserTraining") or expname.startswith("train_denoise"):
+        if expname.startswith("DenoiserTraining") or expname.startswith(
+            "train_denoise"
+        ):
             return "rawnind_denoise"
         elif (
             expname.startswith("DCTraining")
@@ -81,7 +83,9 @@ class ExperimentManager:
             digit = model_dpath.split("-")[-1]
             new_dpath = model_dpath[: -len(digit)] + str(int(digit) + 1)
         else:
-            raise ValueError(f"Unable to determine next model iteration for {model_dpath}")
+            raise ValueError(
+                f"Unable to determine next model iteration for {model_dpath}"
+            )
         return new_dpath
 
     def find_latest_model_expname_iteration(
@@ -104,7 +108,9 @@ class ExperimentManager:
             raise ValueError(
                 f"Unable to find best iteration w/{load_metric} for in {os.path.join(model_dpath, 'trainres.yaml')}"
             ) from e
-        model_fpath = os.path.join(model_dpath, "saved_models", f"iter_{best_iteration}.pt")
+        model_fpath = os.path.join(
+            model_dpath, "saved_models", f"iter_{best_iteration}.pt"
+        )
         if look_no_further:
             return model_fpath
 
@@ -124,7 +130,7 @@ class ExperimentManager:
         save_dpath: str,
         keep_iterations: List[int],
         model_type: Literal["compression", "denoising"] = None,
-        delete: bool = True
+        delete: bool = True,
     ) -> int:
         """Clean up saved model iterations, keeping only specified ones.
 
@@ -207,7 +213,7 @@ class ExperimentManager:
         save_dpath: str,
         important_models: Set[str] = None,
         exclude_substring: str = "bm3d",
-        delete: bool = True
+        delete: bool = True,
     ) -> Tuple[List[str], int]:
         """Clean up unused test images from saved models directory.
 
@@ -232,12 +238,19 @@ class ExperimentManager:
                 continue
             if model_dir.name in important_models:
                 continue
-            if exclude_substring and exclude_substring.lower() in model_dir.name.lower():
-                logging.info(f"Excluding model due to '{exclude_substring}' in name: {model_dir.name}")
+            if (
+                exclude_substring
+                and exclude_substring.lower() in model_dir.name.lower()
+            ):
+                logging.info(
+                    f"Excluding model due to '{exclude_substring}' in name: {model_dir.name}"
+                )
                 continue
 
             # Find all .tif and .exr files recursively
-            image_files = list(model_dir.rglob("*.tif")) + list(model_dir.rglob("*.exr"))
+            image_files = list(model_dir.rglob("*.tif")) + list(
+                model_dir.rglob("*.exr")
+            )
             if not image_files:
                 continue  # No images to clean in this model
 
@@ -264,7 +277,7 @@ class ExperimentManager:
         time_limit_trainlog: int = 5 * 60,
         time_limit_trainres: int = 15 * 60,
         time_limit_saved_models: int = 60 * 60,
-        time_limit_trainres_empty: int = 60 * 60
+        time_limit_trainres_empty: int = 60 * 60,
     ) -> List[str]:
         """Remove empty model directories.
 
@@ -294,7 +307,9 @@ class ExperimentManager:
                             logging.info(f"Deleted empty file: {file_path}")
 
             # Get a list of subdirectories in the model path
-            models_dpaths = [f.path for f in os.scandir(root_models_dpath) if f.is_dir()]
+            models_dpaths = [
+                f.path for f in os.scandir(root_models_dpath) if f.is_dir()
+            ]
 
             # Loop through each subdirectory
             for model_dpath in models_dpaths:
@@ -371,7 +386,9 @@ class ExperimentManager:
                 removed_dirs.append(model_dpath)
         return removed_dirs
 
-    def rm_nonbest_model_iterations(self, save_dpath: str, best_steps: List[int], delete: bool = True) -> int:
+    def rm_nonbest_model_iterations(
+        self, save_dpath: str, best_steps: List[int], delete: bool = True
+    ) -> int:
         """Remove model iterations that are not among the best performing.
 
         Args:
@@ -408,7 +425,9 @@ class ExperimentManager:
                         except Exception as e:
                             logging.error(f"Error deleting {file}: {e}")
                     else:
-                        logging.info(f"rm_nonbest_model_iterations: would delete {file}")
+                        logging.info(
+                            f"rm_nonbest_model_iterations: would delete {file}"
+                        )
 
         return total_bytes_saved
 
@@ -436,7 +455,7 @@ class ExperimentManager:
         experiment_dir: str,
         keep_best_only: bool = True,
         clean_images: bool = False,
-        delete: bool = True
+        delete: bool = True,
     ) -> dict:
         """Comprehensive cleanup of an experiment directory.
 
@@ -449,11 +468,7 @@ class ExperimentManager:
         Returns:
             Dictionary with cleanup statistics
         """
-        stats = {
-            "models_cleaned": 0,
-            "images_cleaned": 0,
-            "bytes_saved": 0
-        }
+        stats = {"models_cleaned": 0, "images_cleaned": 0, "bytes_saved": 0}
 
         if not os.path.exists(experiment_dir):
             return stats
@@ -498,7 +513,7 @@ def cleanup_experiments(
     root_models_paths: List[str],
     keep_best_only: bool = True,
     clean_images: bool = False,
-    delete: bool = True
+    delete: bool = True,
 ) -> dict:
     """Clean up multiple experiment directories.
 
@@ -516,7 +531,7 @@ def cleanup_experiments(
         "experiments_processed": 0,
         "total_bytes_saved": 0,
         "total_models_cleaned": 0,
-        "total_images_cleaned": 0
+        "total_images_cleaned": 0,
     }
 
     for root_path in root_models_paths:

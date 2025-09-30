@@ -73,7 +73,8 @@
         "editor.find.autoFindInSelection": "multiline",
         "editor.cursorBlinking": "expand",
         "editor.cursorStyle": "line-thin",
-        "editor.wordWrap": "wordWrapColumn"
+        "editor.wordWrap": "wordWrapColumn",
+        "editor.defaultFormatter": "charliermarsh.ruff"
     },
     "testExplorer.addToEditorContextMenu": true,
     "testExplorer.mergeSuites": true,

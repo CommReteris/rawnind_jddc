@@ -9,9 +9,12 @@ This package contains all shared components and utilities, including:
 """
 
 from .config_manager import ConfigManager
+from .raw_processing import demosaic, rggb_to_mono
 
 __all__ = [
-    'ConfigManager'
+    'ConfigManager',
+    'demosaic',
+    'rggb_to_mono',
 ]
 from .json_saver import load_yaml, dict_to_yaml
 

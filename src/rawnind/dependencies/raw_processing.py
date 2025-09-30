@@ -69,6 +69,35 @@ except ImportError:
 import cv2
 
 
+# Module exports
+__all__ = [
+    'ProcessingConfig',
+    'RawProcessingError',
+    'UnsupportedFormatError',
+    'BayerPattern',
+    'BayerImage',
+    'RGGBImage',
+    'RGBImage',
+    'Metadata',
+    'RawLoader',
+    'BayerProcessor',
+    'ColorTransformer',
+    'get_sample_raw_file',
+    'is_exposure_ok',
+    'is_xtrans',
+    'xtrans_fpath_to_OpenEXR',
+    'hdr_nparray_to_file',
+    'raw_fpath_to_hdr_img_file',
+    'raw_fpath_to_rggb_img_and_metadata',
+    'raw_fpath_to_hdr_img_file_mtrunner',
+    'scenelin_to_pq',
+    'gamma',
+    'camRGB_to_lin_rec2020_images',
+    'demosaic',
+    'rggb_to_mono',
+]
+
+
 @dataclass
 class ProcessingConfig:
     """Configuration for RAW processing pipeline."""

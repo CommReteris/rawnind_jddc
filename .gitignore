@@ -88,3 +88,4 @@ datasets/DEMO/splits/*
 .roo/mcp.json
 .vscode/settings.json
 .envrc
+src/models/
