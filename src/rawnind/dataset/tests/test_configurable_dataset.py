@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from src.rawnind.dataset.clean_api import CleanDataset, ConfigurableDataset, DatasetConfig
+from src.rawnind.dataset.clean_api import CleanDataset, CleanTestDataset, ConfigurableDataset, DatasetConfig
 
 
 @pytest.fixture(autouse=True)
@@ -298,3 +298,83 @@ def test_clean_dataset_standardizes_missing_noisy_images(monkeypatch):
     assert torch.equal(standardized["clean_images"], clean_tensor)
     assert torch.equal(standardized["noisy_images"], clean_tensor)
     assert standardized["noisy_images"] is standardized["clean_images"]
+
+
+def test_clean_test_dataset_single_image(monkeypatch):
+    """CleanTestDataset should iterate single-image batches from ConfigurableDataset."""
+
+    class DummyDataset:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def __len__(self):
+            return 1
+
+        def __iter__(self):
+            yield {
+                "x_crops": torch.randn(1, 3, 4, 4),
+                "mask_crops": torch.ones(1, 3, 4, 4, dtype=torch.bool),
+                "gain": torch.tensor([1.0]),
+            }
+
+    monkeypatch.setattr(clean_api, "ConfigurableDataset", DummyDataset)
+
+    config = DatasetConfig(
+        dataset_type="rgb_pairs",
+        data_format="clean_clean",
+        input_channels=3,
+        output_channels=3,
+        crop_size=4,
+        num_crops_per_image=1,
+        batch_size=1,
+        test_reserve_images=[],
+    )
+
+    dataset = CleanTestDataset(config, data_paths={"clean_dataset_yamlfpaths": ["single.yaml"]})
+
+    batch = next(iter(dataset))
+
+    assert batch["clean_images"].shape == (1, 3, 4, 4)
+    assert batch["noisy_images"].shape == (1, 3, 4, 4)
+    assert torch.equal(batch["clean_images"], batch["noisy_images"])
+
+
+def test_clean_test_dataset_len(monkeypatch):
+    """Length of CleanTestDataset should respect underlying dataset size."""
+
+    class DummyDataset:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def __len__(self):
+            return 1
+
+        def __iter__(self):
+            yield {
+                "x_crops": torch.randn(1, 3, 4, 4),
+                "mask_crops": torch.ones(1, 3, 4, 4, dtype=torch.bool),
+                "gain": torch.tensor([1.0]),
+            }
+
+    monkeypatch.setattr(clean_api, "ConfigurableDataset", DummyDataset)
+
+    config = DatasetConfig(
+        dataset_type="rgb_pairs",
+        data_format="clean_clean",
+        input_channels=3,
+        output_channels=3,
+        crop_size=4,
+        num_crops_per_image=1,
+        batch_size=1,
+        test_reserve_images=[],
+    )
+
+    dataset = CleanTestDataset(config, data_paths={"clean_dataset_yamlfpaths": ["single.yaml"]})
+
+    assert len(dataset) == 1
+
+
+@pytest.mark.skip(reason="TODO: enforce batch-friendly conversion semantics")
+def test_clean_dataset_rejects_scalar_input(monkeypatch):
+    """Placeholder for enforcing single-image inputs to be batched before inference."""
+    pass

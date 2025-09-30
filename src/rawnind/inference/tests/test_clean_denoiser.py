@@ -37,8 +37,8 @@ class TestCleanDenoiser:
         mock_model.to.assert_called_once_with(torch.device("cpu"))
 
     @pytest.mark.parametrize("input_shape, expected_output_shape", [
-        ((3, 128, 128), (3, 128, 128)), # Single image
-        ((2, 3, 128, 128), (2, 3, 128, 128)), # Batch image
+        ((3, 128, 128), (3, 128, 128)),  # Single image
+        ((2, 3, 128, 128), (2, 3, 128, 128)),  # Batch image
     ])
     def test_denoise(self, mock_model, base_inference_config, input_shape, expected_output_shape):
         """Test denoise method for single and batch inputs."""
@@ -46,13 +46,20 @@ class TestCleanDenoiser:
 
         dummy_input = torch.randn(input_shape)
         batched_shape = (1,) + expected_output_shape if len(input_shape) == 3 else expected_output_shape
-        mock_model.return_value = torch.randn(batched_shape) # Ensure mock model returns correct shape
+        mock_model.return_value = torch.randn(batched_shape)  # Ensure mock model returns correct shape
+
+        mock_model.reset_mock()
 
         output = denoiser.denoise(dummy_input)
 
         assert isinstance(output, torch.Tensor)
         assert output.shape == expected_output_shape
-        mock_model.assert_called_once_with(dummy_input.unsqueeze(0) if len(input_shape) == 3 else dummy_input)
+        assert mock_model.call_count == 1
+        called_tensor = mock_model.call_args[0][0]
+        if len(input_shape) == 3:
+            assert torch.equal(called_tensor, dummy_input.unsqueeze(0))
+        else:
+            assert torch.equal(called_tensor, dummy_input)
 
     def test_denoise_batch(self, mock_model, base_inference_config):
         """Test denoise_batch method."""
@@ -69,7 +76,7 @@ class TestCleanDenoiser:
     def test_denoise_input_channel_validation(self, mock_model, base_inference_config):
         """Test denoise with invalid input channels."""
         denoiser = CleanDenoiser(model=mock_model, config=base_inference_config)
-        invalid_input = torch.randn(4, 64, 64) # Expected 3 channels, got 4
+        invalid_input = torch.randn(4, 64, 64)  # Expected 3 channels, got 4
         with pytest.raises(ValueError, match=f"Expected {base_inference_config.input_channels} channels, got 4"):
             denoiser.denoise(invalid_input)
 
@@ -84,6 +91,20 @@ class TestCleanDenoiser:
         assert "denoised_image" in output_dict
         assert "some_other_info" in output_dict
         assert output_dict["denoised_image"].shape == (3, 128, 128)
+
+    @pytest.mark.skip(reason="TODO: CleanDenoiser should gracefully handle rank-2 inputs by lifting them to batched tensors")
+    def test_denoise_low_rank_input(self, mock_model, base_inference_config):
+        """Placeholder to ensure future support for 2D tensors."""
+        denoiser = CleanDenoiser(model=mock_model, config=base_inference_config)
+        image = torch.randn(128, 128)
+        denoiser.denoise(image)
+
+    @pytest.mark.skip(reason="TODO: Detect models that only accept singleton batches and surface a clearer error")
+    def test_denoise_batch_for_singleton_only_model(self, mock_model, base_inference_config):
+        """Placeholder highlighting need for explicit messaging when model rejects multi-image batches."""
+        denoiser = CleanDenoiser(model=mock_model, config=base_inference_config)
+        batch = torch.randn(2, 3, 32, 32)
+        denoiser.denoise(batch)
 
 
 class TestCleanBayerDenoiser:
@@ -108,11 +129,11 @@ class TestCleanBayerDenoiser:
         assert denoiser.demosaic_fn == rawproc.demosaic # Should be set from dependencies
 
     @pytest.mark.parametrize("input_shape, gt_shape, expected_output_shape", [
-        ((4, 128, 128), (3, 256, 256), (3, 256, 256)), # Single Bayer image
-        ((2, 4, 128, 128), (2, 3, 256, 256), (2, 3, 256, 256)), # Batch Bayer image
+        ((4, 128, 128), (3, 256, 256), (3, 256, 256)),  # Single Bayer image
+        ((2, 4, 128, 128), (2, 3, 256, 256), (2, 3, 256, 256)),  # Batch Bayer image
     ])
     @patch('rawnind.dependencies.raw_processing.camRGB_to_lin_rec2020_images')
-    @patch('rawnind.dependencies.raw_processing.demosaic') # patch demosaic if model does not output RGB
+    @patch('rawnind.dependencies.raw_processing.demosaic')  # patch demosaic if model does not output RGB
     def test_denoise_bayer(self, mock_demosaic, mock_camrgb, mock_model, bayer_inference_config, input_shape, gt_shape, expected_output_shape):
         """Test denoise_bayer method."""
         denoiser = CleanBayerDenoiser(model=mock_model, config=bayer_inference_config)
@@ -120,18 +141,21 @@ class TestCleanBayerDenoiser:
         dummy_bayer_input = torch.randn(input_shape)
         dummy_rgb_xyz_matrix = torch.eye(3) if len(input_shape) == 3 else torch.eye(3).unsqueeze(0)
 
-        # Mock model's return value for Bayer model output (could be 3ch or 4ch, depends on model)
-        # Here we simulate a model that demosaics itself (outputting 3ch at higher res for testing purposes)
         mock_model.return_value = torch.randn(expected_output_shape)
-
-        # Mock raw_processing functions for testing
         mock_camrgb.return_value = torch.randn(expected_output_shape)
+
+        mock_model.reset_mock()
 
         output = denoiser.denoise_bayer(dummy_bayer_input, dummy_rgb_xyz_matrix)
 
         assert isinstance(output, torch.Tensor)
         assert output.shape == expected_output_shape
-        mock_model.assert_called_once_with(dummy_bayer_input.unsqueeze(0) if len(input_shape) == 3 else dummy_bayer_input)
+        assert mock_model.call_count == 1
+        called_tensor = mock_model.call_args[0][0]
+        if len(input_shape) == 3:
+            assert torch.equal(called_tensor, dummy_bayer_input.unsqueeze(0))
+        else:
+            assert torch.equal(called_tensor, dummy_bayer_input)
         mock_camrgb.assert_called_once() # camRGB_to_lin_rec2020_images should always be called
 
     def test_denoise_bayer_input_channel_validation(self, mock_model, bayer_inference_config):
