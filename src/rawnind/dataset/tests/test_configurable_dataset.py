@@ -19,6 +19,8 @@ def deterministic_random():
     random.setstate(state)
 
 
+import src.rawnind.dataset.clean_api as clean_api
+
 def _make_fake_tensor(path: str) -> torch.Tensor:
     if "mask" in path:
         return torch.ones(1, 16, 16, dtype=torch.bool)
@@ -168,7 +170,7 @@ def test_configurable_dataset_clean_clean_rgb(monkeypatch, tmp_path):
 
 
 def test_clean_dataset_standardizes_dict_batches():
-    """CleanDataset._standardize_batch_format should normalize legacy keys."""
+    """CleanDataset._standardize_batch_format should normalize legacy dict keys."""
     config = DatasetConfig(
         dataset_type="rgb_pairs",
         data_format="clean_noisy",
@@ -180,16 +182,119 @@ def test_clean_dataset_standardizes_dict_batches():
     )
     batch = {
         "x_crops": torch.ones(1, 3, 2, 2),
-        "y_crops": torch.ones(1, 3, 2, 2),
+        "y_crops": torch.full((1, 3, 2, 2), 2.0),
         "mask_crops": torch.ones(1, 3, 2, 2, dtype=torch.bool),
+        "gain": torch.tensor([1.0]),
     }
 
     dataset = CleanDataset(config, data_paths={}, data_loader_override=iter([batch]))
 
     standardized = dataset._standardize_batch_format(batch)
 
-    assert "x_crops" in standardized
-    assert torch.equal(standardized["noisy_images"], batch["x_crops"])
-    assert torch.equal(standardized["clean_images"], batch["y_crops"])
+    assert set(standardized.keys()).issuperset(
+        {"clean_images", "noisy_images", "masks", "gain", "image_paths"}
+    )
+    assert "x_crops" not in standardized
+    assert "y_crops" not in standardized
+    assert "mask_crops" not in standardized
+    assert torch.equal(standardized["clean_images"], batch["x_crops"])
+    assert torch.equal(standardized["noisy_images"], batch["y_crops"])
     assert torch.equal(standardized["masks"], batch["mask_crops"])
-    assert "image_paths" in standardized
+
+
+def test_clean_dataset_initializes_configurable_dataset(monkeypatch):
+    """CleanDataset should instantiate ConfigurableDataset when no override is supplied."""
+    created: Dict[str, Any] = {}
+
+    class DummyDataset:
+        def __init__(self, config_arg, data_paths_arg):
+            created["config"] = config_arg
+            created["data_paths"] = data_paths_arg
+
+        def __len__(self):
+            return 1
+
+    monkeypatch.setattr(clean_api, "ConfigurableDataset", DummyDataset)
+
+    config = DatasetConfig(
+        dataset_type="rgb_pairs",
+        data_format="clean_noisy",
+        input_channels=3,
+        output_channels=3,
+        crop_size=2,
+        num_crops_per_image=1,
+        batch_size=1,
+        test_reserve_images=[],
+    )
+    data_paths = {"noise_dataset_yamlfpaths": ["train.yaml"]}
+
+    dataset = CleanDataset(config, data_paths)
+
+    assert isinstance(dataset._underlying_dataset, DummyDataset)
+    assert created["config"] is config
+    assert created["data_paths"] is data_paths
+
+
+def test_clean_dataset_respects_override(monkeypatch):
+    """Data loader override should bypass ConfigurableDataset creation."""
+
+    def _fail(*_args, **_kwargs):
+        raise AssertionError("ConfigurableDataset should not be constructed when override is provided")
+
+    monkeypatch.setattr(clean_api, "ConfigurableDataset", _fail)
+
+    config = DatasetConfig(
+        dataset_type="rgb_pairs",
+        data_format="clean_noisy",
+        input_channels=3,
+        output_channels=3,
+        crop_size=2,
+        num_crops_per_image=1,
+        batch_size=1,
+        test_reserve_images=[],
+    )
+    override_batches = [{"dummy": torch.tensor(1.0)}]
+
+    dataset = CleanDataset(config, data_paths={}, data_loader_override=override_batches)
+
+    assert dataset._underlying_dataset is override_batches
+
+
+def test_clean_dataset_standardizes_missing_noisy_images(monkeypatch):
+    """Standardization should duplicate clean_images when noisy data is absent."""
+
+    class DummyDataset:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def __len__(self):
+            return 1
+
+    monkeypatch.setattr(clean_api, "ConfigurableDataset", DummyDataset)
+
+    config = DatasetConfig(
+        dataset_type="rgb_pairs",
+        data_format="clean_clean",
+        input_channels=3,
+        output_channels=3,
+        crop_size=2,
+        num_crops_per_image=1,
+        batch_size=1,
+        test_reserve_images=[],
+    )
+
+    dataset = CleanDataset(config, data_paths={"noise_dataset_yamlfpaths": ["train.yaml"]})
+
+    clean_tensor = torch.randn(1, 3, 2, 2)
+    mask_tensor = torch.ones(1, 3, 2, 2, dtype=torch.bool)
+
+    batch = {
+        "x_crops": clean_tensor,
+        "mask_crops": mask_tensor,
+    }
+
+    standardized = dataset._standardize_batch_format(batch)
+
+    assert torch.equal(standardized["clean_images"], clean_tensor)
+    assert torch.equal(standardized["noisy_images"], clean_tensor)
+    assert standardized["noisy_images"] is standardized["clean_images"]

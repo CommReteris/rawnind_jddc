@@ -525,23 +525,15 @@ class CleanDataset:
         }
 
     def _create_underlying_dataset(self):
-        """Create the appropriate underlying dataset based on configuration."""
-        # Use override if provided (for testing)
+        """Create ConfigurableDataset (now contains all translated logic)."""
         if self._data_loader_override:
             self._underlying_dataset = self._data_loader_override
             return
 
-        # Select appropriate dataset class based on configuration
-        if "bayer" in self.config.dataset_type:
-            self._underlying_dataset = ConfigurableDataset(self.config, self.data_paths)
-        elif "rgb" in self.config.dataset_type:
-            self._underlying_dataset = ConfigurableDataset(self.config, self.data_paths)
-        elif self.config.dataset_type == "rawnind_academic":
-            self._underlying_dataset = ConfigurableDataset(self.config, self.data_paths)
-        else:
-            raise ValueError(f"Unsupported dataset type: {self.config.dataset_type}")
+        self._underlying_dataset = ConfigurableDataset(self.config, self.data_paths)
+
         if len(self._underlying_dataset) == 0:
-            raise ValueError("No images found in the dataset.")
+            raise ValueError("No images found in dataset")
 
     def __iter__(self):
         """Iterate over dataset batches."""
@@ -565,59 +557,64 @@ class CleanDataset:
 
     def _standardize_batch_format(self, batch: Any) -> Dict[str, Any]:
         """Standardize batch format to consistent structure.
-        
+
         Args:
             batch: Raw batch from underlying dataset
-            
+
         Returns:
             Standardized batch dictionary
         """
-        # Handle different batch formats
         if isinstance(batch, dict):
             standardized = batch.copy()
-
-            if "x_crops" in standardized and "noisy_images" not in standardized:
-                standardized["noisy_images"] = standardized["x_crops"]
-            if "y_crops" in standardized and "clean_images" not in standardized:
-                standardized["clean_images"] = standardized["y_crops"]
-            if "mask_crops" in standardized and "masks" not in standardized:
-                standardized["masks"] = standardized["mask_crops"]
         elif isinstance(batch, (tuple, list)):
-            # Convert tuple/list to dictionary
             if len(batch) >= 3:
                 standardized = {
-                    'noisy_images': batch[0],  # x_crops
-                    'clean_images': batch[1],  # y_crops
-                    'masks'       : batch[2],  # mask_crops
+                    "clean_images": batch[0],
+                    "noisy_images": batch[1] if len(batch) > 1 else None,
+                    "masks": batch[2],
                 }
                 if len(batch) > 3:
-                    standardized['rgb_xyz_matrices'] = batch[3]
+                    standardized["rgb_xyz_matrices"] = batch[3]
             else:
                 raise ValueError(f"Unexpected batch format: {batch}")
         else:
             raise ValueError(f"Unknown batch type: {type(batch)}")
 
-        # Add metadata that tests expect
-        if 'image_paths' not in standardized:
-            standardized['image_paths'] = ['mock_image.jpg']
+        if "x_crops" in standardized:
+            standardized["clean_images"] = standardized.pop("x_crops")
+        if "y_crops" in standardized:
+            standardized["noisy_images"] = standardized.pop("y_crops")
+        if "mask_crops" in standardized:
+            standardized["masks"] = standardized.pop("mask_crops")
+        if "rgb_xyz_matrix" in standardized:
+            standardized["rgb_xyz_matrices"] = standardized.pop("rgb_xyz_matrix")
 
-        if 'color_profile_info' not in standardized:
-            standardized['color_profile_info'] = {
-                'input'             : self.config.input_color_profile,
-                'output'            : self.config.output_color_profile,
-                'conversion_applied': self.config.apply_color_conversion
+        if "clean_images" not in standardized:
+            raise ValueError("Batch missing clean_images data")
+
+        if "noisy_images" not in standardized or standardized["noisy_images"] is None:
+            standardized["noisy_images"] = standardized["clean_images"]
+
+        if "image_paths" not in standardized:
+            standardized["image_paths"] = ["mock_image.jpg"]
+
+        if "color_profile_info" not in standardized:
+            standardized["color_profile_info"] = {
+                "input": self.config.input_color_profile,
+                "output": self.config.output_color_profile,
+                "conversion_applied": self.config.apply_color_conversion,
             }
 
-        if "bayer" in self.config.dataset_type and 'bayer_info' not in standardized:
-            standardized['bayer_info'] = {
-                'pattern'           : self.config.bayer_pattern,
-                'demosaicing_method': self.config.demosaicing_method
+        if "bayer" in self.config.dataset_type and "bayer_info" not in standardized:
+            standardized["bayer_info"] = {
+                "pattern": self.config.bayer_pattern,
+                "demosaicing_method": self.config.demosaicing_method,
             }
 
-        if 'preprocessing_info' not in standardized:
-            standardized['preprocessing_info'] = {
-                'steps_applied'     : self.config.preprocessing_steps,
-                'output_color_space': self.config.output_color_profile
+        if "preprocessing_info" not in standardized:
+            standardized["preprocessing_info"] = {
+                "steps_applied": self.config.preprocessing_steps,
+                "output_color_space": self.config.output_color_profile,
             }
 
         return standardized
