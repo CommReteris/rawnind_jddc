@@ -12,27 +12,25 @@ import itertools
 import logging
 import os
 import platform
+import psutil
 import random
 import shutil
 import statistics
 import sys
 import time
-from typing import Callable, Iterable, Optional, Dict, Any
-
-import psutil
 import torch
 import tqdm
 import yaml
+from typing import Callable, Iterable, Optional
 
+from .clean_api import TrainingConfig
+from ..dependencies import locking
+from ..dependencies import numpy_operations
+from ..dependencies import raw_processing as raw
+from ..dependencies import raw_processing as rawproc
 from ..dependencies.json_saver import YAMLSaver
 from ..dependencies.pt_losses import losses, metrics
 from ..dependencies.pytorch_helpers import get_device
-from ..dependencies import raw_processing as rawproc
-from ..dependencies import raw_processing as raw
-from ..dependencies import locking
-from ..dependencies import numpy_operations
-
-from .clean_api import TrainingConfig
 
 
 class BayerImageToImageNNTraining:
@@ -1103,16 +1101,18 @@ class PRGBImageToImageNNTraining(ImageToImageNNTraining):
         super().__init__(config)
 
     @staticmethod
-    def repack_batch(batch: tuple, device: torch.device) -> dict:
-        '''Repack batch data for RGB processing.
+    def repack_batch(batch: tuple, device: torch.device = None) -> dict:
+        """Repack batch data for RGB processing.
+
+        Note: device parameter kept for compatibility but accelerate handles device placement.
 
         Args:
             batch: Tuple of dicts containing batch data
-            device: Target device for tensors
+            device: Target device for tensors (ignored, kept for compatibility)
 
         Returns:
             Dictionary with repacked batch data
-        '''
+        """
         repacked_batch = dict()
         if "y_crops" not in batch[0]:
             batch[0]["y_crops"] = batch[0]["x_crops"]
@@ -1123,7 +1123,8 @@ class PRGBImageToImageNNTraining(ImageToImageNNTraining):
                     batch[0][akey].view(-1, *(batch[0][akey].shape)[2:]),
                     batch[1][akey].view(-1, *(batch[1][akey].shape)[2:]),
                 )
-            ).to(device)
+            )
+            # Removed .to(device) - accelerate handles device placement automatically
         return repacked_batch
 
     def step(self, batch, optimizer: torch.optim.Optimizer, output_train_images: bool = False):

@@ -5,23 +5,21 @@ without command-line argument parsing dependencies. It replaces the legacy CLI-b
 interfaces with explicit configuration classes and factory functions.
 """
 
-import os
 import logging
-import tempfile
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Iterator, Union
-from pathlib import Path
 import torch
-import torch.nn as nn
 import yaml
+from accelerate import Accelerator
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Dict, List, Optional, Any, Iterator
+
+from ..dependencies import raw_processing as raw
+from ..dependencies.json_saver import YAMLSaver
+from ..dependencies.pt_losses import losses
+from ..inference.clean_api import convert_device_format
+
 
 # Import necessary components from the existing training package
-
-from ..inference.clean_api import InferenceConfig, convert_device_format
-from ..dependencies.pytorch_helpers import get_device
-from ..dependencies.pt_losses import losses, metrics
-from ..dependencies.json_saver import YAMLSaver
-from ..dependencies import raw_processing as raw
 
 
 @dataclass
@@ -127,7 +125,7 @@ class ExperimentConfig:
 
 class CleanTrainer:
     """Base class for clean trainers without CLI dependencies."""
-    
+
     def __init__(self, config: TrainingConfig, training_type: str):
         """Initialize trainer with explicit configuration.
         
@@ -137,27 +135,37 @@ class CleanTrainer:
         """
         self.config = config
         self.training_type = training_type
-        self.device = torch.device(config.device)  # Use torch.device directly for PyTorch operations
-        self.device_legacy = convert_device_format(config.device)  # Keep legacy format for compatibility
+
+        # Initialize accelerator for device management
+        self.accelerator = Accelerator()
+        self.device = self.accelerator.device  # Use accelerator device
+        self.device_legacy = convert_device_format(
+            str(self.device)
+        )  # Keep legacy format for compatibility
         self.model_architecture = config.model_architecture
-        
+
         # Training state
         self.current_step = 0
         self.best_validation_losses = {}
         self.lr_adjustment_allowed_step = config.patience
-        
+
         # Initialize model and optimizer
         self._create_model()
         self._create_optimizer()
-        
+
         # Initialize loss function
         self._create_loss_function()
-        
+
+        # Prepare model and optimizer with accelerate
+        self.model, self.optimizer = self.accelerator.prepare(
+            self.model, self.optimizer
+        )
+
     def _create_model(self):
         """Create the model based on configuration."""
         # Import model creation functionality from inference package
         from ..inference.clean_api import create_rgb_denoiser, create_bayer_denoiser
-        
+
         if self.training_type == "rgb_to_rgb":
             # Create RGB model for training
             denoiser = create_rgb_denoiser(
@@ -167,7 +175,7 @@ class CleanTrainer:
             )
             self.model = denoiser.model
         elif self.training_type == "bayer_to_rgb":
-            # Create Bayer model for training  
+            # Create Bayer model for training
             denoiser = create_bayer_denoiser(
                 architecture=self.config.model_architecture,
                 device=self.config.device,
@@ -177,17 +185,16 @@ class CleanTrainer:
             self.demosaic_fn = denoiser.demosaic_fn
         else:
             raise ValueError(f"Unsupported training type: {self.training_type}")
-            
-        # Move model to device
-        self.model = self.model.to(self.device)
-        
+
+        # Device placement handled by accelerate.prepare() - no manual movement needed
+
     def _create_optimizer(self):
         """Create optimizer for training."""
         self.optimizer = torch.optim.Adam(
             self.model.parameters(), 
             lr=self.config.learning_rate
         )
-    
+
     def _create_loss_function(self):
         """Create loss function based on configuration."""
         if self.config.loss_function == "mse":
@@ -199,7 +206,7 @@ class CleanTrainer:
             self.loss_fn = torch.nn.L1Loss()
         else:
             raise ValueError(f"Unsupported loss function: {self.config.loss_function}")
-    
+
     def compute_loss(self, predictions: torch.Tensor, ground_truth: torch.Tensor, 
                     masks: torch.Tensor) -> torch.Tensor:
         """Compute loss for a batch.
@@ -220,27 +227,27 @@ class CleanTrainer:
                 masks = torch.nn.functional.interpolate(
                     masks, size=predictions.shape[-2:], mode='nearest'
                 )
-            
+
             # Also handle ground truth resolution mismatch for Bayer processing
             if self.training_type == "bayer_to_rgb" and ground_truth.shape[-2:] != predictions.shape[-2:]:
                 # Upsample ground truth to match demosaiced predictions resolution
                 ground_truth = torch.nn.functional.interpolate(
                     ground_truth, size=predictions.shape[-2:], mode='bilinear', align_corners=False
                 )
-            
+
             predictions_masked = predictions * masks
             ground_truth_masked = ground_truth * masks
         else:
             predictions_masked = predictions
             ground_truth_masked = ground_truth
-            
+
         # Call loss function with only 2 arguments (standard PyTorch interface)
         return self.loss_fn(predictions_masked, ground_truth_masked)
-    
+
     def get_current_learning_rate(self) -> float:
         """Get current learning rate."""
         return self.optimizer.param_groups[0]['lr']
-    
+
     def update_learning_rate(self, validation_metrics: Dict[str, float], step: int):
         """Update learning rate based on validation performance.
         
@@ -249,7 +256,7 @@ class CleanTrainer:
             step: Current training step
         """
         loss_value = validation_metrics.get('loss', float('inf'))
-        
+
         # Check if model improved
         if 'loss' not in self.best_validation_losses or loss_value <= self.best_validation_losses['loss']:
             self.best_validation_losses['loss'] = loss_value
@@ -263,7 +270,7 @@ class CleanTrainer:
                     param_group['lr'] = new_lr
                 logging.info(f"Learning rate decayed: {old_lr} -> {new_lr}")
                 self.lr_adjustment_allowed_step = step + self.config.patience
-    
+
     def save_checkpoint(self, step: int, checkpoint_path: str, include_optimizer: bool = True) -> Dict[str, Any]:
         """Save training checkpoint.
         
@@ -281,14 +288,14 @@ class CleanTrainer:
             'config': self.config,
             'best_validation_losses': self.best_validation_losses
         }
-        
+
         if include_optimizer:
             checkpoint_info['optimizer_state'] = self.optimizer.state_dict()
-            
+
         torch.save(checkpoint_info, checkpoint_path)
-        
+
         return checkpoint_info
-    
+
     def load_checkpoint(self, checkpoint_path: str) -> Dict[str, Any]:
         """Load training checkpoint.
         
@@ -301,23 +308,23 @@ class CleanTrainer:
         # Fix PyTorch 2.6 security issue with custom classes
         torch.serialization.add_safe_globals([TrainingConfig])
         checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
-        
+
         # Load model state
         self.model.load_state_dict(checkpoint['model_state'])
-        
+
         # Load optimizer state if available
         if 'optimizer_state' in checkpoint:
             self.optimizer.load_state_dict(checkpoint['optimizer_state'])
-            
+
         # Restore training state
         self.current_step = checkpoint['step']
         self.best_validation_losses = checkpoint.get('best_validation_losses', {})
-        
+
         return {
             'step': checkpoint['step'],
             'resumed_from_step': checkpoint['step']
         }
-    
+
     def validate(self, validation_dataloader: Iterator, compute_metrics: List[str] = None,
                 save_outputs: bool = False, output_directory: str = None) -> Dict[str, float]:
         """Run validation on a dataset.
@@ -333,25 +340,25 @@ class CleanTrainer:
         """
         if compute_metrics is None:
             compute_metrics = ['loss']
-            
+
         self.model.eval()
         all_losses = {metric: [] for metric in compute_metrics}
-        
+
         with torch.no_grad():
             for i, batch in enumerate(validation_dataloader):
                 # Get batch data
                 clean_images = batch['clean_images'].to(self.device)
                 noisy_images = batch['noisy_images'].to(self.device)
                 masks = batch['masks'].to(self.device)
-                
+
                 # Forward pass
                 predictions = self.model(noisy_images)
-                
+
                 # Compute loss
                 if 'loss' in compute_metrics:
                     loss = self.compute_loss(predictions, clean_images, masks)
                     all_losses['loss'].append(loss.item())
-                
+
                 # Compute additional metrics
                 from ..inference.clean_api import compute_image_metrics
                 if len(compute_metrics) > 1:
@@ -362,24 +369,24 @@ class CleanTrainer:
                     for metric_name, metric_value in batch_metrics.items():
                         if metric_name in all_losses:
                             all_losses[metric_name].append(metric_value)
-                
+
                 # Save outputs if requested
                 if save_outputs and output_directory:
                     self._save_validation_outputs(predictions, batch, output_directory, i)
-        
+
         self.model.train()
-        
+
         # Return average metrics
         result = {}
         for metric_name, values in all_losses.items():
             if values:
                 result[metric_name] = sum(values) / len(values)
-        
+
         if save_outputs:
             result['outputs_saved'] = True
-            
+
         return result
-    
+
     def test(self, test_dataloader: Iterator, test_name: str = "test",
             save_outputs: bool = False, compute_metrics: List[str] = None) -> Dict[str, Any]:
         """Run testing on a dataset.
@@ -395,30 +402,30 @@ class CleanTrainer:
         """
         if compute_metrics is None:
             compute_metrics = ['loss']
-            
+
         test_results = self.validate(
             validation_dataloader=test_dataloader,
             compute_metrics=compute_metrics,
             save_outputs=save_outputs
         )
-        
+
         test_results['test_name'] = test_name
         return test_results
-    
+
     def _save_validation_outputs(self, predictions: torch.Tensor, batch: Dict, 
                                output_directory: str, batch_idx: int):
         """Save validation outputs to files using domain knowledge from legacy code."""
         output_dir = Path(output_directory)
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         for i in range(predictions.shape[0]):
             output_path = output_dir / f"batch_{batch_idx}_sample_{i}_output.exr"
-            
+
             # Use raw processing utilities to save as EXR (legacy domain knowledge)
             try:
                 # Convert tensor to numpy for saving
                 output_array = predictions[i].detach().cpu().numpy()
-                
+
                 # Save as HDR EXR using extracted raw processing utilities
                 raw.hdr_nparray_to_file(
                     output_array,
@@ -426,7 +433,7 @@ class CleanTrainer:
                     color_profile="lin_rec2020"  # Linear Rec2020 color space (domain standard)
                 )
                 logging.info(f"Saved validation output to {output_path}")
-                
+
             except Exception as e:
                 logging.warning(f"Failed to save output to {output_path}: {e}")
                 # Fallback: save basic info about what would be saved

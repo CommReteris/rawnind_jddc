@@ -4,6 +4,7 @@ version = "0.2.0"
 description = "Add your description here"
 requires-python = ">=3.13"
 dependencies = [
+    "accelerate>=0.20.0",
     "colour-science>=0.4.6",
     "exif>=1.6.1",
     "matplotlib>=3.10.3",

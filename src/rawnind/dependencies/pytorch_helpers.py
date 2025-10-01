@@ -6,13 +6,14 @@ the original pt_helpers.py file.
 Extracted from libs/pt_helpers.py as part of the codebase refactoring.
 """
 
-import logging
-import time
-
 import cv2
+import logging
 import numpy as np
+import time
 import torch
 from PIL import Image
+from accelerate import Accelerator
+
 
 # Import from dependencies package (will be moved later)
 def noop(*args, **kwargs):
@@ -22,6 +23,8 @@ def noop(*args, **kwargs):
 
 def get_device(device_n=None):
     """Get device given index (-1 = CPU).
+
+    Now uses accelerate for better device management and distributed training support.
 
     Args:
         device_n: Device number or device object
@@ -36,16 +39,18 @@ def get_device(device_n=None):
             return torch.device("cpu")
         device_n = int(device_n)
 
+    # Use accelerate for device detection when no specific device is requested
     if device_n is None:
+        accelerator = Accelerator()
+        return accelerator.device
+    elif device_n == -1:
+        return torch.device("cpu")
+    elif device_n >= 0:
         if torch.cuda.is_available():
-            return torch.device("cuda")
+            return torch.device(f"cuda:{device_n}")
         else:
             print("get_device: cuda not available; defaulting to cpu")
             return torch.device("cpu")
-    elif torch.cuda.is_available() and device_n >= 0:
-        return torch.device(f"cuda:{device_n}")
-    elif device_n >= 0:
-        print("get_device: cuda not available")
     return torch.device("cpu")
 
 
