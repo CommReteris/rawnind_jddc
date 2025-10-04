@@ -35,6 +35,7 @@ from rawnind.libs import raw
 from rawnind.libs import rawds
 from rawnind.libs import rawproc
 from rawnind.models import bm3d_denoiser
+
 # from rawnind.extmodels import runet
 # from rawnind.extmodels import edsr
 from rawnind.models import (
@@ -309,7 +310,7 @@ class ImageToImageNN:
                 "minimize_threads",
                 "toy_dataset",
             ],
-            help=f"Debug options",
+            help="Debug options",
         )
         parser.add_argument(
             "--metrics",
@@ -413,7 +414,7 @@ class ImageToImageNN:
                             args.load_path = None
                             logging.warning("no model to load")
                             if vars(self).get("test_only", False):
-                                raise ValueError(f"No model to load")
+                                raise ValueError("No model to load")
                             return
                         if dup_cnt_load > 1:
                             args.load_path = args.load_path.replace(

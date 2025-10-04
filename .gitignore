@@ -1,2 +1,17 @@
 .idea
 uv.lock
+**/*/__pycache__
+**/*/*.egg-info
+
+# Backup files
+*~
+*.bak
+
+# Setup documentation (local only)
+SETUP_COMPLETE.md
+src/models/**/*.log
+src/models/**/*.yaml
+src/models/**/*.config
+tmp
+.serena
+.roo

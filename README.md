@@ -8,6 +8,13 @@ For more detailed information about the project, please see the main README file
 
 A simpler, cleaner public repository focusing on denoising-only is planned for the relatively near future.
 
+### Installation
+
+#### Basic Installation
+```bash
+pip install -e .
+```
+
 ### Downloading the RawNIND Dataset
 
 If you just want to download the RawNIND dataset, you can use the following command:

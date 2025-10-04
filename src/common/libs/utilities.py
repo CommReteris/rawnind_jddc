@@ -2,13 +2,12 @@
 """Common utilities."""
 
 import os
+import sys
 import logging
 import random
 from typing import Callable, Union, Iterable, Optional, List, Any
-from multiprocessing import Pool
 import tqdm
 import json
-import sys
 import csv
 import lzma
 import shutil
@@ -17,12 +16,24 @@ import unittest
 import pickle
 import atexit  # restart_program()
 
+# Use torch.multiprocessing for proper tensor sharing
+try:
+    import torch
+    import torch.multiprocessing as mp
+    from torch.multiprocessing import Pool
+
+    TORCH_AVAILABLE = True
+except ImportError:
+    from multiprocessing import Pool
+    import multiprocessing as mp
+
+    TORCH_AVAILABLE = False
+
 
 try:
     import png
 except ModuleNotFoundError as e:
     logging.error(f"{e} (install pypng)")
-import time
 import numpy as np
 import statistics
 import subprocess
@@ -83,14 +94,39 @@ def mt_runner(
     ordered: bool = False,
     progress_bar: bool = True,
     starmap: bool = False,
+    progress_desc: str = "Processing",
 ) -> Iterable[Any]:
     """
-    fun: function to run
-    starmap: expand arguments (not compatible with ordered=False)
+    Multiprocessing runner.
+
+    Args:
+        fun: function to run
+        argslist: list of arguments to pass to function
+        num_threads: number of worker processes
+        ordered: whether to preserve order (slower)
+        progress_bar: show progress bar
+        starmap: expand arguments (not compatible with ordered=False)
+        progress_desc: description for progress bar
     """
     if num_threads is None:
         num_threads = NUM_THREADS
+
+    # Check if verbose flag is set in argslist
+    verbose = False
+    if argslist and len(argslist) > 0:
+        if isinstance(argslist[0], dict) and "verbose" in argslist[0]:
+            verbose = argslist[0]["verbose"]
+
+    # Set multiprocessing start method to spawn for CUDA compatibility
+    if TORCH_AVAILABLE:
+        try:
+            mp.set_start_method("spawn", force=True)
+        except RuntimeError:
+            # Start method already set
+            pass
+
     if num_threads == 1:
+        # Single-threaded execution
         results = []
         for args in argslist:
             if starmap:
@@ -98,36 +134,83 @@ def mt_runner(
             else:
                 results.append(fun(args))
         return results
-    else:
-        pool = Pool(num_threads)
-        if starmap:
-            amap = pool.starmap
-            if not ordered:
-                raise NotImplementedError("Unordered starmap")
-        elif ordered:
-            amap = pool.imap
-        else:
-            amap = pool.imap_unordered
-        if ordered:
-            print("mt_runner warning: ordered=True might be slower.")
-            if progress_bar:
-                print(
-                    "mt_runner warning: progress bar NotImplemented for ordered pool."
-                )
-            ret = amap(fun, argslist)
-        else:
-            if progress_bar:
-                ret = []
-                try:
-                    for ares in tqdm.tqdm(amap(fun, argslist), total=len(argslist)):
-                        ret.append(ares)
-                except TypeError as e:
-                    print(e)
-                    raise RuntimeError
+
+    # Use context manager for automatic cleanup of pool resources
+    with Pool(num_threads) as pool:
+        try:
+            if starmap:
+                amap = pool.starmap
+                if not ordered:
+                    raise NotImplementedError("Unordered starmap")
+            elif ordered:
+                amap = pool.imap
             else:
-                ret = amap(fun, argslist)
-        pool.close()
-        pool.join()
+                amap = pool.imap_unordered
+
+            if ordered:
+                print("mt_runner warning: ordered=True might be slower.")
+                if progress_bar:
+                    print(
+                        "mt_runner warning: progress bar NotImplemented for ordered pool."
+                    )
+                ret = list(amap(fun, argslist))
+            else:
+                if progress_bar:
+                    ret = []
+                    try:
+                        # Use a stationary progress bar that updates in place
+                        bar_format = "{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
+                        pbar = tqdm.tqdm(
+                            amap(fun, argslist),
+                            total=len(argslist),
+                            desc=progress_desc,
+                            bar_format=bar_format,
+                            position=0,
+                            leave=True,
+                            dynamic_ncols=True,
+                            file=sys.stderr,
+                            mininterval=0.05,
+                        )
+
+                        current_scene = None
+                        current_method = None
+
+                        for i, ares in enumerate(pbar):
+                            ret.append(ares)
+                            # Extract scene and method info for display (only in verbose mode)
+                            if verbose and hasattr(ares, "get") and "gt_fpath" in ares:
+                                # Extract scene and actual method used from the result
+                                scene_name = ares.get("image_set", "unknown")
+                                method = ares.get("alignment_method", "unknown")
+
+                                # Only update description if scene or method changed to avoid flicker
+                                if (
+                                    scene_name != current_scene
+                                    or method != current_method
+                                ):
+                                    current_scene = scene_name
+                                    current_method = method
+                                    desc = f"Scene: {scene_name:<30} Method: {method.upper()}"
+                                    pbar.set_description(desc)
+
+                        # Don't close the progress bar - leave it on screen showing final state
+                        pbar.close()
+
+                    except (TypeError, KeyboardInterrupt) as e:
+                        if isinstance(e, KeyboardInterrupt):
+                            logging.info("Multiprocessing interrupted by user")
+                        else:
+                            logging.error(f"Progress bar error: {e}")
+                        # Re-raise to trigger cleanup
+                        raise
+                else:
+                    ret = list(amap(fun, argslist))
+
+        except Exception as e:
+            logging.error(f"Multiprocessing error: {e}")
+            # Context manager will handle cleanup
+            raise
+
         return ret
 
 
