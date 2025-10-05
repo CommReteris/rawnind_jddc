@@ -20,10 +20,14 @@ compute loss mask between every full-size image
 add list of crops (dict of coordinates : path)
 """
 
+import argparse
+import logging
 import os
 import sys
-import logging
-import argparse
+import threading
+import time
+
+import yaml
 
 sys.path.append("..")
 from rawnind.libs import rawproc
@@ -32,7 +36,6 @@ from common.libs import utilities
 from rawnind.libs.rawproc import (
     DATASETS_ROOT,
     DS_DN,
-    DS_BASE_DPATH,
     BAYER_DS_DPATH,
     LINREC2020_DS_DPATH,
     RAWNIND_CONTENT_FPATH,
@@ -202,17 +205,93 @@ if __name__ == "__main__":
                 # INPUT: gt_file_endpath, f_endpath
                 # OUTPUT: gt_file_endpath, f_endpath, best_alignment, mask_fpath, mask_name
 
+                if args.verbose:
+                    logging.info(
+                        f"Image set '{image_set}': {total_gt_files} GT files, {matched_pairs} valid pairs"
+                    )
+
+                    # Log detailed pairing information for debugging
+                    if matched_pairs > 0:
+                        logging.debug(f"Detailed pairs for '{image_set}':")
+                        pair_count = 0
+                        for arg in args_in[
+                            -matched_pairs:
+                        ]:  # Get the pairs we just added
+                            pair_count += 1
+                            gt_name = os.path.basename(arg["gt_file_endpath"])
+                            f_name = os.path.basename(arg["f_endpath"])
+                            logging.debug(
+                                f"  Pair {pair_count}: GT={gt_name} <-> Noisy={f_name}"
+                            )
+
+    if not args.verbose:
+        logging.info(
+            f"Found {total_image_sets} image sets with {total_gt_files_count} GT files and {total_matched_pairs} valid pairs"
+        )
+
+    # Run benchmark if requested
+    if args.benchmark and len(args_in) > 0:
+        run_alignment_benchmark(args_in)
+        logging.info("Benchmark completed. Exiting.")
+        sys.exit(0)
+
+    logging.info(f"Processing {len(args_in)} image pairs...")
+    processing_start = time.time()
+
+    results = []
+    cache_lock = threading.Lock()
+    write_interval = 10  # Write cache every N results
+
+
+    def save_result(result):
+        """
+        Thread-safe callback to save results incrementally.
+        Writes to cache file every N results using atomic temp file operations.
+        """
+        with cache_lock:
+            results.append(result)
+            # Write to cache every write_interval results for efficiency
+            if len(results) % write_interval == 0:
+                try:
+                    # Use atomic write: write to temp file, then rename
+                    temp_fpath = content_fpath.with_suffix('.tmp')
+                    with temp_fpath.open("w", encoding="utf-8") as f:
+                        yaml.dump(results + (cached_results or []), f, allow_unicode=True)
+                    temp_fpath.replace(content_fpath)  # Atomic on POSIX systems
+                    logging.debug(f"Cache updated: {len(results)} results written")
+                except Exception as e:
+                    logging.warning(f"Failed to write cache file: {e}")
+
     try:
-        results = utilities.mt_runner(
+        utilities.mt_runner(
             rawproc.get_best_alignment_compute_gain_and_make_loss_mask,
             args_in,
             num_threads=args.num_threads,
+            progress_desc="Processing",
+            on_result=save_result,
         )
 
     except KeyboardInterrupt:
         logging.error(f"prep_image_dataset.py interrupted. Saving results.")
 
-    results = results + cached_results
+    # Final consolidation: write any remaining results not yet written due to batching
+    if results:
+        try:
+            temp_fpath = content_fpath.with_suffix('.tmp')
+            with temp_fpath.open("w", encoding="utf-8") as f:
+                yaml.dump(results + (cached_results or []), f, allow_unicode=True)
+            temp_fpath.replace(content_fpath)  # Atomic on POSIX systems
+            logging.info(f"Final cache consolidation: {len(results)} results written")
+        except Exception as e:
+            logging.warning(f"Failed to write final cache consolidation: {e}")
+
+    processing_time = time.time() - processing_start
+    logging.info(
+        f"Alignment and mask generation completed in {processing_time:.2f} seconds"
+    )
+
+    if cached_results:
+        results = results + cached_results
 
     for result in results:  # FIXME
         result["crops"] = fetch_crops_list(
