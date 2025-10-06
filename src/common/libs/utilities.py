@@ -82,18 +82,22 @@ def mt_runner(
     ordered: bool = False,
     progress_bar: bool = True,
     starmap: bool = False,
-        progress_desc: str = "Processing",
+    progress_desc: str = "Processing",
+    on_result: Optional[Callable[[Any], None]] = None,
+    verbose: bool = False,
 ) -> Iterable[Any]:
     """Execute a function in parallel across multiple processes with progress tracking.
-    
+
     This is a general-purpose multiprocessing wrapper that handles process pool management,
     progress visualization, and proper cleanup. It uses torch.multiprocessing when available
     for CUDA compatibility, falling back to standard multiprocessing otherwise.
-    
+
     The function automatically sets the spawn start method for CUDA safety and provides
     both ordered (slower but preserves sequence) and unordered (faster) execution modes.
     Single-threaded execution is supported for debugging.
-    
+
+    #TODO I've made a mess of this and it needs to be cleaned up.
+
     Args:
         fun: Function to execute in parallel (should accept single argument unless starmap=True)
         argslist: List of arguments to pass to the function (one per task)
@@ -103,13 +107,12 @@ def mt_runner(
         starmap: If True, unpack each argument tuple as *args to the function
                 (requires ordered=True)
         progress_desc: Text description shown in the progress bar
-    
+        on_result: Optional callback function called with each result as it completes
+        verbose: If True, display scene and method information in progress bar
+                (requires results to be dicts with 'gt_fpath', 'image_set', 'alignment_method')
+
     Returns:
         List of results in the same order as argslist (if ordered=True) or completion order
-        
-    Note:
-        When verbose mode is detected in argslist, the progress bar displays scene and
-        method information extracted from results (useful for dataset processing tasks).
     """
     if num_threads is None:
         num_threads = NUM_THREADS
